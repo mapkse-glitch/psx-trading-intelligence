@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PSX Trading Intelligence Dashboard — Local-First Terminal</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Left Institutional Sidebar (10 Core Sections) -->
+    <aside class="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">PSX</div>
+        <div class="brand-titles">
+          <h1>PSX Intelligence</h1>
+          <span>Unified Local-First Terminal v1.1</span>
+        </div>
+      </div>
+
+      <div class="sidebar-group-label">CORE WORKFLOWS (10 MODULES)</div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <button class="nav-btn active" data-view="overview">
+          <span class="nav-num">01</span>
+          <span class="nav-label">Overview &amp; AI Setup Cards</span>
+        </button>
+        <button class="nav-btn" data-view="import">
+          <span class="nav-num">02</span>
+          <span class="nav-label">Import and Update Center</span>
+        </button>
+        <button class="nav-btn" data-view="top5">
+          <span class="nav-num">03</span>
+          <span class="nav-label">Top 5 Volume &amp; Rate Register</span>
+        </button>
+        <button class="nav-btn" data-view="acc91404">
+          <span class="nav-num">04</span>
+          <span class="nav-label">Account 91404 Performance</span>
+        </button>
+        <button class="nav-btn" data-view="acc91269">
+          <span class="nav-num">05</span>
+          <span class="nav-label">Account 91269 Performance</span>
+        </button>
+        <button class="nav-btn" data-view="futures">
+          <span class="nav-num">06</span>
+          <span class="nav-label">Futures Comparison &amp; Annualized</span>
+        </button>
+        <button class="nav-btn" data-view="technical">
+          <span class="nav-num">07</span>
+          <span class="nav-label">Technical Analysis &amp; 36-Ticker</span>
+        </button>
+        <button class="nav-btn" data-view="reconciliation">
+          <span class="nav-num">08</span>
+          <span class="nav-label">Data Quality &amp; Reconciliation</span>
+        </button>
+        <button class="nav-btn" data-view="exports">
+          <span class="nav-num">09</span>
+          <span class="nav-label">Exports and Reports</span>
+        </button>
+        <button class="nav-btn" data-view="settings">
+          <span class="nav-num">10</span>
+          <span class="nav-label">Settings and Backup</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill">
+          <span class="dot"></span>
+          <span id="sidebarDbStatus">SQLite WAL • 100% Reconciled</span>
+        </div>
+        <div class="sidebar-meta" id="sidebarLastImport">Data Path: /home/user/psx_data/database/app.db</div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <main class="main-area">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h2 id="viewTitle">01 • Overview &amp; Trading Intelligence</h2>
+          <span class="feed-badge" id="feedStatusBadge">HISTORICAL / EOD IMPORTED DATA — NOT LIVE FEED</span>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-secondary" onclick="refreshCurrentView()" title="Clear client cache and reload current section">↻ Refresh</button>
+          <button class="btn btn-secondary" onclick="switchView('import')">+ Upload Files</button>
+          <button class="btn btn-primary" onclick="switchView('exports')">⬇ Excel Workbooks</button>
+        </div>
+      </header>
+
+      <!-- Toast Notification Banner -->
+      <div id="toastBanner" class="toast-banner hidden"></div>
+
+      <!-- Dynamic View Container -->
+      <div id="viewContainer" class="view-container">
+        <div class="skeleton-card">Loading PSX Trading Intelligence Dashboard...</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
