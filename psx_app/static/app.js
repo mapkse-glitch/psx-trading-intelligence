@@ -737,10 +737,15 @@ async function renderImportCenter(container) {
         </div>
       </div>
 
-      <div class="dropzone" onclick="document.getElementById('fileUploadInput').click()">
-        <h3 style="margin-bottom:6px;color:var(--accent-blue);">Click to Select Files or Drag &amp; Drop Here</h3>
+      <div class="dropzone" id="uploadDropzone"
+        onclick="document.getElementById('fileUploadInput').click()"
+        ondragenter="event.preventDefault();event.stopPropagation();this.classList.add('drag-active')"
+        ondragover="event.preventDefault();event.stopPropagation();this.classList.add('drag-active')"
+        ondragleave="event.preventDefault();event.stopPropagation();this.classList.remove('drag-active')"
+        ondrop="event.preventDefault();event.stopPropagation();this.classList.remove('drag-active');handleStageFiles(event.dataTransfer.files)">
+        <h3 style="margin-bottom:6px;color:var(--accent-blue);">Click to Select Files or Drag &amp; Drop Files Here</h3>
         <p style="color:var(--text-muted);font-size:12px;">
-          Accepted formats: <b>.txt, .csv, .xlsx, .xls, .zip</b> • Files are staged and validated first before modifying your canonical database.
+          Drag any <b>.txt, .csv, .xlsx, .xls, .zip</b> file(s) directly onto this box, or click to browse • Files are staged and validated first before modifying your canonical database.
         </p>
         <input type="file" id="fileUploadInput" multiple accept=".txt,.csv,.xlsx,.xls,.zip" style="display:none" onchange="handleStageFiles(this.files)" />
       </div>
@@ -919,7 +924,7 @@ async function renderTop5View(container) {
       </div>
       <div class="filter-group">
         <label>Search:</label>
-        <input type="text" id="top5SearchInput" placeholder="Ticker or date..." value="${f.search}" oninput="updateTop5Filter()" />
+        <input type="text" id="top5SearchInput" placeholder="Ticker or date..." value="${f.search}" oninput="scheduleTop5Search(this.value)" />
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;">
         <a class="btn btn-primary" href="/api/exports/generate/top5_xlsx" download>⬇ Export Top 5 Workbook (.xlsx)</a>
@@ -985,8 +990,26 @@ function updateTop5Filter() {
   }
   state.top5Filter.start_date = document.getElementById("top5StartInput").value;
   state.top5Filter.end_date = document.getElementById("top5EndInput").value;
-  state.top5Filter.search = document.getElementById("top5SearchInput").value;
+  const srchEl = document.getElementById("top5SearchInput");
+  if (srchEl) state.top5Filter.search = srchEl.value;
   renderTop5View(document.getElementById("viewContainer"));
+}
+
+// Debounce free-text typing so the app NEVER auto-submits in the middle of a word.
+// The table only refreshes after the user pauses, and keyboard focus is restored.
+let top5SearchTimer = null;
+function scheduleTop5Search(val) {
+  state.top5Filter.search = val;
+  clearTimeout(top5SearchTimer);
+  top5SearchTimer = setTimeout(async () => {
+    const typedValue = val;
+    await renderTop5View(document.getElementById("viewContainer"));
+    const el = document.getElementById("top5SearchInput");
+    if (el && el.value === typedValue) {
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  }, 700);
 }
 
 function renderTop5SvgChart(trend) {
@@ -1092,6 +1115,13 @@ async function renderAccountView(container, accountId) {
           </div>
         </div>
       </div>
+
+      <div class="grid-4">
+        <div class="kpi-box"><div class="kpi-label">Total Traded Turnover (Buy+Sell, PKR)</div><div class="kpi-value">${fmtNum(d.total_traded_turnover_pkr)}</div><div class="kpi-sub">All imported YTD data</div></div>
+        <div class="kpi-box"><div class="kpi-label">Symbols Traded</div><div class="kpi-value">${d.symbols_count ?? "—"}</div><div class="kpi-sub">Unique symbols in account history</div></div>
+        <div class="kpi-box"><div class="kpi-label">Trading Days</div><div class="kpi-value">${d.trading_days_count ?? "—"}</div><div class="kpi-sub">Sessions with ≥1 execution</div></div>
+        <div class="kpi-box"><div class="kpi-label">Total Shares Traded (Buy+Sell)</div><div class="kpi-value">${fmtInt(d.total_traded_shares)}</div><div class="kpi-sub">Gross two-way volume</div></div>
+      </div>
     `;
   } else if (activeTab === "daily_summary") {
     const rows = rep.daily_summary.rows;
@@ -1103,7 +1133,7 @@ async function renderAccountView(container, accountId) {
           <table class="data-table">
             <thead>
               <tr>
-                <th>Date</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Net Qty</th>
+                <th>Date</th><th>Symbols Traded</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Net Qty</th>
                 <th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th>
                 <th class="num">Avg Buy</th><th class="num">Avg Sell</th>
                 <th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST 13%</th>
@@ -1112,8 +1142,9 @@ async function renderAccountView(container, accountId) {
             </thead>
             <tbody>
               ${rows.map((r) => `
-                <tr style="cursor:pointer" onclick="openAccountDateDetail('${accountId}', '${r.trade_date}')">
+                <tr style="cursor:pointer" title="Click to open the full Daily Trade Summary for ${r.trade_date}" onclick="openAccountDateDetail('${accountId}', '${r.trade_date}')">
                   <td><b>${r.trade_date}</b></td>
+                  <td style="max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.symbols_str || ""}"><b>${r.symbols_count || 0}</b> <span style="color:var(--text-muted);font-size:10.5px;">${r.symbols_str || "—"}</span></td>
                   <td class="num">${fmtInt(r.buy_qty)}</td>
                   <td class="num">${fmtInt(r.sell_qty)}</td>
                   <td class="num">${fmtInt(r.net_qty)}</td>
@@ -1132,6 +1163,7 @@ async function renderAccountView(container, accountId) {
               ${tot ? `
                 <tr class="total-row">
                   <td>TOTAL</td>
+                  <td style="color:var(--text-muted);font-size:10.5px;" title="${tot.symbols_str || ""}">${tot.symbols_count || 0} symbols</td>
                   <td class="num">${fmtInt(tot.buy_qty)}</td>
                   <td class="num">${fmtInt(tot.sell_qty)}</td>
                   <td class="num">${fmtInt(tot.net_qty)}</td>
@@ -1230,103 +1262,212 @@ async function renderAccountView(container, accountId) {
       ["QTD Summary (Quarter-to-Date)", rep.qtd_summary],
       ["YTD Summary (Year-to-Date)", rep.ytd_summary],
     ];
-    bodyHtml = `<div class="grid-2">${blocks.map(([title, b]) => `
+    bodyHtml = `${blocks.map(([title, b]) => `
       <div class="card">
         <div class="card-header">
           <div>
             <div class="card-title">${title}</div>
-            <div class="card-subtitle">Calendar Start: ${b.start} • First Active Day: ${b.first_trading_day} • End: ${b.end} (${b.trading_days} days)</div>
+            <div class="card-subtitle">Period Start (calendar): ${b.start} • Period End (latest trade): ${b.end} • First Trading Day in Period: ${b.first_trading_day} • Trading Days: ${b.trading_days}</div>
           </div>
         </div>
-        <table class="data-table">
-          <tbody>
-            <tr><td><b>Buy Quantity / Value</b></td><td class="num">${fmtInt(b.buy_qty)} sh / ${fmtNum(b.buy_value)} PKR</td></tr>
-            <tr><td><b>Sell Quantity / Value</b></td><td class="num">${fmtInt(b.sell_qty)} sh / ${fmtNum(b.sell_value)} PKR</td></tr>
-            <tr><td><b>Avg Buy / Avg Sell Price</b></td><td class="num">${fmtNum(b.avg_buy_price)} / ${fmtNum(b.avg_sell_price)} PKR</td></tr>
-            <tr><td><b>Gross P&amp;L (PKR)</b></td><td class="num ${pnlClass(b.gross_pnl)}">${fmtNum(b.gross_pnl)}</td></tr>
-            <tr><td><b>Commission + SST (13%)</b></td><td class="num">${fmtNum(b.commission_amount)} + ${fmtNum(b.sst_amount)} = ${fmtNum(b.total_charges)} PKR</td></tr>
-            <tr><td><b>Net P&amp;L (PKR)</b></td><td class="num ${pnlClass(b.net_pnl)}">${fmtNum(b.net_pnl)}</td></tr>
-            <tr><td><b>Return on Buy</b></td><td class="num ${pnlClass(b.return_on_buy)}">${fmtPct(b.return_on_buy)}</td></tr>
-          </tbody>
-        </table>
+        <div class="grid-4" style="margin-bottom:12px;">
+          <div class="kpi-box"><div class="kpi-label">Buy Quantity / Value</div><div class="kpi-value">${fmtInt(b.buy_qty)}</div><div class="kpi-sub">${fmtNum(b.buy_value)} PKR • Avg ${fmtNum(b.avg_buy_price)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">Sell Quantity / Value</div><div class="kpi-value">${fmtInt(b.sell_qty)}</div><div class="kpi-sub">${fmtNum(b.sell_value)} PKR • Avg ${fmtNum(b.avg_sell_price)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">Total Charges (Comm + 13% SST)</div><div class="kpi-value">${fmtNum(b.total_charges)}</div><div class="kpi-sub">Comm ${fmtNum(b.commission_amount)} + SST ${fmtNum(b.sst_amount)} PKR</div></div>
+          <div class="kpi-box"><div class="kpi-label">Net P&amp;L (After All Charges)</div><div class="kpi-value ${pnlClass(b.net_pnl)}">${fmtNum(b.net_pnl)}</div><div class="kpi-sub">Gross ${fmtNum(b.gross_pnl)} • Return on Buy: ${fmtPct(b.return_on_buy)}</div></div>
+        </div>
+        <div class="table-wrap" style="max-height:340px;overflow-y:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Symbols</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Net Qty</th>
+                <th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th>
+                <th class="num">Gross P&amp;L (PKR)</th><th class="num">Commission</th><th class="num">SST 13%</th>
+                <th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(b.daily_rows || []).map((r) => `
+                <tr>
+                  <td><b>${r.trade_date}</b></td>
+                  <td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.symbols_str || ""}"><b>${r.symbols_count || 0}</b> <span style="color:var(--text-muted);font-size:10.5px;">${r.symbols_str || "—"}</span></td>
+                  <td class="num">${fmtInt(r.buy_qty)}</td>
+                  <td class="num">${fmtInt(r.sell_qty)}</td>
+                  <td class="num">${fmtInt(r.net_qty)}</td>
+                  <td class="num">${fmtNum(r.buy_value)}</td>
+                  <td class="num">${fmtNum(r.sell_value)}</td>
+                  <td class="num ${pnlClass(r.gross_pnl)}">${fmtNum(r.gross_pnl)}</td>
+                  <td class="num">${fmtNum(r.commission_amount)}</td>
+                  <td class="num">${fmtNum(r.sst_amount)}</td>
+                  <td class="num">${fmtNum(r.total_charges)}</td>
+                  <td class="num ${pnlClass(r.net_pnl)}">${fmtNum(r.net_pnl)}</td>
+                  <td class="num ${pnlClass(r.return_on_buy)}">${fmtPct(r.return_on_buy)}</td>
+                </tr>
+              `).join("")}
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td style="color:var(--text-muted);font-size:10.5px;">${b.symbols_count || 0} symbols</td>
+                <td class="num">${fmtInt(b.buy_qty)}</td>
+                <td class="num">${fmtInt(b.sell_qty)}</td>
+                <td class="num">${fmtInt(b.net_qty)}</td>
+                <td class="num">${fmtNum(b.buy_value)}</td>
+                <td class="num">${fmtNum(b.sell_value)}</td>
+                <td class="num ${pnlClass(b.gross_pnl)}">${fmtNum(b.gross_pnl)}</td>
+                <td class="num">${fmtNum(b.commission_amount)}</td>
+                <td class="num">${fmtNum(b.sst_amount)}</td>
+                <td class="num">${fmtNum(b.total_charges)}</td>
+                <td class="num ${pnlClass(b.net_pnl)}">${fmtNum(b.net_pnl)}</td>
+                <td class="num ${pnlClass(b.return_on_buy)}">${fmtPct(b.return_on_buy)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    `).join("")}</div>`;
+    `).join("")}`;
   } else if (activeTab === "monthly_yearly") {
+    const mTot = rep.monthly_summary.total;
+    const yTot = rep.yearly_summary.total;
     bodyHtml = `
       <div class="card">
-        <div class="card-header"><div class="card-title">Monthly Summary — Account ${accountId}</div></div>
+        <div class="card-header">
+          <div>
+            <div class="card-title">Monthly Summary — Month-Wise Performance (Account ${accountId})</div>
+            <div class="card-subtitle">One row per calendar month with trading data, oldest → newest (matches the monthly sheet of the Trade Summary workbook)</div>
+          </div>
+        </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Month</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value</th><th class="num">Sell Qty</th><th class="num">Sell Value</th><th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Month</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
               ${rep.monthly_summary.rows.map((r) => `
                 <tr>
                   <td><b>${r.month}</b></td><td class="num">${r.trading_days}</td>
-                  <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td>
-                  <td class="num">${fmtInt(r.sell_qty)}</td><td class="num">${fmtNum(r.sell_value)}</td>
+                  <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td><td class="num">${fmtNum(r.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(r.sell_qty)}</td><td class="num">${fmtNum(r.sell_value)}</td><td class="num">${fmtNum(r.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(r.price_diff)}">${fmtNum(r.price_diff)}</td><td class="num">${fmtInt(r.net_qty)}</td>
                   <td class="num ${pnlClass(r.gross_pnl)}">${fmtNum(r.gross_pnl)}</td>
+                  <td><span class="badge badge-blue">${r.commission_slab_label}</span></td>
                   <td class="num">${fmtNum(r.commission_amount)}</td><td class="num">${fmtNum(r.sst_amount)}</td>
                   <td class="num">${fmtNum(r.total_charges)}</td>
                   <td class="num ${pnlClass(r.net_pnl)}">${fmtNum(r.net_pnl)}</td>
                   <td class="num ${pnlClass(r.return_on_buy)}">${fmtPct(r.return_on_buy)}</td>
                 </tr>
               `).join("")}
+              ${mTot ? `
+                <tr class="total-row">
+                  <td>TOTAL</td><td class="num">${mTot.trading_days}</td>
+                  <td class="num">${fmtInt(mTot.buy_qty)}</td><td class="num">${fmtNum(mTot.buy_value)}</td><td class="num">${fmtNum(mTot.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(mTot.sell_qty)}</td><td class="num">${fmtNum(mTot.sell_value)}</td><td class="num">${fmtNum(mTot.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(mTot.price_diff)}">${fmtNum(mTot.price_diff)}</td><td class="num">${fmtInt(mTot.net_qty)}</td>
+                  <td class="num ${pnlClass(mTot.gross_pnl)}">${fmtNum(mTot.gross_pnl)}</td><td>—</td>
+                  <td class="num">${fmtNum(mTot.commission_amount)}</td><td class="num">${fmtNum(mTot.sst_amount)}</td>
+                  <td class="num">${fmtNum(mTot.total_charges)}</td>
+                  <td class="num ${pnlClass(mTot.net_pnl)}">${fmtNum(mTot.net_pnl)}</td>
+                  <td class="num ${pnlClass(mTot.return_on_buy)}">${fmtPct(mTot.return_on_buy)}</td>
+                </tr>` : ""}
             </tbody>
           </table>
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Yearly Summary — Account ${accountId}</div></div>
+        <div class="card-header">
+          <div>
+            <div class="card-title">Yearly Summary — Year-Wise Performance (Account ${accountId})</div>
+            <div class="card-subtitle">One row per calendar year with trading data (weighted averages from totals; Return on Buy = Net P&amp;L ÷ Buy Value, never averaged)</div>
+          </div>
+        </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Year</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value</th><th class="num">Sell Qty</th><th class="num">Sell Value</th><th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Year</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
               ${rep.yearly_summary.rows.map((r) => `
                 <tr>
                   <td><b>${r.year}</b></td><td class="num">${r.trading_days}</td>
-                  <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td>
-                  <td class="num">${fmtInt(r.sell_qty)}</td><td class="num">${fmtNum(r.sell_value)}</td>
+                  <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td><td class="num">${fmtNum(r.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(r.sell_qty)}</td><td class="num">${fmtNum(r.sell_value)}</td><td class="num">${fmtNum(r.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(r.price_diff)}">${fmtNum(r.price_diff)}</td><td class="num">${fmtInt(r.net_qty)}</td>
                   <td class="num ${pnlClass(r.gross_pnl)}">${fmtNum(r.gross_pnl)}</td>
+                  <td><span class="badge badge-blue">${r.commission_slab_label}</span></td>
                   <td class="num">${fmtNum(r.commission_amount)}</td><td class="num">${fmtNum(r.sst_amount)}</td>
                   <td class="num">${fmtNum(r.total_charges)}</td>
                   <td class="num ${pnlClass(r.net_pnl)}">${fmtNum(r.net_pnl)}</td>
                   <td class="num ${pnlClass(r.return_on_buy)}">${fmtPct(r.return_on_buy)}</td>
                 </tr>
               `).join("")}
+              ${yTot ? `
+                <tr class="total-row">
+                  <td>TOTAL</td><td class="num">${yTot.trading_days}</td>
+                  <td class="num">${fmtInt(yTot.buy_qty)}</td><td class="num">${fmtNum(yTot.buy_value)}</td><td class="num">${fmtNum(yTot.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(yTot.sell_qty)}</td><td class="num">${fmtNum(yTot.sell_value)}</td><td class="num">${fmtNum(yTot.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(yTot.price_diff)}">${fmtNum(yTot.price_diff)}</td><td class="num">${fmtInt(yTot.net_qty)}</td>
+                  <td class="num ${pnlClass(yTot.gross_pnl)}">${fmtNum(yTot.gross_pnl)}</td><td>—</td>
+                  <td class="num">${fmtNum(yTot.commission_amount)}</td><td class="num">${fmtNum(yTot.sst_amount)}</td>
+                  <td class="num">${fmtNum(yTot.total_charges)}</td>
+                  <td class="num ${pnlClass(yTot.net_pnl)}">${fmtNum(yTot.net_pnl)}</td>
+                  <td class="num ${pnlClass(yTot.return_on_buy)}">${fmtPct(yTot.return_on_buy)}</td>
+                </tr>` : ""}
             </tbody>
           </table>
         </div>
       </div>
     `;
   } else if (activeTab === "symbol_perf") {
+    const sTot = rep.symbol_performance_total;
     bodyHtml = `
       <div class="card">
-        <div class="card-header"><div class="card-title">Symbol Performance — All Trading Dates (Ranked by Net P&amp;L Descending)</div></div>
+        <div class="card-header">
+          <div>
+            <div class="card-title">Symbol Performance — All Trading Dates (Ranked by Net P&amp;L Descending)</div>
+            <div class="card-subtitle">Hover over any row's Dates column to see every exact trading date for that symbol</div>
+          </div>
+        </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Rank</th><th>Symbol</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Buy Value</th><th class="num">Sell Value</th><th class="num">Gross P&amp;L</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Rank</th><th>Symbol</th><th>Trading Dates (First → Last)</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th><th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th><th></th></tr>
             </thead>
             <tbody>
               ${rep.symbol_performance.map((r, i) => `
-                <tr>
+                <tr title="All dates: ${r.dates_str || ''}">
                   <td class="num">#${i + 1}</td>
                   <td><b>${r.symbol}</b></td>
+                  <td style="font-size:11px;"><b>${r.first_date || "—"}</b> → <b>${r.last_date || "—"}</b></td>
                   <td class="num">${r.trading_days}</td>
                   <td class="num">${fmtInt(r.buy_qty)}</td>
                   <td class="num">${fmtInt(r.sell_qty)}</td>
                   <td class="num">${fmtNum(r.buy_value)}</td>
                   <td class="num">${fmtNum(r.sell_value)}</td>
                   <td class="num ${pnlClass(r.gross_pnl)}">${fmtNum(r.gross_pnl)}</td>
+                  <td class="num">${fmtNum(r.commission_amount)}</td>
+                  <td class="num">${fmtNum(r.sst_amount)}</td>
                   <td class="num">${fmtNum(r.total_charges)}</td>
                   <td class="num ${pnlClass(r.net_pnl)}">${fmtNum(r.net_pnl)}</td>
                   <td class="num ${pnlClass(r.return_on_buy)}">${fmtPct(r.return_on_buy)}</td>
+                  <td style="color:${r.note && r.note.includes("Best") ? "var(--pos-green)" : "var(--neg-red)"};font-weight:700;font-size:11px;white-space:nowrap;">${r.note || ""}</td>
                 </tr>
               `).join("")}
+              ${sTot ? `
+                <tr class="total-row">
+                  <td class="num">—</td>
+                  <td><b>TOTAL</b></td>
+                  <td style="font-size:11px;">${sTot.first_date || "—"} → ${sTot.last_date || "—"}</td>
+                  <td class="num">${sTot.trading_days}</td>
+                  <td class="num">${fmtInt(sTot.buy_qty)}</td>
+                  <td class="num">${fmtInt(sTot.sell_qty)}</td>
+                  <td class="num">${fmtNum(sTot.buy_value)}</td>
+                  <td class="num">${fmtNum(sTot.sell_value)}</td>
+                  <td class="num ${pnlClass(sTot.gross_pnl)}">${fmtNum(sTot.gross_pnl)}</td>
+                  <td class="num">${fmtNum(sTot.commission_amount)}</td>
+                  <td class="num">${fmtNum(sTot.sst_amount)}</td>
+                  <td class="num">${fmtNum(sTot.total_charges)}</td>
+                  <td class="num ${pnlClass(sTot.net_pnl)}">${fmtNum(sTot.net_pnl)}</td>
+                  <td class="num ${pnlClass(sTot.return_on_buy)}">${fmtPct(sTot.return_on_buy)}</td>
+                  <td></td>
+                </tr>` : ""}
             </tbody>
           </table>
         </div>
@@ -1855,7 +1996,6 @@ async function renderTechnicalView(container) {
   } else if (t.subtab === "core36" || t.subtab === "all531") {
     const scope = t.subtab === "core36" ? "core36" : "all";
     const qs = new URLSearchParams({ scope });
-    if (t.search) qs.set("search", t.search);
     if (t.signalFilter && t.signalFilter !== "ALL") qs.set("signal_filter", t.signalFilter);
     const uni = await apiGet(`/api/technical/universe?${qs.toString()}`);
 
@@ -1863,7 +2003,8 @@ async function renderTechnicalView(container) {
       <div class="filter-bar">
         <div class="filter-group">
           <label>Search Ticker:</label>
-          <input type="text" value="${t.search}" placeholder="e.g. ATRL, MLCF (or MLF), OGDC..." oninput="state.technical.search=this.value;renderTechnicalView(document.getElementById('viewContainer'))" />
+          <input type="text" id="uniSearchInput" value="${t.search}" placeholder="Type full symbol freely — filters live, never auto-enters (e.g. ATRL, MLCF or MLF)..." style="width:230px;" oninput="onUniverseSearchInput(this.value)" />
+          <span id="uniVisibleCount" style="color:var(--text-muted);font-size:11px;">${uni.count} / ${uni.count}</span>
         </div>
         <div class="filter-group">
           <label>Signal Filter:</label>
@@ -1888,7 +2029,7 @@ async function renderTechnicalView(container) {
           </div>
         </div>
         <div class="table-wrap">
-          <table class="data-table">
+          <table class="data-table" id="uniSummaryTable">
             <thead>
               <tr>
                 <th>Symbol</th><th class="num">Close</th><th class="num">Chg %</th><th class="num">RSI(14)</th><th>RSI Zone</th>
@@ -1898,13 +2039,13 @@ async function renderTechnicalView(container) {
               </tr>
             </thead>
             <tbody>
-              ${uni.items.slice(0, 150).map((item) => {
+              ${uni.items.map((item) => {
                 const dp = item.daily_pivots.classic;
                 const wp = item.weekly_pivots?.pivots || {};
                 const act = item.signal.action;
                 const bCls = act === "BUY" ? "badge-green" : (act === "SELL" || act === "SHORT SELL" ? "badge-red" : "badge-amber");
                 return `
-                  <tr style="cursor:pointer" onclick="openTickerDeepDive('${item.symbol}')">
+                  <tr style="cursor:pointer" data-symbol="${item.symbol}" data-label="${item.display_label}" onclick="openTickerDeepDive('${item.symbol}')">
                     <td><b>${item.display_label}</b></td>
                     <td class="num">${fmtNum(item.close)}</td>
                     <td class="num ${pnlClass(item.change_pct)}">${fmtPct(item.change_pct, false)}</td>
@@ -2052,6 +2193,35 @@ async function renderTechnicalView(container) {
     </div>
     ${bodyHtml}
   `;
+  if (t.subtab === "core36" || t.subtab === "all531") applyUniverseClientFilter();
+}
+
+// Live client-side ticker filtering — typing NEVER triggers a submit or page
+// re-render, so the full symbol can always be typed without losing focus.
+function onUniverseSearchInput(val) {
+  state.technical.search = val;
+  applyUniverseClientFilter();
+}
+
+function applyUniverseClientFilter() {
+  const q = (state.technical.search || "").trim().toUpperCase();
+  const rows = document.querySelectorAll("#uniSummaryTable tbody tr");
+  let visible = 0;
+  let total = 0;
+  rows.forEach((r) => {
+    total++;
+    const sym = (r.getAttribute("data-symbol") || "").toUpperCase();
+    const lbl = (r.getAttribute("data-label") || "").toUpperCase();
+    const hit =
+      !q ||
+      sym.includes(q) ||
+      lbl.includes(q) ||
+      (q === "MLF" && sym === "MLCF");
+    r.style.display = hit ? "" : "none";
+    if (hit) visible++;
+  });
+  const cEl = document.getElementById("uniVisibleCount");
+  if (cEl) cEl.textContent = `${visible} / ${total}`;
 }
 
 function openTickerDeepDive(sym) {

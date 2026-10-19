@@ -10,17 +10,27 @@ DOCS_DIR = BASE_DIR / "docs"
 SKILLS_DIR = BASE_DIR / "skills"
 BUNDLED_DATA_ROOT = BASE_DIR / "psx_data"
 
-# On Vercel or serverless read-only filesystems, automatically use /tmp/psx_data as writable storage
+# On Vercel or serverless read-only filesystems, always use /tmp/psx_data as writable storage
+# even if PSX_DATA_DIR was set to './psx_data' in environment variables.
 _IS_SERVERLESS = bool(
     os.environ.get("VERCEL")
     or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
     or not os.access(str(BASE_DIR), os.W_OK)
 )
-_DEFAULT_DATA_DIR = "/tmp/psx_data" if _IS_SERVERLESS else (
-    str(BUNDLED_DATA_ROOT) if BUNDLED_DATA_ROOT.exists() else str(BASE_DIR)
-)
 
-DATA_ROOT = Path(os.environ.get("PSX_DATA_DIR", _DEFAULT_DATA_DIR))
+_env_data_dir = os.environ.get("PSX_DATA_DIR", "").strip()
+if _IS_SERVERLESS:
+    # Only honor PSX_DATA_DIR on serverless if it explicitly points inside /tmp
+    if _env_data_dir.startswith("/tmp"):
+        DATA_ROOT = Path(_env_data_dir)
+    else:
+        DATA_ROOT = Path("/tmp/psx_data")
+else:
+    if _env_data_dir:
+        DATA_ROOT = Path(_env_data_dir)
+    else:
+        DATA_ROOT = BUNDLED_DATA_ROOT if BUNDLED_DATA_ROOT.exists() else BASE_DIR
+
 DRIVE_MIRROR_DIR = Path(os.environ.get("PSX_DRIVE_MIRROR", str(BASE_DIR / "drive_mirror")))
 
 DB_DIR = DATA_ROOT / "database"
@@ -33,6 +43,8 @@ LOGS_DIR = DATA_ROOT / "logs"
 CONFIG_DIR = DATA_ROOT / "config"
 
 DB_PATH = Path(os.environ.get("PSX_DB_PATH", str(DB_DIR / "app.db")))
+if _IS_SERVERLESS and not str(DB_PATH).startswith("/tmp"):
+    DB_PATH = DB_DIR / "app.db"
 
 CORE_36_TICKERS: List[str] = [
     "ATRL", "DGKC", "GAL", "GHNI", "LUCK", "MLCF", "NBP", "NRL", "NML",
@@ -99,7 +111,6 @@ def ensure_directories(root: Path = DATA_ROOT) -> None:
 
     target_db = root / "database" / "app.db"
     if not target_db.exists() or target_db.stat().st_size < 65536:
-        # 1. Prioritize latest_cloud_sync.db.gz (which gets updated on GitHub after every daily import)
         for cand_gz in [
             BASE_DIR / "latest_cloud_sync.db.gz",
             BUNDLED_DATA_ROOT / "backups" / "latest_cloud_sync.db.gz",
@@ -109,7 +120,6 @@ def ensure_directories(root: Path = DATA_ROOT) -> None:
                 target_db.write_bytes(gzip.decompress(cand_gz.read_bytes()))
                 return
 
-        # 2. Fallback to bundled raw app.db
         for cand_db in [
             BUNDLED_DATA_ROOT / "database" / "app.db",
             BASE_DIR / "database" / "app.db",

@@ -169,8 +169,26 @@ class AccountService:
         if s_qty > 0 and avg_s is not None:
             slab_label = "0.0325% of sell value" if avg_s >= slab2_start else "0.0175 paisa per share"
 
+        syms_list = sorted({r["symbol"] for r in rows if r.get("symbol")})
+        dates_list = sorted({r["trade_date"] for r in rows if r.get("trade_date")})
+        if len(dates_list) == 1:
+            dates_display = dates_list[0]
+        elif len(dates_list) > 1:
+            dates_display = f"{dates_list[0]} → {dates_list[-1]} ({len(dates_list)}d)"
+        else:
+            dates_display = "—"
+
         return {
             label_key: label_val,
+            "trading_days": len(dates_list),
+            "dates_list": dates_list,
+            "dates_str": ", ".join(dates_list),
+            "dates_display": dates_display,
+            "first_date": dates_list[0] if dates_list else None,
+            "last_date": dates_list[-1] if dates_list else None,
+            "symbols_list": syms_list,
+            "symbols_count": len(syms_list),
+            "symbols_str": ", ".join(syms_list),
             "buy_qty": b_qty,
             "buy_value": b_val,
             "avg_buy_price": avg_b,
@@ -186,6 +204,7 @@ class AccountService:
             "total_charges": t_chg,
             "net_pnl": net_p,
             "return_on_buy": rob,
+            "note": "",
         }
 
     def get_account_report(self, account_id: str, selected_date: Optional[str] = None) -> Dict[str, Any]:
@@ -330,6 +349,11 @@ class AccountService:
             for s in by_symbol.keys()
         ]
         symbol_performance.sort(key=lambda x: x["net_pnl"], reverse=True)
+        if symbol_performance:
+            symbol_performance[0]["note"] = "◄ Best performer"
+            if len(symbol_performance) > 1:
+                symbol_performance[-1]["note"] = "◄ Worst performer"
+        symbol_performance_total = self._aggregate_rows(sym_rows, "symbol", "TOTAL", slab2_start) if sym_rows else None
         best_symbol = symbol_performance[0] if symbol_performance else None
         worst_symbol = symbol_performance[-1] if symbol_performance else None
 
@@ -379,9 +403,11 @@ class AccountService:
             "account_id": account_id,
             "available_dates": available_dates,
             "trading_dates": available_dates,
+            "available_symbols": sorted(by_symbol.keys()),
             "selected_date": active_date,
             "dashboard": dashboard,
             "daily_summary": {"rows": daily_summary, "total": daily_total},
+            "all_daily_symbol_rows": sym_rows,
             "daily_detail": active_day_detail,
             "selected_date_detail": active_day_detail,
             "all_daily_blocks": {
@@ -397,6 +423,7 @@ class AccountService:
             "monthly_summary": {"rows": monthly_summary, "total": monthly_total},
             "yearly_summary": {"rows": yearly_summary, "total": yearly_total},
             "symbol_performance": symbol_performance,
+            "symbol_performance_total": symbol_performance_total,
             "trade_log": exec_rows,
             "data_checks": {
                 "reconciliation": reconciliation_checks,

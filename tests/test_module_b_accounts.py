@@ -74,3 +74,44 @@ def test_account_91404_and_91269_strict_separation_and_reconciliation():
     assert rep_91269["data_checks"]["reconciliation"]["passed"] is True
     assert pytest.approx(rep_91404["ytd_summary"]["net_pnl"], abs=1e-4) == 193263.6109
     assert pytest.approx(rep_91269["ytd_summary"]["net_pnl"], abs=1e-4) == 35658.9535
+
+
+def test_daily_summary_symbols_column_and_symbol_performance_dates_column():
+    """
+    Dashboard workbook-alignment guards:
+    - Every Daily Summary row exposes the exact traded symbols for that date.
+    - Every Symbol Performance row exposes the exact trading dates for that symbol.
+    - Symbol Performance also provides an overall TOTAL row + Best/Worst flags.
+    """
+    svc = AccountService()
+    rep_91269 = svc.get_account_report("91269")
+
+    # Daily Summary (21 rows incl. TOTAL in UI) must carry symbols per date
+    daily_rows = rep_91269["daily_summary"]["rows"]
+    assert len(daily_rows) == 20
+    first_row = daily_rows[0]
+    assert first_row["trade_date"] == "2026-08-24"
+    assert first_row["symbols_count"] >= 1
+    assert "OGDC" in first_row["symbols_str"]
+    assert rep_91269["daily_summary"]["total"]["symbols_count"] == 31
+
+    # MTD/QTD/YTD must expose the full date-by-date breakdown (matching workbook sheets)
+    for block_key in ["mtd_summary", "qtd_summary", "ytd_summary"]:
+        blk = rep_91269[block_key]
+        assert blk["trading_days"] == len(blk["daily_rows"])
+        assert all(r["symbols_count"] >= 1 for r in blk["daily_rows"])
+    assert rep_91269["ytd_summary"]["trading_days"] == 20
+
+    # Symbol Performance must carry dates for every symbol + TOTAL row + notes
+    sp = rep_91269["symbol_performance"]
+    assert len(sp) == 31
+    for r in sp:
+        assert r["trading_days"] == len(r["dates_list"])
+        assert r["first_date"] <= r["last_date"]
+        assert r["dates_display"]
+    assert sp[0]["note"] == "◄ Best performer"
+    assert sp[-1]["note"] == "◄ Worst performer"
+    tot = rep_91269["symbol_performance_total"]
+    assert tot is not None and tot["symbol"] == "TOTAL"
+    assert pytest.approx(tot["net_pnl"], abs=1e-4) == 35658.9535
+    assert sum(tot["trading_days"] for _ in [1]) == 20
