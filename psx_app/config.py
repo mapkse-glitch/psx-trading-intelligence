@@ -1,4 +1,6 @@
 import os
+import gzip
+import shutil
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -6,7 +8,19 @@ APP_ROOT = Path(__file__).resolve().parent
 BASE_DIR = APP_ROOT.parent
 DOCS_DIR = BASE_DIR / "docs"
 SKILLS_DIR = BASE_DIR / "skills"
-DATA_ROOT = Path(os.environ.get("PSX_DATA_DIR", str(BASE_DIR / "psx_data")))
+BUNDLED_DATA_ROOT = BASE_DIR / "psx_data"
+
+# On Vercel or serverless read-only filesystems, automatically use /tmp/psx_data as writable storage
+_IS_SERVERLESS = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    or not os.access(str(BASE_DIR), os.W_OK)
+)
+_DEFAULT_DATA_DIR = "/tmp/psx_data" if _IS_SERVERLESS else (
+    str(BUNDLED_DATA_ROOT) if BUNDLED_DATA_ROOT.exists() else str(BASE_DIR)
+)
+
+DATA_ROOT = Path(os.environ.get("PSX_DATA_DIR", _DEFAULT_DATA_DIR))
 DRIVE_MIRROR_DIR = Path(os.environ.get("PSX_DRIVE_MIRROR", str(BASE_DIR / "drive_mirror")))
 
 DB_DIR = DATA_ROOT / "database"
@@ -82,3 +96,23 @@ def ensure_directories(root: Path = DATA_ROOT) -> None:
         root / "config",
     ]:
         sub.mkdir(parents=True, exist_ok=True)
+
+    target_db = root / "database" / "app.db"
+    if not target_db.exists() or target_db.stat().st_size < 65536:
+        # Check all bundled locations (both psx_data/ and repo root)
+        for cand_db in [
+            BUNDLED_DATA_ROOT / "database" / "app.db",
+            BASE_DIR / "database" / "app.db",
+        ]:
+            if cand_db.exists() and cand_db.resolve() != target_db.resolve() and cand_db.stat().st_size >= 65536:
+                shutil.copy2(str(cand_db), str(target_db))
+                return
+
+        for cand_gz in [
+            BUNDLED_DATA_ROOT / "backups" / "latest_cloud_sync.db.gz",
+            BASE_DIR / "latest_cloud_sync.db.gz",
+            BASE_DIR / "backups" / "latest_cloud_sync.db.gz",
+        ]:
+            if cand_gz.exists():
+                target_db.write_bytes(gzip.decompress(cand_gz.read_bytes()))
+                return
