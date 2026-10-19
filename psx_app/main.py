@@ -510,7 +510,24 @@ def api_download_backup(zip_filename: str) -> FileResponse:
     return FileResponse(path=str(p), filename=p.name, media_type="application/zip")
 
 
-# Mount Static Frontend SPA
+# Mount Static Frontend SPA & Explicit Root Asset Routes for Vercel
 STATIC_DIR = APP_ROOT / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.get("/", include_in_schema=False)
+def serve_spa_index() -> FileResponse:
+    return FileResponse(str(STATIC_DIR / "index.html"), media_type="text/html")
+
+
+@app.get("/styles.css", include_in_schema=False)
+def serve_spa_css() -> FileResponse:
+    return FileResponse(str(STATIC_DIR / "styles.css"), media_type="text/css")
+
+
+@app.get("/app.js", include_in_schema=False)
+def serve_spa_js() -> FileResponse:
+    return FileResponse(str(STATIC_DIR / "app.js"), media_type="text/javascript")
+
+
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
