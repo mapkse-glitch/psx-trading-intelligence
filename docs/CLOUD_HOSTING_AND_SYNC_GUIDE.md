@@ -69,3 +69,22 @@ We have already generated **`/home/user/render.yaml`**, **`/home/user/Dockerfile
   **`https://psx-trading-intelligence.onrender.com`**
 - Open that exact URL on your **Office PC**, **Home PC**, and **Mobile Phone** (add to Home Screen on iOS/Android).
 - Whenever you upload a file at the Office and click **Import and Update**, it automatically syncs to your Private GitHub repo and is immediately available at the exact same URL when you open it at Home or on your Phone!
+
+---
+
+## Troubleshooting: 403 Forbidden on GitHub Push (Token Permissions)
+
+If the Import Center shows **"⚠ Sync Issue: GitHub 403 Forbidden"**, your `GITHUB_SYNC_TOKEN` has **read-only** permission. GitHub fine-grained tokens default to NO repository permissions, so pushes are always rejected until you add write access.
+
+**Fix (about 60 seconds, no card involved):**
+1. GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens** → open your token (e.g. `psx-trading-intelligence`).
+2. Under **Permissions**, the box says "No repository permissions added yet" → click **"+ Add permissions"**.
+3. Tick **Contents** and set its access dropdown to **"Read and write"** (Metadata: Read-only is auto-added — normal).
+4. Scroll down and click the green **Update** button. Same token value — **no Vercel env change, no redeploy needed.**
+
+**Classic token alternative:** check the full **`repo`** scope.
+
+### Auto-Sync & the Emergency Push Button behavior
+- **Every successful upload Commit automatically pushes** the fresh `latest_cloud_sync.db.gz` snapshot to GitHub — you never need to push manually.
+- The **"Push Snapshot to GitHub Now"** button is an **emergency-only** control: it is **hidden whenever auto-sync is healthy** and automatically **reappears in red** if a push ever fails (e.g. token issue). Success/failure state is persisted in the SQLite `sync_state` table, so the healthy state survives Vercel cold starts.
+- After fixing the token, the commit toast confirms: `✓ … auto-pushed to GitHub (abc1234)`.

@@ -88,6 +88,13 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TEXT NOT NULL
 );
 
+-- Persistent cloud-sync state (survives ephemeral /tmp resets once pushed to GitHub):
+-- keys: last_push_attempt, last_push_ok, last_push_sha, last_error, last_error_at
+CREATE TABLE IF NOT EXISTS sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 -- MODULE A: Top 5 Volume & Rate Register
 CREATE TABLE IF NOT EXISTS top5_volume_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

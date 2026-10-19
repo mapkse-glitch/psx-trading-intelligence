@@ -705,6 +705,20 @@ async function renderOverview(container) {
 // ============================================================================
 // 02. IMPORT AND UPDATE CENTER
 // ============================================================================
+// Emergency-only "Push Snapshot" button: hidden whenever auto-sync is healthy
+// (every successful upload Commit pushes automatically). It reappears only if a
+// push actually fails, or when GitHub sync is not configured yet (LOCAL mode).
+function renderSyncButtons(cs, compact) {
+  const dl = `<a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download Updated latest_cloud_sync.db.gz</a>`;
+  if (!cs.enabled) {
+    return dl + `<button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>`;
+  }
+  if (cs.health === "ACTIVE") {
+    return dl + `<div class="pos" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:8px 12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.45);border-radius:8px;max-width:340px;">✓ Auto-Sync is working — every upload pushes to GitHub automatically. (Emergency push button is hidden.)</div>`;
+  }
+  return dl + `<button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626;" onclick="triggerCloudSyncNow()">🚨 Emergency: Retry Push to GitHub Now</button>`;
+}
+
 async function renderImportCenter(container) {
   const hist = await apiGet("/api/imports/history", false);
   const cs = hist.cloud_sync || {};
@@ -718,8 +732,7 @@ async function renderImportCenter(container) {
           ${cs.last_error ? `<div style="margin-top:6px;font-size:12px;color:var(--neg-red);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.35);border-radius:6px;padding:8px 10px;"><b>⚠ Sync Issue:</b> ${cs.last_error}</div>` : ""}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download Updated latest_cloud_sync.db.gz</a>
-          <button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>
+          ${renderSyncButtons(cs)}
         </div>
       </div>
       <div style="font-size:12px;color:#cbd5e1;">
@@ -906,7 +919,7 @@ async function commitStagedBatch(batchUuid) {
     } else if (committed.cloud_sync && committed.cloud_sync.pushed) {
       note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! All devices will receive this data on next load.`;
     } else if (committed.cloud_sync && committed.cloud_sync.error) {
-      note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nYour data is saved; use 'Push Snapshot to GitHub Now' after fixing the token.`;
+      note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nYour data is saved — the red Emergency push button will appear above; retry it after fixing the token.`;
     } else {
       note = `.\nCommitted and saved to the active database on this app instance.`;
     }
@@ -2539,11 +2552,10 @@ async function renderSettingsView(container) {
       <div class="card-header">
         <div>
           <div class="card-title">☁ Zero-Cost Cloud Persistence Engine (Vercel + GitHub Auto-Sync)</div>
-          <div class="card-subtitle">Status: <b class="${cs.enabled ? "pos" : ""}">${cs.provider || "Local Mode"}</b> ${cs.repo ? `• Repo: <b>${cs.repo}</b> (${cs.branch})` : ""}</div>
+          <div class="card-subtitle">Status: <b class="${cs.health === "ERROR" ? "neg" : (cs.enabled ? "pos" : "")}">${cs.provider || "Local Mode"}</b> ${cs.repo ? `• Repo: <b>${cs.repo}</b> (${cs.branch})` : ""}${cs.last_push ? ` • Last push: <span style="color:var(--text-muted);">${String(cs.last_push).slice(0, 19)}</span>` : ""}${cs.last_push_sha ? ` • SHA: <code>${String(cs.last_push_sha).slice(0, 7)}</code>` : ""}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download latest_cloud_sync.db.gz</a>
-          <button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>
+          ${renderSyncButtons(cs)}
         </div>
       </div>
       <div style="font-size:12px;color:#cbd5e1;">

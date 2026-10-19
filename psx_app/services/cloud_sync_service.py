@@ -46,14 +46,69 @@ class CloudSyncService:
     def is_configured(self) -> bool:
         return bool(self.repo and self.token and "/" in self.repo)
 
+    # ------------------------------------------------------------------
+    # Persistent sync state (sync_state table). Survivorship rules:
+    #  * last_push_attempt is written BEFORE the snapshot is created, so any
+    #    snapshot that reaches GitHub carries this marker -> a hydrated cold
+    #    start KNOWS that push succeeded (otherwise the snapshot would not exist).
+    #  * last_error(_at) is only written on real failures; health = ERROR only
+    #    when the newest marker overall is an error.
+    # ------------------------------------------------------------------
+    def _state_read(self) -> Dict[str, str]:
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            try:
+                rows = conn.execute("SELECT key, value FROM sync_state").fetchall()
+            except sqlite3.OperationalError:
+                return {}
+            finally:
+                conn.close()
+            return {k: (v or "") for k, v in rows}
+        except Exception:
+            return {}
+
+    def _state_write(self, updates: Dict[str, str]) -> None:
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            try:
+                conn.execute("CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT)")
+                for k, v in updates.items():
+                    conn.execute(
+                        "INSERT INTO sync_state(key, value) VALUES (?, ?) "
+                        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                        (k, v if v is not None else ""),
+                    )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception:
+            pass
+
     def get_status(self) -> Dict[str, Any]:
         local_sync_file = BACKUPS_DIR / "latest_cloud_sync.db.gz"
-        last_err = _LAST_SYNC_RESULT.get("error")
+        st = self._state_read()
+
+        mem_err = _LAST_SYNC_RESULT.get("error") or ""
+        mem_err_at = _LAST_SYNC_RESULT.get("error_at") or ""
+        mem_ok_at = _LAST_SYNC_RESULT.get("last_push") or ""
+
+        err_txt = st.get("last_error", "")
+        err_at = st.get("last_error_at", "")
+        ok_at = st.get("last_push_ok", "")
+        att_at = st.get("last_push_attempt", "")
+        # An attempt marker inside a hydrated snapshot == that push succeeded remotely.
+        effective_ok = max(ok_at, att_at, mem_ok_at)
+        latest_err_at = max(err_at, mem_err_at)
+        err_active = bool(latest_err_at) and latest_err_at > effective_ok
+        err_msg = mem_err if (mem_err_at and mem_err_at >= err_at) else err_txt
+
+        configured = self.is_configured()
+        health = "LOCAL" if not configured else ("ERROR" if err_active else "ACTIVE")
         return {
-            "enabled": self.is_configured(),
+            "enabled": configured,
             "provider": (
                 f"GitHub Auto-Sync Active ({self.repo})"
-                if self.is_configured()
+                if configured
                 else "Local / Ephemeral Mode (Add GITHUB_SYNC_TOKEN in Vercel Env Vars for Automatic GitHub Save)"
             ),
             "repo": self.repo or None,
@@ -61,14 +116,17 @@ class CloudSyncService:
             "remote_path": self.REMOTE_FILE_PATH,
             "local_snapshot_exists": local_sync_file.exists(),
             "local_snapshot_size_bytes": local_sync_file.stat().st_size if local_sync_file.exists() else 0,
-            "last_push": _LAST_SYNC_RESULT.get("last_push"),
+            "last_push": effective_ok or None,
+            "last_push_ok": ok_at or None,
+            "last_push_sha": st.get("last_push_sha") or None,
             "last_pull": _LAST_SYNC_RESULT.get("last_pull"),
-            "last_error": last_err,
-            "health": "ERROR" if last_err else ("ACTIVE" if self.is_configured() else "LOCAL"),
+            "last_error": (err_msg or None) if err_active else None,
+            "health": health,
+            "auto_push": "Every successful upload Commit automatically pushes the fresh snapshot to GitHub — no manual action needed.",
             "hint": (
                 "If pushes return 403 Forbidden, your GITHUB_SYNC_TOKEN lacks write permission. "
                 "Use a Classic token with the 'repo' scope, or a Fine-grained token limited to this repo "
-                "with 'Contents: Read and write'. Then update the Vercel env var and click 'Push Snapshot Now'."
+                "with 'Contents: Read and write'. Then click 'Push Snapshot Now' once."
             ),
         }
 
@@ -135,9 +193,17 @@ class CloudSyncService:
             raise RuntimeError(f"GitHub API error {code}: {(body or e.reason)[:200]}") from e
 
     def push_db_after_update(self, reason: str = "Automated update") -> Dict[str, Any]:
+        configured = self.is_configured()
+        attempt_iso = datetime.now(timezone.utc).isoformat()
+        if configured:
+            # Marker written BEFORE the snapshot is created: any snapshot that
+            # lands on GitHub carries it, so every future cold start knows the
+            # push it was hydrated from succeeded -> health stays ACTIVE and the
+            # emergency "Push Snapshot" button stays hidden until a REAL failure.
+            self._state_write({"last_push_attempt": attempt_iso})
         gz_path = self.create_local_gzip_snapshot()
-        if not self.is_configured():
-            _LAST_SYNC_RESULT["last_push"] = datetime.now(timezone.utc).isoformat()
+        if not configured:
+            _LAST_SYNC_RESULT["last_attempt"] = attempt_iso
             return {
                 "pushed": False,
                 "local_snapshot_updated": True,
@@ -184,12 +250,22 @@ class CloudSyncService:
                 "size_bytes": gz_path.stat().st_size,
                 "timestamp": now_str,
             }
-            _LAST_SYNC_RESULT["last_push"] = now_str
+            _LAST_SYNC_RESULT["last_push"] = attempt_iso
             _LAST_SYNC_RESULT.pop("error", None)
+            _LAST_SYNC_RESULT.pop("error_at", None)
+            self._state_write({
+                "last_push_ok": attempt_iso,
+                "last_push_sha": new_commit["sha"],
+                "last_error": "",
+                "last_error_at": "",
+            })
             return res
         except Exception as exc:
-            _LAST_SYNC_RESULT["last_push"] = datetime.now(timezone.utc).isoformat()
+            fail_iso = datetime.now(timezone.utc).isoformat()
+            _LAST_SYNC_RESULT["last_attempt"] = fail_iso
             _LAST_SYNC_RESULT["error"] = str(exc)
+            _LAST_SYNC_RESULT["error_at"] = fail_iso
+            self._state_write({"last_error": str(exc), "last_error_at": fail_iso})
             return {
                 "pushed": False,
                 "local_snapshot_updated": True,
