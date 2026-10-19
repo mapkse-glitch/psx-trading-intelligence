@@ -56,7 +56,7 @@ const state = {
     symbol: "ATRL",
     action: "Evaluate Buy / Hold / Sell",
   },
-  top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: "2026-10-16", search: "" },
+  top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: "2026-10-16", search: "", end_date_manual: false },
   accTab: { "91404": "dashboard", "91269": "dashboard" },
   accSelectedDate: { "91404": "2026-10-16", "91269": "2026-10-15" },
   // Separate, independent per-sheet filter state for Module C (matching Futures_Analysis.xlsx)
@@ -714,7 +714,8 @@ async function renderImportCenter(container) {
       <div class="card-header">
         <div>
           <div class="card-title">☁ Permanent Data Storage &amp; GitHub Auto-Sync Status</div>
-          <div class="card-subtitle">Status: <b class="${cs.enabled ? "pos" : "warn"}">${cs.provider || "Local Mode"}</b></div>
+          <div class="card-subtitle">Status: <b class="${cs.health === "ERROR" ? "neg" : (cs.enabled ? "pos" : "warn")}">${cs.provider || "Local Mode"}</b>${cs.last_pull ? ` • Last pull: <span style="color:var(--text-muted);">${String(cs.last_pull).slice(11, 19)} UTC</span>` : ""}${cs.last_push ? ` • Last push attempt: <span style="color:var(--text-muted);">${String(cs.last_push).slice(0, 19)} UTC</span>` : ""}</div>
+          ${cs.last_error ? `<div style="margin-top:6px;font-size:12px;color:var(--neg-red);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.35);border-radius:6px;padding:8px 10px;"><b>⚠ Sync Issue:</b> ${cs.last_error}</div>` : ""}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download Updated latest_cloud_sync.db.gz</a>
@@ -764,6 +765,7 @@ async function renderImportCenter(container) {
             <tr>
               <th>Batch ID</th>
               <th>Status</th>
+              <th>File Name(s)</th>
               <th>Source Label</th>
               <th>Timestamp (UTC)</th>
               <th class="num">Files</th>
@@ -771,13 +773,17 @@ async function renderImportCenter(container) {
               <th class="num">New Records</th>
               <th class="num">Duplicates Ignored</th>
               <th class="num">Revisions</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             ${hist.batches.map((b) => `
               <tr>
                 <td class="num">#${b.id} <span style="color:var(--text-muted);font-size:10.5px;">(${b.batch_uuid.slice(0, 8)})</span></td>
-                <td><span class="badge ${b.status === "COMMITTED" ? "badge-green" : "badge-amber"}">${b.status}</span></td>
+                <td><span class="badge ${b.status === "COMMITTED" ? "badge-green" : (b.status === "STAGED" ? "badge-amber" : "badge-red")}">${b.status}</span></td>
+                <td style="max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;" title="${(b.filenames || []).join(", ")}">
+                  ${(b.filenames || []).slice(0, 2).join(", ") || "—"}${(b.filenames || []).length > 2 ? ` <span style="color:var(--accent-blue);">+${(b.filenames || []).length - 2} more</span>` : ""}
+                </td>
                 <td><b>${b.source_label}</b></td>
                 <td>${(b.committed_at || b.created_at || "").replace("T", " ").slice(0, 19)}</td>
                 <td class="num">${b.files_count}</td>
@@ -785,6 +791,13 @@ async function renderImportCenter(container) {
                 <td class="num pos">${fmtInt(b.new_records)}</td>
                 <td class="num">${fmtInt(b.duplicates_ignored)}</td>
                 <td class="num">${fmtInt(b.revisions_count)}</td>
+                <td style="white-space:nowrap;">
+                  ${b.status === "STAGED" ? `
+                    ${b.staged_resumable ? `<button class="btn btn-success" style="padding:3px 8px;font-size:10.5px;" onclick="resumeStagedBatch('${b.batch_uuid}')" title="Commit this staged batch into the database">✓ Commit Now</button> ` : `<span style="color:var(--warn-amber);font-size:10.5px;" title="The temporary staging files for this batch no longer exist on the running server (cold restart). Please Discard and re-upload the file.">⚠ Expired</span> `}
+                    <button class="btn btn-secondary" style="padding:3px 8px;font-size:10.5px;" onclick="discardStagedBatch('${b.batch_uuid}')" title="Remove this uncommitted staged entry from the audit list">✕ Discard</button>
+                  ` : ""}
+                  ${b.status === "COMMITTED" ? `<span style="color:var(--pos-green);font-size:10.5px;" title="Canonical data — protected">✓ Safe</span>` : ""}
+                </td>
               </tr>
             `).join("")}
           </tbody>
@@ -804,7 +817,14 @@ async function handleStageFiles(fileList) {
 
   try {
     const res = await fetch("/api/imports/stage", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Staging failed");
+    if (!res.ok) {
+      let detail = `Staging failed (HTTP ${res.status} ${res.statusText || ""})`;
+      try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
+      if (res.status === 413 || res.statusCode === 413) {
+        detail += " — File too large for cloud upload limit; on Vercel keep a single upload under ~4.5 MB (daily ticker/tradelog files are fine; upload big year-long workbooks once via GitHub instead).";
+      }
+      throw new Error(detail.trim());
+    }
     const manifest = await res.json();
     state.stagedBatch = manifest;
 
@@ -873,18 +893,53 @@ async function commitStagedBatch(batchUuid) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ batch_uuid: batchUuid, allow_revisions: true }),
     });
-    if (!res.ok) throw new Error("Commit failed");
+    if (!res.ok) {
+      let detail = `Commit failed (HTTP ${res.status})`;
+      try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
+      throw new Error(detail);
+    }
     const committed = await res.json();
     clearClientCache();
-    const syncNote = committed.cloud_sync?.pushed
-      ? ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})!`
-      : ".";
+    let note;
+    if (committed.status === "ALREADY_COMMITTED") {
+      note = `Batch already committed earlier — zero duplicates were introduced.`;
+    } else if (committed.cloud_sync && committed.cloud_sync.pushed) {
+      note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! All devices will receive this data on next load.`;
+    } else if (committed.cloud_sync && committed.cloud_sync.error) {
+      note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nYour data is saved; use 'Push Snapshot to GitHub Now' after fixing the token.`;
+    } else {
+      note = `.\nCommitted and saved to the active database on this app instance.`;
+    }
     showToast(
-      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates skipped${syncNote}`
+      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped${note}`
     );
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
     showToast(`Commit error: ${err.message}`, true);
+  }
+}
+
+async function resumeStagedBatch(batchUuid) {
+  await commitStagedBatch(batchUuid);
+}
+
+async function discardStagedBatch(batchUuid) {
+  try {
+    const res = await fetch("/api/imports/discard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ batch_uuid: batchUuid, allow_revisions: true }),
+    });
+    if (!res.ok) {
+      let detail = `Discard failed (HTTP ${res.status})`;
+      try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    clearClientCache();
+    showToast(`Staged batch ${batchUuid.slice(0, 8)} discarded from the audit list (no data was added). You can safely re-upload the source files.`);
+    await renderImportCenter(document.getElementById("viewContainer"));
+  } catch (err) {
+    showToast(`Discard error: ${err.message}`, true);
   }
 }
 
@@ -893,17 +948,31 @@ async function commitStagedBatch(batchUuid) {
 // ============================================================================
 async function renderTop5View(container) {
   const f = state.top5Filter;
-  const qs = new URLSearchParams();
-  if (f.ticker && f.ticker !== "ALL") qs.set("ticker", f.ticker);
-  if (f.start_date) qs.set("start_date", f.start_date);
-  if (f.end_date) qs.set("end_date", f.end_date);
-  if (f.search) qs.set("search", f.search);
+
+  async function fetchRegisterPass() {
+    const qs = new URLSearchParams();
+    if (f.ticker && f.ticker !== "ALL") qs.set("ticker", f.ticker);
+    if (f.start_date) qs.set("start_date", f.start_date);
+    if (f.end_date) qs.set("end_date", f.end_date);
+    if (f.search) qs.set("search", f.search);
+    return apiGet(`/api/top5/register?${qs.toString()}`, false);
+  }
+
+  // Always fetch FRESH data (never stale cache) — new imports appear instantly
+  // when switching from the Import Center to this view, without a page refresh.
+  let data = await fetchRegisterPass();
+  const latestAvailable = data.latest_date;
+
+  // The "To Date" filter auto-points to the newest date in the database
+  // (e.g. if 19-Oct data was just imported, To Date instantly becomes 19-Oct),
+  // unless the user deliberately pinned a custom end date.
+  if (!f.end_date_manual && latestAvailable && f.end_date !== latestAvailable) {
+    f.end_date = latestAvailable;
+    data = await fetchRegisterPass();
+  }
 
   const trendTicker = f.ticker && f.ticker !== "ALL" ? f.ticker : "ATRL";
-  const [data, trendData] = await Promise.all([
-    apiGet(`/api/top5/register?${qs.toString()}`),
-    apiGet(`/api/top5/trend/${trendTicker}`),
-  ]);
+  const trendData = await apiGet(`/api/top5/trend/${trendTicker}`, false);
 
   container.innerHTML = `
     <div class="filter-bar">
@@ -920,7 +989,11 @@ async function renderTop5View(container) {
       </div>
       <div class="filter-group">
         <label>To Date:</label>
-        <input type="date" id="top5EndInput" value="${f.end_date}" onchange="updateTop5Filter()" />
+        <input type="date" id="top5EndInput" value="${f.end_date}" onchange="state.top5Filter.end_date_manual=true;updateTop5Filter()" />
+        <span class="badge ${f.end_date_manual ? "badge-amber" : "badge-green"}" style="font-size:10px;" title="Latest date available in the database: ${latestAvailable}.${f.end_date_manual ? " You pinned a custom end date — click Reset to return to automatic latest-date tracking." : " Auto-tracking the latest available date."}">
+          ${f.end_date_manual ? `Pinned (latest: ${latestAvailable})` : `Auto → Latest: ${latestAvailable}`}
+        </span>
+        ${f.end_date_manual ? `<button class="btn btn-secondary" style="padding:3px 8px;font-size:10.5px;" title="Return To Date to the latest available data (${latestAvailable})" onclick="resetTop5EndToLatest()">↺ Reset to Latest</button>` : ""}
       </div>
       <div class="filter-group">
         <label>Search:</label>
@@ -936,7 +1009,7 @@ async function renderTop5View(container) {
       <div class="card-header">
         <div>
           <div class="card-title">${trendData.ticker} — Top 5 Volume &amp; Rank-1 Rate Trend (${trendData.trading_days} Trading Sessions)</div>
-          <div class="card-subtitle">Chronological progression across imported trading dates</div>
+          <div class="card-subtitle">Chronological progression across imported trading dates • Latest available data: ${latestAvailable || "N/A"}</div>
         </div>
       </div>
       ${renderTop5SvgChart(trendData.trend)}
@@ -992,6 +1065,11 @@ function updateTop5Filter() {
   state.top5Filter.end_date = document.getElementById("top5EndInput").value;
   const srchEl = document.getElementById("top5SearchInput");
   if (srchEl) state.top5Filter.search = srchEl.value;
+  renderTop5View(document.getElementById("viewContainer"));
+}
+
+function resetTop5EndToLatest() {
+  state.top5Filter.end_date_manual = false;
   renderTop5View(document.getElementById("viewContainer"));
 }
 
@@ -2591,9 +2669,12 @@ async function triggerCloudSyncNow() {
   const res = await fetch("/api/cloud-sync/sync-now", { method: "POST" });
   const out = await res.json();
   if (out.pushed) {
-    showToast(`Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)})!`);
+    clearClientCache();
+    showToast(`✓ Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)}) — this snapshot is now permanent on GitHub and every new device/cold-start will load it.`);
+  } else if (out.error) {
+    showToast(`⚠ GitHub push failed: ${out.error}\n(Local snapshot saved — use 'Download Updated latest_cloud_sync.db.gz' if needed.)`, true);
   } else {
-    showToast(out.message || out.error || "Local .db.gz snapshot created.", !out.local_snapshot_updated);
+    showToast(out.message || "Local .db.gz snapshot created.", !out.local_snapshot_updated);
   }
   if (state.currentView === "settings") renderSettingsView(document.getElementById("viewContainer"));
   if (state.currentView === "import") renderImportCenter(document.getElementById("viewContainer"));

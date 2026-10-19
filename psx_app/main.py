@@ -1,5 +1,6 @@
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 
 from psx_app.config import APP_ROOT, AUTHORIZED_ACCOUNTS, CORE_36_TICKERS, DATA_ROOT, DB_PATH, DOCS_DIR, SKILLS_DIR
 from psx_app.database.repository import Repository
-from psx_app.database.schema import init_db
+from psx_app.database.schema import init_db, get_connection
 from psx_app.services.account_service import AccountService
 from psx_app.services.backup_service import BackupService
 from psx_app.services.export_service import ExportService
@@ -213,19 +214,64 @@ def api_commit_imports(req: CommitBatchRequest) -> Dict[str, Any]:
     try:
         res = orch.commit_staged_batch(req.batch_uuid, allow_revisions=req.allow_revisions)
         invalidate_api_cache()
-        if res.get("new_records", 0) > 0 or res.get("revisions_count", 0) > 0:
+        if res.get("status") != "ALREADY_COMMITTED" and (res.get("new_records", 0) > 0 or res.get("revisions_count", 0) > 0):
             res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update(f"Import commit {req.batch_uuid[:8]}")
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/imports/discard")
+def api_discard_staged_batch(req: CommitBatchRequest) -> Dict[str, Any]:
+    """Discard a STAGED or FAILED batch (safe cleanup of in-memory-only staging leftovers).
+    COMMITTED batches are NEVER deleted — canonical data always stays intact."""
+    from psx_app.database.schema import get_connection
+    with get_connection(DB_PATH) as c:
+        row = c.execute(
+            "SELECT id, status FROM import_batches WHERE batch_uuid = ?",
+            (req.batch_uuid,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Batch '{req.batch_uuid}' not found.")
+        if row["status"] == "COMMITTED":
+            raise HTTPException(status_code=400, detail="Committed batches cannot be discarded (canonical data is protected).")
+        now = datetime.now(timezone.utc).isoformat()
+        c.execute("UPDATE import_batches SET status = 'DISCARDED' WHERE batch_uuid = ?", (req.batch_uuid,))
+        c.execute(
+            "INSERT INTO audit_events (event_type, actor, details_json, created_at) VALUES ('BATCH_DISCARDED', 'local_user', ?, ?)",
+            (json.dumps({"batch_uuid": req.batch_uuid, "previous_status": row["status"]}), now),
+        )
+        c.commit()
+    invalidate_api_cache()
+    return {"discarded": True, "batch_uuid": req.batch_uuid, "previous_status": row["status"]}
+
+
 @app.get("/api/imports/history")
 def api_imports_history() -> Dict[str, Any]:
     repo = Repository(DB_PATH)
     ov = repo.get_system_overview()
+    enriched = []
+    from psx_app.database.schema import get_connection
+    with get_connection(DB_PATH) as c:
+        staging_dir = DATA_ROOT / "data" / "staging"
+        for b in ov["recent_batches"]:
+            item = dict(b)
+            filenames = []
+            try:
+                sj = json.loads(item.get("summary_json") or "{}")
+                filenames = [f.get("filename") for f in sj.get("files", []) if f.get("filename")]
+            except Exception:
+                filenames = []
+            item["filenames"] = filenames
+            buuid = item.get("batch_uuid") or ""
+            item["staged_resumable"] = bool(
+                item.get("status") == "STAGED" and (staging_dir / buuid / "manifest.json").exists()
+            )
+            if item.get("status") == "DISCARDED":
+                continue
+            enriched.append(item)
     return {
-        "batches": ov["recent_batches"],
+        "batches": enriched,
         "cloud_sync": CloudSyncService(DB_PATH).get_status(),
     }
 

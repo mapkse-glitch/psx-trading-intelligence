@@ -371,10 +371,32 @@ class ImportOrchestrator:
         logs any revisions to source_revisions, and recalculates affected account dates
         and technical indicator caches. Rolls back completely on error.
         """
+        # Database status check FIRST: re-committing an already-committed batch must be
+        # cheap and safe (idempotent) even after its staging folder was cleaned up or
+        # the process restarted on a different machine instance.
+        with get_connection(self.db_path) as pre_conn:
+            pre_row = pre_conn.execute(
+                "SELECT id, status, summary_json FROM import_batches WHERE batch_uuid = ?",
+                (batch_uuid,),
+            ).fetchone()
+        if not pre_row:
+            raise ValueError(f"Batch {batch_uuid} not registered in database.")
+        if pre_row["status"] == "COMMITTED":
+            try:
+                manifest_prev = json.loads(pre_row["summary_json"] or "{}")
+            except Exception:
+                manifest_prev = {"batch_uuid": batch_uuid}
+            return {**manifest_prev, "status": "ALREADY_COMMITTED", "batch_id": pre_row["id"]}
+        if pre_row["status"] == "DISCARDED":
+            raise ValueError(f"Batch {batch_uuid} was discarded. Please re-upload the source files to create a fresh staged batch.")
+
         staging_batch_dir = self.data_root / "data" / "staging" / batch_uuid
         manifest_path = staging_batch_dir / "manifest.json"
         if not manifest_path.exists():
-            raise FileNotFoundError(f"Staged batch '{batch_uuid}' not found.")
+            raise FileNotFoundError(
+                f"Staged batch '{batch_uuid[:8]}...' files not found on this server instance (temporary staging is cleared on cold restarts). "
+                "Please Discard this staged entry in the Import and Update Center and re-upload the original file(s)."
+            )
 
         bundle = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest = bundle["manifest"]
