@@ -22,6 +22,7 @@ from psx_app.services.migration_service import MigrationService
 from psx_app.services.reconciliation_service import ReconciliationService
 from psx_app.services.technical_service import TechnicalService
 from psx_app.services.top5_service import Top5Service
+from psx_app.services.cloud_sync_service import CloudSyncService
 
 # Fast in-memory cache invalidated automatically on any data commit, settings update, or backup restore
 _API_CACHE: Dict[str, Any] = {}
@@ -33,6 +34,7 @@ def invalidate_api_cache() -> None:
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
+    CloudSyncService(DB_PATH).pull_latest_db_on_startup()
     init_db(DB_PATH)
     mig = MigrationService(DB_PATH, DATA_ROOT)
     mig.run_initial_migration(force=False)
@@ -211,6 +213,8 @@ def api_commit_imports(req: CommitBatchRequest) -> Dict[str, Any]:
     try:
         res = orch.commit_staged_batch(req.batch_uuid, allow_revisions=req.allow_revisions)
         invalidate_api_cache()
+        if res.get("new_records", 0) > 0 or res.get("revisions_count", 0) > 0:
+            res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update(f"Import commit {req.batch_uuid[:8]}")
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -220,7 +224,10 @@ def api_commit_imports(req: CommitBatchRequest) -> Dict[str, Any]:
 def api_imports_history() -> Dict[str, Any]:
     repo = Repository(DB_PATH)
     ov = repo.get_system_overview()
-    return {"batches": ov["recent_batches"]}
+    return {
+        "batches": ov["recent_batches"],
+        "cloud_sync": CloudSyncService(DB_PATH).get_status(),
+    }
 
 
 # ------------------------------------------------------------------
@@ -469,6 +476,7 @@ def api_get_settings() -> Dict[str, Any]:
         "rule_versions": repo.get_rule_versions(),
         "backups": b_svc.list_backups(),
         "db_integrity": b_svc.run_integrity_check(),
+        "cloud_sync": CloudSyncService(DB_PATH).get_status(),
     }
 
 
@@ -477,10 +485,23 @@ def api_update_settings(req: UpdateSettingsRequest) -> Dict[str, Any]:
     repo = Repository(DB_PATH)
     updated = repo.update_settings(req.updates, notes=req.notes)
     invalidate_api_cache()
+    sync_res = CloudSyncService(DB_PATH).push_db_after_update("Settings updated")
     return {
         "settings": updated,
         "rule_versions": repo.get_rule_versions(),
+        "cloud_sync": sync_res,
     }
+
+
+@app.post("/api/cloud-sync/sync-now")
+def api_cloud_sync_now() -> Dict[str, Any]:
+    return CloudSyncService(DB_PATH).push_db_after_update("Manual cloud sync snapshot")
+
+
+@app.get("/api/cloud-sync/download-snapshot")
+def api_download_cloud_snapshot() -> FileResponse:
+    gz_path = CloudSyncService(DB_PATH).create_local_gzip_snapshot()
+    return FileResponse(path=str(gz_path), filename="latest_cloud_sync.db.gz", media_type="application/gzip")
 
 
 @app.post("/api/backups/create")
@@ -510,7 +531,7 @@ def api_download_backup(zip_filename: str) -> FileResponse:
     return FileResponse(path=str(p), filename=p.name, media_type="application/zip")
 
 
-# Mount Static Frontend SPA & Explicit Root Asset Routes for Vercel
+# Mount Static Frontend SPA & Explicit Root Asset Routes for Serverless (Vercel) Compatibility
 STATIC_DIR = APP_ROOT / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -527,7 +548,7 @@ def serve_spa_css() -> FileResponse:
 
 @app.get("/app.js", include_in_schema=False)
 def serve_spa_js() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / "app.js"), media_type="text/javascript")
+    return FileResponse(str(STATIC_DIR / "app.js"), media_type="application/javascript")
 
 
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")

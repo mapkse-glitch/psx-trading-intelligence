@@ -99,20 +99,21 @@ def ensure_directories(root: Path = DATA_ROOT) -> None:
 
     target_db = root / "database" / "app.db"
     if not target_db.exists() or target_db.stat().st_size < 65536:
-        # Check all bundled locations (both psx_data/ and repo root)
+        # 1. Prioritize latest_cloud_sync.db.gz (which gets updated on GitHub after every daily import)
+        for cand_gz in [
+            BASE_DIR / "latest_cloud_sync.db.gz",
+            BUNDLED_DATA_ROOT / "backups" / "latest_cloud_sync.db.gz",
+            BASE_DIR / "backups" / "latest_cloud_sync.db.gz",
+        ]:
+            if cand_gz.exists():
+                target_db.write_bytes(gzip.decompress(cand_gz.read_bytes()))
+                return
+
+        # 2. Fallback to bundled raw app.db
         for cand_db in [
             BUNDLED_DATA_ROOT / "database" / "app.db",
             BASE_DIR / "database" / "app.db",
         ]:
             if cand_db.exists() and cand_db.resolve() != target_db.resolve() and cand_db.stat().st_size >= 65536:
                 shutil.copy2(str(cand_db), str(target_db))
-                return
-
-        for cand_gz in [
-            BUNDLED_DATA_ROOT / "backups" / "latest_cloud_sync.db.gz",
-            BASE_DIR / "latest_cloud_sync.db.gz",
-            BASE_DIR / "backups" / "latest_cloud_sync.db.gz",
-        ]:
-            if cand_gz.exists():
-                target_db.write_bytes(gzip.decompress(cand_gz.read_bytes()))
                 return

@@ -702,14 +702,16 @@ class ExportService:
             ws: Any,
             title_text: str,
             rows_data: List[Dict[str, Any]],
+            first_filter_label: str = "Selected Date:",
+            first_filter_val: Optional[str] = None,
             extra_filter_label: Optional[str] = None,
             extra_filter_val: Optional[str] = None,
         ) -> None:
             ws["A2"] = title_text
             ws["A2"].font = TITLE_FONT
-            ws["B4"] = "Selected Date:"
+            ws["B4"] = first_filter_label
             ws["B4"].font = BOLD_FONT
-            ws["C4"] = sel_date
+            ws["C4"] = first_filter_val if first_filter_val is not None else sel_date
             ws["C4"].fill = INPUT_FILL
             ws["C4"].font = BOLD_FONT
             ws["E4"] = "Days:"
@@ -758,15 +760,16 @@ class ExportService:
             _auto_fit_columns(ws)
 
         # Sheets 1..5
+        sf_contract = "OCTB" if "OCTB" in meta["contracts"] else sel_contract
         mc_data = self.futures_service.get_comparison_rows("monthly_comparison", selected_date=sel_date, days=days)["rows"]
         mf_data = self.futures_service.get_comparison_rows("month_filter", selected_date=sel_date, contract_month=sel_contract, days=days)["rows"]
-        sf_data = self.futures_service.get_comparison_rows("symbol_filter", selected_date=sel_date, base_symbol=sel_symbol, days=days)["rows"]
+        sf_data = self.futures_service.get_comparison_rows("symbol_filter", selected_date="ALL", contract_month=sf_contract, base_symbol=sel_symbol, days=days)["rows"]
         ac_data = self.futures_service.get_comparison_rows("annualized_comparison", selected_date=sel_date, days=days)["rows"]
         df_data = self.futures_service.get_comparison_rows("date_filter", selected_date=sel_date, days=days)["rows"]
 
         populate_comparison_sheet(wb.create_sheet("Monthly Comparison"), "MONTHLY COMPARISON — FUTURES vs CURRENT", mc_data)
-        populate_comparison_sheet(wb.create_sheet("Month Filter"), "MONTH / CONTRACT FILTER", mf_data, "Month/Contract:", sel_contract)
-        populate_comparison_sheet(wb.create_sheet("Symbol Filter"), "SYMBOL FILTER — SELECTED DATE & SYMBOL", sf_data, "Symbol:", sel_symbol)
+        populate_comparison_sheet(wb.create_sheet("Month Filter"), "MONTH / CONTRACT FILTER", mf_data, "Selected Date:", sel_date, "Month/Contract:", sel_contract)
+        populate_comparison_sheet(wb.create_sheet("Symbol Filter"), "SYMBOL FILTER — ALL DATES FOR SELECTED CONTRACT & SYMBOL", sf_data, "Month/Contract:", sf_contract, "Symbol:", sel_symbol)
         populate_comparison_sheet(wb.create_sheet("Annualized Comparison"), "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS", ac_data)
         populate_comparison_sheet(wb.create_sheet("Date Filter"), "DATE FILTER — FULL DAY COMPARISON", df_data)
 

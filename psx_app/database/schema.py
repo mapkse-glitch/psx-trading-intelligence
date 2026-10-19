@@ -270,6 +270,20 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Optional[Path] = None) -> None:
+    target = Path(db_path) if db_path else DB_PATH
+    ensure_directories(target.parent.parent)
+    # Auto-hydrate from latest_cloud_sync.db.gz if target DB does not exist yet
+    if not target.exists() or target.stat().st_size < 65536:
+        import gzip
+        from psx_app.config import BUNDLED_DATA_ROOT
+        for cand_gz in [
+            target.parent.parent / "backups" / "latest_cloud_sync.db.gz",
+            BUNDLED_DATA_ROOT / "backups" / "latest_cloud_sync.db.gz",
+        ]:
+            if cand_gz.exists():
+                target.write_bytes(gzip.decompress(cand_gz.read_bytes()))
+                break
+
     conn = get_connection(db_path)
     try:
         conn.executescript(DDL_STATEMENTS)

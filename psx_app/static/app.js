@@ -1,4 +1,48 @@
-// PSX Trading Intelligence Dashboard v1.1 — Frontend Application
+// PSX Trading Intelligence Dashboard v1.2 — Frontend Application
+const DEFAULT_QUICK_SYMBOLS = [
+  "ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "UBL", "HBL", "SYS", "TRG", "SAZEW", "FFC", "HUBC", "ENGROH"
+];
+
+function getSymbolSearchCounts() {
+  try {
+    const raw = localStorage.getItem("psx_symbol_search_counts_v2");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function recordSymbolSearch(sym) {
+  if (!sym) return;
+  const clean = String(sym).trim().toUpperCase().split("-")[0];
+  if (!clean || clean === "ALL" || clean === "CORE36" || clean.length > 10) return;
+  try {
+    const counts = getSymbolSearchCounts();
+    counts[clean] = (counts[clean] || 0) + 1;
+    localStorage.setItem("psx_symbol_search_counts_v2", JSON.stringify(counts));
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
+function getQuickSelectSymbols(limit = 14) {
+  const counts = getSymbolSearchCounts();
+  const pool = new Set([...Object.keys(counts), ...DEFAULT_QUICK_SYMBOLS]);
+  const arr = Array.from(pool);
+  arr.sort((a, b) => {
+    const ca = counts[a] || 0;
+    const cb = counts[b] || 0;
+    if (cb !== ca) return cb - ca;
+    const ia = DEFAULT_QUICK_SYMBOLS.indexOf(a);
+    const ib = DEFAULT_QUICK_SYMBOLS.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+  return arr.slice(0, limit).map((sym) => ({
+    symbol: sym,
+    count: counts[sym] || 0,
+  }));
+}
+
 const state = {
   currentView: "overview",
   apiCache: {},
@@ -15,15 +59,18 @@ const state = {
   top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: "2026-10-16", search: "" },
   accTab: { "91404": "dashboard", "91269": "dashboard" },
   accSelectedDate: { "91404": "2026-10-16", "91269": "2026-10-15" },
+  // Separate, independent per-sheet filter state for Module C (matching Futures_Analysis.xlsx)
   futures: {
     subtab: "monthly_comparison",
-    selected_date: "2026-10-16",
-    contract_month: "OCT",
-    base_symbol: "OGDC",
-    contract_symbol: "AGHA-OCT",
-    days: 30,
     apply_rolling: true,
     meta: null,
+    monthly_comparison: { selected_date: "2026-10-16", days: 30 },
+    month_filter: { selected_date: "2026-10-16", days: 30, contract_month: "OCT" },
+    symbol_filter: { contract_month: "OCTB", days: 30, base_symbol: "OGDC", selected_date: "ALL" },
+    annualized_comparison: { selected_date: "2026-10-16", days: 30 },
+    date_filter: { selected_date: "2026-10-16", days: 30 },
+    future_symbol_summary: { contract_symbol: "AGHA-OCT" },
+    date_summary: { selected_date: "2026-10-16" },
   },
   technical: {
     subtab: "core36",
@@ -31,7 +78,7 @@ const state = {
     search: "",
     signalFilter: "ALL",
   },
-  selectedDoc: "MIGRATION_REPORT.md",
+  selectedDoc: "CLOUD_HOSTING_AND_SYNC_GUIDE.md",
 };
 
 const VIEW_TITLES = {
@@ -127,9 +174,8 @@ async function switchView(view) {
   document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || "Dashboard";
   const container = document.getElementById("viewContainer");
 
-  // Re-trigger smooth entrance animation
   container.style.animation = "none";
-  container.offsetHeight; // reflow
+  container.offsetHeight;
   container.style.animation = "";
 
   try {
@@ -153,6 +199,15 @@ async function switchView(view) {
 // 1. Trading Ideas Generator Card
 // 2. Automated Technical Analyst Card
 // ============================================================================
+function buildQuickSelectBarHtml(activeSymbol, onClickFnName) {
+  const quickItems = getQuickSelectSymbols(13);
+  return quickItems.map((item) => {
+    const isAct = item.symbol === activeSymbol;
+    const countBadge = item.count > 0 ? `<span class="quick-count">${item.count}</span>` : "";
+    return `<button type="button" class="quick-pill ${isAct ? "active" : ""}" onclick="${onClickFnName}('${item.symbol}')" title="${item.count > 0 ? `Searched ${item.count} time(s)` : "Click to analyze"}">${item.symbol}${countBadge}</button>`;
+  }).join("");
+}
+
 function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
   const idState = state.ideas;
   const sectorOptions = (filtersMeta?.sectors || []).map(
@@ -212,7 +267,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <span class="badge ${isLong ? "badge-green" : "badge-red"}">#${st.rank} • ${st.direction}</span>
-                  <b style="font-size:15px;margin-left:6px;cursor:pointer;color:#fff;" onclick="triggerAnalystForTicker('${st.symbol}')">${st.display_label}</b>
+                  <b style="font-size:15px;margin-left:6px;cursor:pointer;color:#fff;text-decoration:underline;" onclick="triggerAnalystForTicker('${st.symbol}')" title="Click to analyze ${st.symbol} in Card 2">${st.display_label}</b>
                   <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${st.sector})</span>
                 </div>
                 <div style="text-align:right;">
@@ -285,13 +340,11 @@ function buildAutomatedAnalystCardHtml(analystRes) {
       <div class="filter-bar" style="margin-bottom:14px;">
         <div class="filter-group">
           <label>Ticker Symbol:</label>
-          <input type="text" id="analystTickerInput" value="${anState.symbol}" style="width:110px;font-weight:700;" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()" />
+          <input type="text" id="analystTickerInput" value="${anState.symbol}" style="width:105px;font-weight:700;" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()" />
         </div>
-        <div class="filter-group">
-          <label>Quick Select:</label>
-          ${["ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "UBL", "HBL", "SYS", "TRG", "SAZEW", "FFC", "HUBC"].map((s) => `
-            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="triggerAnalystForTicker('${s}')">${s}</button>
-          `).join("")}
+        <div class="filter-group" style="flex-wrap:wrap;">
+          <label title="Automatically ranks your most-searched symbols first!">Quick Select (Most Searched):</label>
+          ${buildQuickSelectBarHtml(anState.symbol, "triggerAnalystForTicker")}
         </div>
         <div class="filter-group">
           <label>Action Mode:</label>
@@ -328,7 +381,6 @@ function buildAutomatedAnalystCardHtml(analystRes) {
       </div>
 
       <div class="grid-2" style="margin-bottom:0;">
-        <!-- 5-Step Institutional Breakdown -->
         <div class="step-list">
           ${(analystRes.step_by_step_analysis || []).map((st) => `
             <div class="step-item">
@@ -341,7 +393,6 @@ function buildAutomatedAnalystCardHtml(analystRes) {
           `).join("")}
         </div>
 
-        <!-- Moving Averages & Weekly Chart Matrix -->
         <div style="display:flex;flex-direction:column;gap:12px;">
           <div class="table-wrap">
             <table class="data-table">
@@ -392,7 +443,10 @@ async function runTradingIdeasGenerator() {
   const queryEl = document.getElementById("ideasQueryInput");
   const dirEl = document.getElementById("ideasDirSelect");
   if (scopeEl) state.ideas.scope_or_sector = scopeEl.value;
-  if (queryEl) state.ideas.query = queryEl.value;
+  if (queryEl) {
+    state.ideas.query = queryEl.value;
+    if (queryEl.value.trim()) recordSymbolSearch(queryEl.value.trim());
+  }
   if (dirEl) state.ideas.direction = dirEl.value;
 
   const qs = new URLSearchParams({
@@ -411,11 +465,19 @@ async function runTradingIdeasGenerator() {
   }
 }
 
-async function runAutomatedAnalyst() {
+async function runAutomatedAnalyst(explicitSymbol = null) {
   const symEl = document.getElementById("analystTickerInput");
   const actEl = document.getElementById("analystActionSelect");
-  if (symEl && symEl.value.trim()) state.analyst.symbol = symEl.value.trim().toUpperCase();
+
+  if (explicitSymbol) {
+    state.analyst.symbol = explicitSymbol.trim().toUpperCase();
+    if (symEl) symEl.value = state.analyst.symbol;
+  } else if (symEl && symEl.value.trim()) {
+    state.analyst.symbol = symEl.value.trim().toUpperCase();
+  }
   if (actEl) state.analyst.action = actEl.value;
+
+  recordSymbolSearch(state.analyst.symbol);
 
   const res = await apiGet(
     `/api/intelligence/automated-analyst/${encodeURIComponent(state.analyst.symbol)}?action=${encodeURIComponent(state.analyst.action)}`,
@@ -428,13 +490,18 @@ async function runAutomatedAnalyst() {
 }
 
 async function triggerAnalystForTicker(sym) {
-  state.analyst.symbol = sym.toUpperCase();
+  const clean = (sym || "ATRL").trim().toUpperCase();
+  state.analyst.symbol = clean;
+  recordSymbolSearch(clean);
   const cardEl = document.getElementById("automatedAnalystCard");
   if (cardEl) {
-    await runAutomatedAnalyst();
-    document.getElementById("automatedAnalystCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    await runAutomatedAnalyst(clean);
+    if (state.currentView === "technical" && state.technical.subtab === "deep_dive") {
+      state.technical.selectedSymbol = clean;
+      await renderTechnicalView(document.getElementById("viewContainer"));
+    }
   } else {
-    openTickerDeepDive(sym);
+    openTickerDeepDive(clean);
   }
 }
 
@@ -478,14 +545,10 @@ async function renderOverview(container) {
       </div>
     </div>
 
-    <!-- Card 1: Trading Ideas Generator -->
     ${buildTradingIdeasCardHtml(ideasRes, filtersMeta)}
-
-    <!-- Card 2: Automated Technical Analyst -->
     ${buildAutomatedAnalystCardHtml(analystRes)}
 
     <div class="grid-2">
-      <!-- Account 91404 Summary Card (Strictly Isolated) -->
       <div class="card">
         <div class="card-header">
           <div>
@@ -527,7 +590,6 @@ async function renderOverview(container) {
         </table>
       </div>
 
-      <!-- Account 91269 Summary Card (Strictly Isolated) -->
       <div class="card">
         <div class="card-header">
           <div>
@@ -571,7 +633,6 @@ async function renderOverview(container) {
     </div>
 
     <div class="grid-2">
-      <!-- Core 36 Technical Signal Distribution -->
       <div class="card">
         <div class="card-header">
           <div>
@@ -608,7 +669,6 @@ async function renderOverview(container) {
         </div>
       </div>
 
-      <!-- Module C Futures Highlights -->
       <div class="card">
         <div class="card-header">
           <div>
@@ -647,8 +707,28 @@ async function renderOverview(container) {
 // ============================================================================
 async function renderImportCenter(container) {
   const hist = await apiGet("/api/imports/history", false);
+  const cs = hist.cloud_sync || {};
 
   container.innerHTML = `
+    <div class="card card-hero">
+      <div class="card-header">
+        <div>
+          <div class="card-title">☁ Permanent Data Storage &amp; GitHub Auto-Sync Status</div>
+          <div class="card-subtitle">Status: <b class="${cs.enabled ? "pos" : "warn"}">${cs.provider || "Local Mode"}</b></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download Updated latest_cloud_sync.db.gz</a>
+          <button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;">
+        <b>Where your uploaded data is saved:</b> Every daily file you upload and commit below is immediately written into the SQLite database (<code>app.db</code>) AND compressed into <code>latest_cloud_sync.db.gz</code>.
+        ${cs.enabled
+          ? `Because your <b>GITHUB_SYNC_TOKEN</b> is active, every commit automatically pushes <code>latest_cloud_sync.db.gz</code> straight into your GitHub repository (<b>${cs.repo}</b>), so your daily updates remain permanently saved forever across Office PC, Home PC, and Mobile Phone!`
+          : `To make Vercel save your daily uploads automatically into your GitHub repository (<b>mapkse-glitch/psx-trading-intelligence</b>) forever, add <code>GITHUB_SYNC_TOKEN</code> (your GitHub Personal Access Token with Contents Read/Write permission) in <b>Vercel → Settings → Environment Variables</b>. You can also download <code>latest_cloud_sync.db.gz</code> anytime with the button above.`}
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">
         <div>
@@ -791,8 +871,11 @@ async function commitStagedBatch(batchUuid) {
     if (!res.ok) throw new Error("Commit failed");
     const committed = await res.json();
     clearClientCache();
+    const syncNote = committed.cloud_sync?.pushed
+      ? ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})!`
+      : ".";
     showToast(
-      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates skipped, ${committed.revisions_count} revisions logged.`
+      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates skipped${syncNote}`
     );
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
@@ -897,6 +980,9 @@ async function renderTop5View(container) {
 
 function updateTop5Filter() {
   state.top5Filter.ticker = document.getElementById("top5TickerSelect").value;
+  if (state.top5Filter.ticker && state.top5Filter.ticker !== "ALL") {
+    recordSymbolSearch(state.top5Filter.ticker);
+  }
   state.top5Filter.start_date = document.getElementById("top5StartInput").value;
   state.top5Filter.end_date = document.getElementById("top5EndInput").value;
   state.top5Filter.search = document.getElementById("top5SearchInput").value;
@@ -1322,15 +1408,24 @@ function openAccountDateDetail(accountId, tradeDate) {
 
 // ============================================================================
 // 06. MODULE C: FUTURES COMPARISON & ANNUALIZED ANALYSIS
+// Separate per-sheet filter bars matching Futures_Analysis (3).xlsx 100%
 // ============================================================================
+function buildDateSelectOptions(availDates, allDatesInDb, selectedVal) {
+  const rev = availDates.slice().reverse();
+  return `
+    <option value="ALL" ${selectedVal === "ALL" ? "selected" : ""}>★ ALL RETAINED DATES (${availDates[0] || ""} → ${availDates[availDates.length - 1] || ""})</option>
+    <option value="ALL_HISTORY" ${selectedVal === "ALL_HISTORY" ? "selected" : ""}>★ ALL DATES FROM START (${allDatesInDb[0] || ""} → ${allDatesInDb[allDatesInDb.length - 1] || ""})</option>
+    ${rev.map((d) => `<option value="${d}" ${d === selectedVal ? "selected" : ""}>${d}</option>`).join("")}
+  `;
+}
+
 async function renderFuturesView(container) {
   const f = state.futures;
   const meta = await apiGet(`/api/futures/metadata?apply_rolling=${f.apply_rolling}`);
   f.meta = meta;
-  const availDates = meta.dates || meta.retained_dates || meta.all_dates_in_db || [];
-  if (!f.selected_date || !availDates.includes(f.selected_date)) {
-    f.selected_date = meta.latest_date || (availDates.length ? availDates[availDates.length - 1] : "2026-10-16");
-  }
+  const availDates = meta.dates || meta.retained_dates || [];
+  const allDatesInDb = meta.all_dates_in_db || availDates;
+  const latestDate = meta.latest_date || "2026-10-16";
 
   const subtabs = [
     ["monthly_comparison", "1. Monthly Comparison"],
@@ -1343,78 +1438,238 @@ async function renderFuturesView(container) {
     ["rolling_window", "2-Month Rolling Retention"],
   ];
 
+  let filterBarHtml = "";
   let contentHtml = "";
-  if (["monthly_comparison", "month_filter", "symbol_filter", "annualized_comparison", "date_filter"].includes(f.subtab)) {
+
+  const exportBtnHtml = `
+    <div style="margin-left:auto;">
+      <a class="btn btn-primary" href="/api/exports/generate/futures_xlsx?selected_date=${latestDate}&selected_contract=${f.month_filter.contract_month}&selected_symbol=${f.symbol_filter.base_symbol}&days=${f.monthly_comparison.days}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
+    </div>
+  `;
+
+  if (f.subtab === "monthly_comparison") {
+    const st = f.monthly_comparison;
     const qs = new URLSearchParams({
-      view_mode: f.subtab,
-      selected_date: f.selected_date,
-      contract_month: f.contract_month,
-      base_symbol: f.base_symbol,
-      days: String(f.days),
+      view_mode: "monthly_comparison",
+      selected_date: st.selected_date,
+      days: String(st.days),
       apply_rolling: String(f.apply_rolling),
     });
     const comp = await apiGet(`/api/futures/comparison?${qs.toString()}`);
 
-    contentHtml = `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">${subtabs.find((s) => s[0] === f.subtab)[1]} — ${comp.selected_date} (${comp.rows_count} Contracts)</div>
-            <div class="card-subtitle">Exact same-date matching only (no carry-forward/backfill) • Sorted by Annualized % Ascending • Days = ${f.days}</div>
-          </div>
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 1 FILTERS</span>
+        <div class="filter-group">
+          <label>Selected Date:</label>
+          <select onchange="state.futures.monthly_comparison.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
+          </select>
         </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date</th><th>Symbol</th><th>Contract/Month</th>
-                <th class="num">Current Value</th><th class="num">Future Value</th>
-                <th class="num">Volume</th><th class="num">High</th><th class="num">Low</th>
-                <th class="num">Difference</th><th class="num">Difference %</th>
-                <th class="num">Days</th><th class="num">Annualized %</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${comp.rows.map((r) => `
-                <tr>
-                  <td>${r.trade_date}</td>
-                  <td><b>${r.symbol}</b></td>
-                  <td><span class="badge badge-blue">${r.contract}</span></td>
-                  <td class="num">${fmtNum(r.current_value)}</td>
-                  <td class="num">${fmtNum(r.future_value)}</td>
-                  <td class="num">${fmtInt(r.volume)}</td>
-                  <td class="num">${fmtNum(r.high)}</td>
-                  <td class="num">${fmtNum(r.low)}</td>
-                  <td class="num ${pnlClass(r.difference)}">${fmtNum(r.difference)}</td>
-                  <td class="num ${pnlClass(r.difference_pct)}">${fmtPct(r.difference_pct, false)}</td>
-                  <td class="num">${r.days}</td>
-                  <td class="num ${pnlClass(r.annualized_pct)}">${fmtPct(r.annualized_pct, false)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+        <div class="filter-group">
+          <label>Days:</label>
+          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.monthly_comparison.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
         </div>
+        ${exportBtnHtml}
       </div>
     `;
+    contentHtml = renderFuturesComparisonTableCard(
+      "MONTHLY COMPARISON — FUTURES vs CURRENT",
+      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      comp.rows
+    );
+  } else if (f.subtab === "month_filter") {
+    const st = f.month_filter;
+    const qs = new URLSearchParams({
+      view_mode: "month_filter",
+      selected_date: st.selected_date,
+      contract_month: st.contract_month,
+      days: String(st.days),
+      apply_rolling: String(f.apply_rolling),
+    });
+    const comp = await apiGet(`/api/futures/comparison?${qs.toString()}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 2 FILTERS</span>
+        <div class="filter-group">
+          <label>Selected Date:</label>
+          <select onchange="state.futures.month_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Days:</label>
+          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.month_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
+        </div>
+        <div class="filter-group">
+          <label>Month/Contract:</label>
+          <select onchange="state.futures.month_filter.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="ALL" ${st.contract_month === "ALL" ? "selected" : ""}>ALL CONTRACTS</option>
+            ${(meta.contracts || []).map((c) => `<option value="${c}" ${c === st.contract_month ? "selected" : ""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
+    contentHtml = renderFuturesComparisonTableCard(
+      "MONTH / CONTRACT FILTER",
+      `Selected Date: ${st.selected_date} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      comp.rows
+    );
+  } else if (f.subtab === "symbol_filter") {
+    const st = f.symbol_filter;
+    const qs = new URLSearchParams({
+      view_mode: "symbol_filter",
+      selected_date: st.selected_date,
+      contract_month: st.contract_month,
+      base_symbol: st.base_symbol,
+      days: String(st.days),
+      apply_rolling: String(f.apply_rolling),
+    });
+    const comp = await apiGet(`/api/futures/comparison?${qs.toString()}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-green">SHEET 3 FILTERS (EXCEL MATCH)</span>
+        <div class="filter-group">
+          <label>Month/Contract:</label>
+          <select onchange="state.futures.symbol_filter.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="ALL" ${st.contract_month === "ALL" ? "selected" : ""}>ALL CONTRACTS</option>
+            ${(meta.contracts || []).map((c) => `<option value="${c}" ${c === st.contract_month ? "selected" : ""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Days:</label>
+          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.symbol_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
+        </div>
+        <div class="filter-group">
+          <label>Symbol:</label>
+          <select onchange="state.futures.symbol_filter.base_symbol=this.value;recordSymbolSearch(this.value);renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="ALL" ${st.base_symbol === "ALL" ? "selected" : ""}>ALL SYMBOLS</option>
+            ${(meta.base_symbols || []).map((s) => `<option value="${s}" ${s === st.base_symbol ? "selected" : ""}>${s}</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Date Scope:</label>
+          <select onchange="state.futures.symbol_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="ALL" ${st.selected_date === "ALL" ? "selected" : ""}>All Retained Dates (Excel Default)</option>
+            <option value="ALL_HISTORY" ${st.selected_date === "ALL_HISTORY" ? "selected" : ""}>All Dates From Start (Aug–Oct)</option>
+            ${availDates.slice().reverse().map((d) => `<option value="${d}" ${d === st.selected_date ? "selected" : ""}>Single Date: ${d}</option>`).join("")}
+          </select>
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
+    contentHtml = renderFuturesComparisonTableCard(
+      "SYMBOL FILTER — ALL DATES FOR SELECTED CONTRACT & SYMBOL",
+      `Month/Contract: ${st.contract_month} • Symbol: ${st.base_symbol} • Days: ${st.days} (${comp.rows_count} Date Rows, Sorted Chronologically)`,
+      comp.rows
+    );
+  } else if (f.subtab === "annualized_comparison") {
+    const st = f.annualized_comparison;
+    const qs = new URLSearchParams({
+      view_mode: "annualized_comparison",
+      selected_date: st.selected_date,
+      days: String(st.days),
+      apply_rolling: String(f.apply_rolling),
+    });
+    const comp = await apiGet(`/api/futures/comparison?${qs.toString()}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 4 FILTERS</span>
+        <div class="filter-group">
+          <label>Selected Date:</label>
+          <select onchange="state.futures.annualized_comparison.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Days:</label>
+          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.annualized_comparison.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
+    contentHtml = renderFuturesComparisonTableCard(
+      "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS",
+      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      comp.rows
+    );
+  } else if (f.subtab === "date_filter") {
+    const st = f.date_filter;
+    const qs = new URLSearchParams({
+      view_mode: "date_filter",
+      selected_date: st.selected_date,
+      days: String(st.days),
+      apply_rolling: String(f.apply_rolling),
+    });
+    const comp = await apiGet(`/api/futures/comparison?${qs.toString()}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 5 FILTERS</span>
+        <div class="filter-group">
+          <label>Selected Date:</label>
+          <select onchange="state.futures.date_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Days:</label>
+          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.date_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
+    contentHtml = renderFuturesComparisonTableCard(
+      "DATE FILTER — FULL DAY COMPARISON",
+      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      comp.rows
+    );
   } else if (f.subtab === "future_symbol_summary") {
-    const res = await apiGet(`/api/futures/symbol-summary?contract_symbol=${encodeURIComponent(f.contract_symbol)}&apply_rolling=${f.apply_rolling}`);
+    const st = f.future_symbol_summary;
+    const res = await apiGet(`/api/futures/symbol-summary?contract_symbol=${encodeURIComponent(st.contract_symbol)}&apply_rolling=${f.apply_rolling}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 6 FILTERS</span>
+        <div class="filter-group">
+          <label>Symbol / Item:</label>
+          <select onchange="state.futures.future_symbol_summary.contract_symbol=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="ALL" ${st.contract_symbol === "ALL" ? "selected" : ""}>ALL CONTRACT SYMBOLS</option>
+            ${(meta.contract_symbols || []).map((cs) => `<option value="${cs}" ${cs === st.contract_symbol ? "selected" : ""}>${cs}</option>`).join("")}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Date Window:</label>
+          <select onchange="state.futures.apply_rolling=(this.value==='true');renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="true" ${f.apply_rolling ? "selected" : ""}>2-Month Active Window (Sep–Oct 2026)</option>
+            <option value="false" ${!f.apply_rolling ? "selected" : ""}>All Dates From Start (Aug–Oct 2026)</option>
+          </select>
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
     contentHtml = `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">6. Future Symbol Summary — ${res.selected_contract_symbol} (${res.rows_count} Trading Days)</div>
-            <div class="card-subtitle">Sorted by DATE Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-title">FUTURE SYMBOL SUMMARY — ALL RETAINED DATES (2026F)</div>
+            <div class="card-subtitle">Symbol / Item: <b>${res.selected_contract_symbol}</b> (${res.rows_count} Trading Days) • Sorted by DATE Ascending • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>DATE</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
+              <tr><th>DATE</th><th>SYMBOL</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
               ${res.rows.map((r) => `
                 <tr>
                   <td><b>${r.DATE}</b></td>
+                  <td><span class="badge badge-blue">${r.SYMBOL}</span></td>
                   <td class="num">${fmtNum(r.PR_CL)}</td>
                   <td class="num">${fmtNum(r.OPEN)}</td>
                   <td class="num">${fmtNum(r.High)}</td>
@@ -1431,13 +1686,27 @@ async function renderFuturesView(container) {
       </div>
     `;
   } else if (f.subtab === "date_summary") {
-    const res = await apiGet(`/api/futures/date-summary?selected_date=${encodeURIComponent(f.selected_date)}&apply_rolling=${f.apply_rolling}`);
+    const st = f.date_summary;
+    const res = await apiGet(`/api/futures/date-summary?selected_date=${encodeURIComponent(st.selected_date)}&apply_rolling=${f.apply_rolling}`);
+
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">SHEET 7 FILTERS</span>
+        <div class="filter-group">
+          <label>Selected Date:</label>
+          <select onchange="state.futures.date_summary.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
+            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
+          </select>
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
     contentHtml = `
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">7. Date Summary — ${res.selected_date} (${res.rows_count} Futures Contracts)</div>
-            <div class="card-subtitle">Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-title">DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE (2026F)</div>
+            <div class="card-subtitle">Selected Date: <b>${res.selected_date}</b> (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -1467,6 +1736,19 @@ async function renderFuturesView(container) {
     `;
   } else if (f.subtab === "rolling_window") {
     const prev = await apiGet("/api/futures/rolling-window-preview?months=2");
+    filterBarHtml = `
+      <div class="filter-bar">
+        <span class="badge badge-blue">RETENTION POLICY</span>
+        <div class="filter-group">
+          <label>Active Rolling Policy:</label>
+          <select onchange="state.futures.apply_rolling=(this.value==='true');renderFuturesView(document.getElementById('viewContainer'))">
+            <option value="true" ${f.apply_rolling ? "selected" : ""}>Enforce 2-Month Rolling Retention (Sep–Oct 2026 Active)</option>
+            <option value="false" ${!f.apply_rolling ? "selected" : ""}>Show Full Database History Including August 2026</option>
+          </select>
+        </div>
+        ${exportBtnHtml}
+      </div>
+    `;
     contentHtml = `
       <div class="card">
         <div class="card-header"><div class="card-title">2-Month Rolling Data Retention Policy Preview</div></div>
@@ -1487,48 +1769,69 @@ async function renderFuturesView(container) {
         <button class="subtab-btn ${f.subtab === k ? "active" : ""}" onclick="state.futures.subtab='${k}';renderFuturesView(document.getElementById('viewContainer'))">${lbl}</button>
       `).join("")}
     </div>
+    ${filterBarHtml}
+    ${contentHtml}
+  `;
+}
 
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label>Selected Date:</label>
-        <select onchange="state.futures.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-          ${availDates.slice().reverse().map((d) => `<option value="${d}" ${d === f.selected_date ? "selected" : ""}>${d}</option>`).join("")}
-        </select>
+function renderFuturesComparisonTableCard(title, subtitle, rows) {
+  return `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${title}</div>
+          <div class="card-subtitle">${subtitle}</div>
+        </div>
       </div>
-      <div class="filter-group">
-        <label>Contract/Month:</label>
-        <select onchange="state.futures.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-          ${(meta.contracts || []).map((c) => `<option value="${c}" ${c === f.contract_month ? "selected" : ""}>${c}</option>`).join("")}
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Base Symbol:</label>
-        <select onchange="state.futures.base_symbol=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-          ${(meta.base_symbols || []).map((s) => `<option value="${s}" ${s === f.base_symbol ? "selected" : ""}>${s}</option>`).join("")}
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Future Item (Sheet 6):</label>
-        <select onchange="state.futures.contract_symbol=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-          ${(meta.contract_symbols || []).map((cs) => `<option value="${cs}" ${cs === f.contract_symbol ? "selected" : ""}>${cs}</option>`).join("")}
-        </select>
-      </div>
-      <div class="filter-group">
-        <label>Days:</label>
-        <input type="number" min="1" max="365" value="${f.days}" style="width:72px" onchange="state.futures.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-      </div>
-      <div style="margin-left:auto;">
-        <a class="btn btn-primary" href="/api/exports/generate/futures_xlsx?selected_date=${f.selected_date}&selected_contract=${f.contract_month}&selected_symbol=${f.base_symbol}&days=${f.days}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Symbol</th><th>Contract/Month</th>
+              <th class="num">Current Value</th><th class="num">Future Value</th>
+              <th class="num">Volume</th><th class="num">High</th><th class="num">Low</th>
+              <th class="num">Difference</th><th class="num">Difference %</th>
+              <th class="num">Days</th><th class="num">Annualized %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r) => `
+              <tr>
+                <td><b>${r.trade_date}</b></td>
+                <td><b>${r.symbol}</b></td>
+                <td><span class="badge badge-blue">${r.contract}</span></td>
+                <td class="num">${fmtNum(r.current_value)}</td>
+                <td class="num">${fmtNum(r.future_value)}</td>
+                <td class="num">${fmtInt(r.volume)}</td>
+                <td class="num">${fmtNum(r.high)}</td>
+                <td class="num">${fmtNum(r.low)}</td>
+                <td class="num ${pnlClass(r.difference)}">${r.difference > 0 ? "+" : ""}${fmtNum(r.difference)}</td>
+                <td class="num ${pnlClass(r.difference_pct)}">${fmtPct(r.difference_pct, false)}</td>
+                <td class="num">${r.days}</td>
+                <td class="num ${pnlClass(r.annualized_pct)}">${fmtPct(r.annualized_pct, false)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
       </div>
     </div>
-
-    ${contentHtml}
   `;
 }
 
 // ============================================================================
 // 07. MODULE D: TECHNICAL ANALYSIS, SETUP GENERATOR & 36-TICKER DASHBOARD
 // ============================================================================
+function formatCompactIndicatorValue(indName, valStr) {
+  if (!valStr) return "N/A";
+  if (indName.includes("EMA 200") && valStr.includes(";")) {
+    return valStr.replace("; ", "<br><span style='color:var(--text-muted);font-size:10.5px;'>") + "</span>";
+  }
+  if (indName.includes("VWAP") && valStr.includes("|")) {
+    return valStr.replace(" | ", "<br>");
+  }
+  return valStr;
+}
+
 async function renderTechnicalView(container) {
   const t = state.technical;
   let bodyHtml = "";
@@ -1638,14 +1941,13 @@ async function renderTechnicalView(container) {
     bodyHtml = `
       <div class="filter-bar">
         <div class="filter-group">
-          <label>Select Core 36 Ticker (or type any of 531 symbols):</label>
-          <input type="text" value="${t.selectedSymbol}" style="width:120px" onchange="openTickerDeepDive(this.value)" />
+          <label>Type Any PSX Ticker (531 Symbols):</label>
+          <input type="text" id="deepDiveSymbolInput" value="${t.selectedSymbol}" style="width:110px;font-weight:700;" onkeydown="if(event.key==='Enter')openTickerDeepDive(this.value)" />
+          <button class="btn btn-primary" onclick="openTickerDeepDive(document.getElementById('deepDiveSymbolInput').value)">Load</button>
         </div>
-        <div class="filter-group">
-          <span style="color:var(--text-muted);font-size:12px;">Quick Select:</span>
-          ${["ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "HBL", "UBL", "ENGROH", "TRG", "FFC", "HUBC", "SYS", "PAEL"].map((s) => `
-            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="openTickerDeepDive('${s}')">${s}</button>
-          `).join("")}
+        <div class="filter-group" style="flex-wrap:wrap;">
+          <label title="Automatically ranks your most-searched symbols first!">Quick Select (Most Searched):</label>
+          ${buildQuickSelectBarHtml(t.selectedSymbol, "openTickerDeepDive")}
         </div>
       </div>
 
@@ -1685,20 +1987,30 @@ async function renderTechnicalView(container) {
       <div class="grid-2">
         <div class="card">
           <div class="card-header"><div class="card-title">9-Factor Explainable Indicator Dashboard</div></div>
-          <table class="data-table">
-            <thead><tr><th>Indicator</th><th>Value</th><th>Signal</th><th>Actionable Advice</th><th class="num">Vote</th></tr></thead>
-            <tbody>
-              ${sig.indicator_breakdown.map((b) => `
+          <div class="table-wrap">
+            <table class="data-table compact-table">
+              <thead>
                 <tr>
-                  <td><b>${b.indicator}</b></td>
-                  <td class="num">${b.value}</td>
-                  <td><span class="badge ${b.vote > 0 ? "badge-green" : (b.vote < 0 ? "badge-red" : "badge-amber")}">${b.signal}</span></td>
-                  <td style="white-space:normal;">${b.advice}</td>
-                  <td class="num ${pnlClass(b.vote)}">${b.vote > 0 ? "+1" : b.vote}</td>
+                  <th style="width:22%;">Indicator</th>
+                  <th style="width:26%;">Value</th>
+                  <th style="width:24%;">Signal</th>
+                  <th style="width:20%;">Actionable Advice</th>
+                  <th class="num" style="width:8%;">Vote</th>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${sig.indicator_breakdown.map((b) => `
+                  <tr>
+                    <td><b>${b.indicator}</b></td>
+                    <td style="font-family:var(--font-mono);font-size:11.2px;">${formatCompactIndicatorValue(b.indicator, b.value)}</td>
+                    <td><span class="badge ${b.vote > 0 ? "badge-green" : (b.vote < 0 ? "badge-red" : "badge-amber")}">${b.signal}</span></td>
+                    <td>${b.advice}</td>
+                    <td class="num ${pnlClass(b.vote)}"><b>${b.vote > 0 ? "+1" : b.vote}</b></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
           <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
             <b>Invalidation Rule:</b> ${sig.invalidation} • <b>Horizon:</b> ${sig.holding_horizon}
           </div>
@@ -1706,22 +2018,24 @@ async function renderTechnicalView(container) {
 
         <div class="card">
           <div class="card-header"><div class="card-title">Daily &amp; Previous-Completed-Week Pivot Levels</div></div>
-          <table class="data-table">
-            <thead>
-              <tr><th>Level</th><th class="num">Daily Classic</th><th class="num">Daily Fibonacci</th><th class="num">Daily Camarilla</th><th class="num">Weekly Classic (${lat.weekly_pivots?.week_key || "Prev Wk"})</th></tr>
-            </thead>
-            <tbody>
-              ${["R3", "R2", "R1", "P", "S1", "S2", "S3"].map((lvl) => `
-                <tr ${lvl === "P" ? 'style="background:rgba(56,189,248,0.12);font-weight:700;"' : ""}>
-                  <td><b>${lvl === "P" ? "PIVOT (P)" : lvl}</b></td>
-                  <td class="num">${fmtNum(dp.classic[lvl])}</td>
-                  <td class="num">${fmtNum(dp.fibonacci[lvl])}</td>
-                  <td class="num">${fmtNum(dp.camarilla[lvl])}</td>
-                  <td class="num">${fmtNum(wp[lvl])}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table class="data-table compact-table">
+              <thead>
+                <tr><th>Level</th><th class="num">Daily Classic</th><th class="num">Daily Fibonacci</th><th class="num">Daily Camarilla</th><th class="num">Weekly Classic (${lat.weekly_pivots?.week_key || "Prev Wk"})</th></tr>
+              </thead>
+              <tbody>
+                ${["R3", "R2", "R1", "P", "S1", "S2", "S3"].map((lvl) => `
+                  <tr ${lvl === "P" ? 'style="background:rgba(56,189,248,0.12);font-weight:700;"' : ""}>
+                    <td><b>${lvl === "P" ? "PIVOT (P)" : lvl}</b></td>
+                    <td class="num">${fmtNum(dp.classic[lvl])}</td>
+                    <td class="num">${fmtNum(dp.fibonacci[lvl])}</td>
+                    <td class="num">${fmtNum(dp.camarilla[lvl])}</td>
+                    <td class="num">${fmtNum(wp[lvl])}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1742,6 +2056,7 @@ async function renderTechnicalView(container) {
 
 function openTickerDeepDive(sym) {
   const clean = (sym || "ATRL").toUpperCase().trim();
+  recordSymbolSearch(clean);
   state.technical.selectedSymbol = clean;
   state.analyst.symbol = clean;
   state.technical.subtab = "deep_dive";
@@ -1969,8 +2284,25 @@ async function renderSettingsView(container) {
   const data = await apiGet("/api/settings", false);
   const s = data.settings;
   const rules = data.rule_versions || [];
+  const cs = data.cloud_sync || {};
 
   container.innerHTML = `
+    <div class="card card-hero">
+      <div class="card-header">
+        <div>
+          <div class="card-title">☁ Zero-Cost Cloud Persistence Engine (Vercel + GitHub Auto-Sync)</div>
+          <div class="card-subtitle">Status: <b class="${cs.enabled ? "pos" : ""}">${cs.provider || "Local Mode"}</b> ${cs.repo ? `• Repo: <b>${cs.repo}</b> (${cs.branch})` : ""}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download latest_cloud_sync.db.gz</a>
+          <button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;">
+        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo so your daily data is permanently saved across all devices.
+      </div>
+    </div>
+
     <div class="grid-2">
       <div class="card">
         <div class="card-header">
@@ -2085,6 +2417,18 @@ async function createManualBackup() {
   renderSettingsView(document.getElementById("viewContainer"));
 }
 
+async function triggerCloudSyncNow() {
+  const res = await fetch("/api/cloud-sync/sync-now", { method: "POST" });
+  const out = await res.json();
+  if (out.pushed) {
+    showToast(`Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)})!`);
+  } else {
+    showToast(out.message || out.error || "Local .db.gz snapshot created.", !out.local_snapshot_updated);
+  }
+  if (state.currentView === "settings") renderSettingsView(document.getElementById("viewContainer"));
+  if (state.currentView === "import") renderImportCenter(document.getElementById("viewContainer"));
+}
+
 async function restoreBackup(zipFilename) {
   const res = await fetch("/api/backups/restore", {
     method: "POST",
@@ -2100,7 +2444,6 @@ async function restoreBackup(zipFilename) {
   }
 }
 
-// Navigation Event Listeners
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });

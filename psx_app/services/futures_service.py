@@ -8,14 +8,14 @@ from psx_app.database.schema import get_connection
 class FuturesService:
     """
     Module C — Futures Comparison and Annualized Analysis Service.
-    Provides all 7 logical views:
-      1. Monthly Comparison
-      2. Month Filter
-      3. Symbol Filter
-      4. Annualized Comparison
-      5. Date Filter
-      6. Future Symbol Summary
-      7. Date Summary
+    Provides all 7 logical views matching Futures_Analysis (3).xlsx:
+      1. Monthly Comparison (Selected Date + Days, sorted by Annualized % asc)
+      2. Month Filter (Selected Date + Days + Month/Contract, sorted by Annualized % asc)
+      3. Symbol Filter (ALL Dates for Selected Month/Contract + Symbol + Days, sorted by Date asc)
+      4. Annualized Comparison (Selected Date + Days, all symbols & contracts, sorted by Annualized % asc)
+      5. Date Filter (Selected Date + Days, full day comparison, sorted by Annualized % asc)
+      6. Future Symbol Summary (Symbol/Item across all retained dates, sorted by DATE asc)
+      7. Date Summary (Selected Date across all symbols, sorted by SYMBOL asc)
     Enforces strict same-date matching (never forward-filling missing data; returns 'N/A').
     """
 
@@ -24,10 +24,6 @@ class FuturesService:
         self.repo = Repository(db_path)
 
     def _get_rolling_cutoff_month(self, max_date_str: Optional[str], rolling_months: int = 2) -> Optional[str]:
-        """
-        Calculate the earliest retained YYYY-MM under the N-month rolling retention policy.
-        Example: if max_date is in 2026-10 and rolling_months=2, keep 2026-09 and 2026-10 (cutoff '2026-09-01').
-        """
         if not max_date_str or rolling_months <= 0:
             return None
         dt = datetime.strptime(max_date_str[:10], "%Y-%m-%d")
@@ -114,22 +110,25 @@ class FuturesService:
     ) -> Dict[str, Any]:
         if view_mode:
             view_name = view_mode
-        """
-        Compute comparison rows for views 1..5:
-        - monthly_comparison (filter by selected_date)
-        - month_filter (filter by selected_date + contract_month)
-        - symbol_filter (filter by selected_date + base_symbol, plus all-dates contract series for symbol)
-        - annualized_comparison (filter by selected_date, all symbols & contracts)
-        - date_filter (filter by selected_date)
-        All sorted by Annualized % ascending, with missing same-date values shown as 'N/A'.
-        """
+
         meta = self.get_metadata(apply_rolling=apply_rolling)
         eff_days = int(days) if (days is not None and int(days) > 0) else meta["default_days"]
-        sel_date = selected_date if selected_date else meta["latest_date"]
-        sel_contract = contract_month if contract_month else (meta["contracts"][0] if meta["contracts"] else None)
-        sel_symbol = base_symbol if base_symbol else ("OGDC" if "OGDC" in meta["base_symbols"] else (meta["base_symbols"][0] if meta["base_symbols"] else None))
+        cutoff = meta["cutoff_date"]
 
-        if not sel_date:
+        # Defaults matching legacy Futures_Analysis (3).xlsx
+        if view_name == "symbol_filter":
+            default_contract = "OCTB" if "OCTB" in meta["contracts"] else (meta["contracts"][0] if meta["contracts"] else None)
+            sel_contract = contract_month if contract_month else default_contract
+            sel_symbol = base_symbol if base_symbol else ("OGDC" if "OGDC" in meta["base_symbols"] else (meta["base_symbols"][0] if meta["base_symbols"] else None))
+            # In legacy Excel, Symbol Filter shows ALL retained dates by default unless a specific date is requested
+            sel_date = selected_date if selected_date else "ALL"
+        else:
+            default_contract = "OCT" if "OCT" in meta["contracts"] else (meta["contracts"][0] if meta["contracts"] else None)
+            sel_contract = contract_month if contract_month else default_contract
+            sel_symbol = base_symbol if base_symbol else ("OGDC" if "OGDC" in meta["base_symbols"] else (meta["base_symbols"][0] if meta["base_symbols"] else None))
+            sel_date = selected_date if selected_date else meta["latest_date"]
+
+        if not sel_date and not meta["latest_date"]:
             return {
                 "view": view_name,
                 "selected_date": None,
@@ -138,18 +137,34 @@ class FuturesService:
                 "metadata": meta,
             }
 
-        clauses = ["f.trade_date = ?"]
-        params: List[Any] = [sel_date]
+        clauses: List[str] = []
+        params: List[Any] = []
 
-        if view_name == "month_filter" and sel_contract and sel_contract != "ALL":
-            clauses.append("f.contract_month = ?")
-            params.append(sel_contract)
-        elif view_name == "symbol_filter" and sel_symbol and sel_symbol != "ALL":
-            clauses.append("f.base_symbol = ?")
-            params.append(sel_symbol)
+        # Date filtering: supports specific YYYY-MM-DD, 'ALL' (retained window), or 'ALL_HISTORY' (entire DB)
+        if sel_date == "ALL_HISTORY":
+            pass
+        elif sel_date == "ALL":
+            if cutoff:
+                clauses.append("f.trade_date >= ?")
+                params.append(cutoff)
+        else:
+            clauses.append("f.trade_date = ?")
+            params.append(sel_date)
 
-        where_sql = " AND ".join(clauses)
-        # Strict same-date LEFT JOIN: e.trade_date = f.trade_date AND e.symbol = f.base_symbol
+        # Contract/Month & Symbol filtering per view
+        if view_name == "month_filter":
+            if sel_contract and sel_contract != "ALL":
+                clauses.append("f.contract_month = ?")
+                params.append(sel_contract)
+        elif view_name == "symbol_filter":
+            if sel_contract and sel_contract != "ALL":
+                clauses.append("f.contract_month = ?")
+                params.append(sel_contract)
+            if sel_symbol and sel_symbol != "ALL":
+                clauses.append("f.base_symbol = ?")
+                params.append(sel_symbol)
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         sql = f"""
             SELECT
                 f.trade_date,
@@ -164,7 +179,7 @@ class FuturesService:
             FROM futures_ohlcv f
             LEFT JOIN equity_ohlcv e
                 ON e.trade_date = f.trade_date AND e.symbol = f.base_symbol
-            WHERE {where_sql}
+            {where_sql}
         """
 
         with get_connection(self.db_path) as c:
@@ -219,8 +234,13 @@ class FuturesService:
                     "_sort_key": ann_pct,
                 })
 
-        # Sort by Annualized % Ascending (lowest first, highest last; N/A at the end)
-        rows.sort(key=lambda r: (r["_sort_key"], r["symbol"], r["contract"]))
+        # In legacy Excel 'Symbol Filter' across all dates, rows are sorted by Date Ascending (then Annualized % asc)
+        if view_name == "symbol_filter" and sel_date in ("ALL", "ALL_HISTORY"):
+            rows.sort(key=lambda r: (r["trade_date"], r["_sort_key"], r["symbol"], r["contract"]))
+        else:
+            # Sort by Annualized % Ascending (lowest first, highest last; N/A at the end)
+            rows.sort(key=lambda r: (r["_sort_key"], r["trade_date"], r["symbol"], r["contract"]))
+
         for r in rows:
             r.pop("_sort_key", None)
 
@@ -250,16 +270,20 @@ class FuturesService:
         sel_sym = (
             contract_symbol.strip().upper()
             if contract_symbol
-            else (meta["contract_symbols"][0] if meta["contract_symbols"] else None)
+            else ("AGHA-OCT" if "AGHA-OCT" in meta["contract_symbols"] else (meta["contract_symbols"][0] if meta["contract_symbols"] else None))
         )
         cutoff = meta["cutoff_date"]
 
-        clauses = ["contract_symbol = ?"]
-        params: List[Any] = [sel_sym]
+        clauses: List[str] = []
+        params: List[Any] = []
+        if sel_sym and sel_sym != "ALL":
+            clauses.append("contract_symbol = ?")
+            params.append(sel_sym)
         if cutoff:
             clauses.append("trade_date >= ?")
             params.append(cutoff)
 
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with get_connection(self.db_path) as c:
             raw = [
                 dict(r)
@@ -267,8 +291,8 @@ class FuturesService:
                     f"""
                     SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume
                     FROM futures_ohlcv
-                    WHERE {' AND '.join(clauses)}
-                    ORDER BY trade_date ASC
+                    {where_sql}
+                    ORDER BY trade_date ASC, contract_symbol ASC
                     """,
                     params,
                 ).fetchall()
@@ -307,24 +331,37 @@ class FuturesService:
     ) -> Dict[str, Any]:
         """
         View 7: Date Summary.
-        Displays all available symbols and records from 2026F for the exact selected_date,
+        Displays all available symbols and records from 2026F for the exact selected_date (or ALL retained dates),
         sorted by SYMBOL ascending, with Change = CLOSE - PR_CL.
-        Never uses another date's data; if no records exist, returns empty list + explicit message.
         """
         meta = self.get_metadata(apply_rolling=apply_rolling)
         sel_date = selected_date if selected_date else meta["latest_date"]
+        cutoff = meta["cutoff_date"]
 
+        clauses: List[str] = []
+        params: List[Any] = []
+        if sel_date == "ALL_HISTORY":
+            pass
+        elif sel_date == "ALL":
+            if cutoff:
+                clauses.append("trade_date >= ?")
+                params.append(cutoff)
+        else:
+            clauses.append("trade_date = ?")
+            params.append(sel_date)
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with get_connection(self.db_path) as c:
             raw = [
                 dict(r)
                 for r in c.execute(
-                    """
+                    f"""
                     SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume
                     FROM futures_ohlcv
-                    WHERE trade_date = ?
-                    ORDER BY contract_symbol ASC
+                    {where_sql}
+                    ORDER BY contract_symbol ASC, trade_date ASC
                     """,
-                    (sel_date,),
+                    params,
                 ).fetchall()
             ]
 
@@ -365,7 +402,6 @@ class FuturesService:
         }
 
     def preview_rolling_retention(self, rolling_months: int = 2) -> Dict[str, Any]:
-        """Preview which months and record counts fall outside the rolling window before pruning."""
         with get_connection(self.db_path) as c:
             max_date = c.execute("SELECT MAX(trade_date) FROM futures_ohlcv").fetchone()[0]
             cutoff = self._get_rolling_cutoff_month(max_date, rolling_months)
