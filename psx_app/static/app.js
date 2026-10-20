@@ -820,25 +820,118 @@ async function renderImportCenter(container) {
   `;
 }
 
+function fmtBytes(n) {
+  if (!isFinite(n)) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = n, i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function _newUploadId() {
+  if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+  return `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`.replace(/[^a-zA-Z0-9-]/g, "").padEnd(12, "x");
+}
+
+async function _uploadOneChunk(file, uid, idx, total) {
+  const CHUNK = 3 * 1024 * 1024;
+  const blob = file.slice(idx * CHUNK, (idx + 1) * CHUNK);
+  const url = `/api/imports/upload-chunk?upload_id=${encodeURIComponent(uid)}&name=${encodeURIComponent(file.name)}&idx=${idx}&total=${total}`;
+  const res = await fetch(url, { method: "POST", body: blob });
+  if (!res.ok) {
+    let detail = `Chunk upload failed (HTTP ${res.status})`;
+    try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
+    let e = new Error(`Uploading "${file.name}" — ${detail}`);
+    e.fatal = true;
+    throw e;
+  }
+}
+
+async function uploadFilesChunked(filesArr, previewEl) {
+  const CHUNK = 3 * 1024 * 1024;
+  const uploads = [];
+  let totalChunks = 0;
+  const filesInfo = filesArr.map((f) => {
+    const plan = { file: f, uid: _newUploadId(), total: Math.max(1, Math.ceil(f.size / CHUNK)) };
+    totalChunks += plan.total;
+    uploads.push({ upload_id: plan.uid, name: f.name, total_chunks: plan.total });
+    return plan;
+  });
+  let sent = 0;
+  const MAX_ROUNDS = 3;
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    let missingOnly = null;
+    if (round > 0) {
+      // Ask the server which pieces it is still missing (covers instance switches).
+      const chk = await fetch("/api/imports/stage-chunked", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploads }),
+      });
+      if (chk.ok) return await chk.json();
+      if (chk.status === 409) {
+        try {
+          const ej = await chk.json();
+          const det = ej.detail || {};
+          missingOnly = {};
+          for (const u of det.uploads || []) for (const ix of u.missing || []) missingOnly[`${u.upload_id}:${ix}`] = true;
+        } catch (_) {}
+      } else {
+        let detail = `Staging failed (HTTP ${chk.status})`;
+        try { const ej = await chk.json(); detail = typeof ej.detail === "string" ? ej.detail : JSON.stringify(ej.detail); } catch (_) {}
+        throw new Error(detail);
+      }
+    }
+    for (const plan of filesInfo) {
+      for (let i = 0; i < plan.total; i++) {
+        const key = `${plan.uid}:${i}`;
+        if (missingOnly && !missingOnly[key]) continue;
+        sent += 1;
+        previewEl.innerHTML = `<div class="skeleton-card">Uploading <b>${plan.file.name}</b> piece ${i + 1}/${plan.total} (${sent} sent)...<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">Large files are automatically split into safe ~3 MB pieces for Vercel — no 4.5 MB limit problem.</div></div>`;
+        await _uploadOneChunk(plan.file, plan.uid, i, plan.total);
+      }
+    }
+  }
+  // Final assembly attempt
+  const res = await fetch("/api/imports/stage-chunked", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uploads }),
+  });
+  if (!res.ok) {
+    let detail = `Staging failed (HTTP ${res.status})`;
+    try { const ej = await res.json(); detail = typeof ej.detail === "string" ? ej.detail : JSON.stringify(ej.detail); } catch (_) {}
+    throw new Error(detail);
+  }
+  return await res.json();
+}
+
 async function handleStageFiles(fileList) {
   if (!fileList || fileList.length === 0) return;
   const previewEl = document.getElementById("stagedPreviewArea");
-  previewEl.innerHTML = `<div class="skeleton-card">Analyzing and staging ${fileList.length} file(s)...</div>`;
-
-  const fd = new FormData();
-  for (const f of fileList) fd.append("files", f);
+  const filesArr = [...fileList];
+  const totalBytes = filesArr.reduce((s, f) => s + f.size, 0);
+  previewEl.innerHTML = `<div class="skeleton-card">Analyzing and staging ${filesArr.length} file(s) (${fmtBytes(totalBytes)})...</div>`;
 
   try {
-    const res = await fetch("/api/imports/stage", { method: "POST", body: fd });
-    if (!res.ok) {
-      let detail = `Staging failed (HTTP ${res.status} ${res.statusText || ""})`;
-      try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
-      if (res.status === 413 || res.statusCode === 413) {
-        detail += " — File too large for cloud upload limit; on Vercel keep a single upload under ~4.5 MB (daily ticker/tradelog files are fine; upload big year-long workbooks once via GitHub instead).";
+    let manifest;
+    // Vercel rejects any single request body over ~4.5 MB. Whenever any file is
+    // near that limit, slice EVERY file into small pieces and upload chunk-by-chunk;
+    // the server reassembles them and produces the exact same staged manifest.
+    const needsChunking = filesArr.some((f) => f.size > 3 * 1024 * 1024);
+    if (needsChunking) {
+      manifest = await uploadFilesChunked(filesArr, previewEl);
+    } else {
+      const fd = new FormData();
+      for (const f of filesArr) fd.append("files", f);
+      const res = await fetch("/api/imports/stage", { method: "POST", body: fd });
+      if (!res.ok) {
+        let detail = `Staging failed (HTTP ${res.status} ${res.statusText || ""})`;
+        try { const ej = await res.json(); if (ej.detail) detail = ej.detail; } catch (_) {}
+        throw new Error(detail.trim());
       }
-      throw new Error(detail.trim());
+      manifest = await res.json();
     }
-    const manifest = await res.json();
     state.stagedBatch = manifest;
 
     previewEl.innerHTML = `

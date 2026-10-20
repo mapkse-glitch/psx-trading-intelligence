@@ -1,9 +1,11 @@
 import json
+import re
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
@@ -72,6 +74,16 @@ app.add_middleware(
 class CommitBatchRequest(BaseModel):
     batch_uuid: str
     allow_revisions: bool = True
+
+
+class ChunkedUploadEntry(BaseModel):
+    upload_id: str
+    name: str
+    total_chunks: int
+
+
+class ChunkedStageRequest(BaseModel):
+    uploads: List[ChunkedUploadEntry]
 
 
 class UpdateSettingsRequest(BaseModel):
@@ -204,6 +216,96 @@ async def api_stage_imports(files: List[UploadFile] = File(...)) -> Dict[str, An
     for f in files:
         content = await f.read()
         payload.append((f.filename or "upload.txt", content))
+    orch = ImportOrchestrator(DB_PATH, DATA_ROOT)
+    return orch.stage_uploaded_files(payload, source_label="Manual UI Upload")
+
+
+# ------------------------------------------------------------------
+# Chunked upload (bypasses Vercel's ~4.5 MB per-request body limit):
+# the browser slices large files into small pieces that are written to a
+# temporary chunk directory, then reassembled and staged server-side.
+# ------------------------------------------------------------------
+_CHUNK_ID_RE = re.compile(r"^[A-Za-z0-9_\-]{8,80}$")
+_MAX_CHUNK_BYTES = 4 * 1024 * 1024  # individual chunk must stay under the platform body limit
+_MAX_ASSEMBLED_BYTES = 512 * 1024 * 1024
+
+
+def _chunk_dir(upload_id: str) -> Path:
+    return DATA_ROOT / "data" / "staging" / "_chunks" / upload_id
+
+
+def _sweep_stale_chunks(max_age_seconds: int = 3 * 3600) -> None:
+    base = DATA_ROOT / "data" / "staging" / "_chunks"
+    if not base.exists():
+        return
+    now = datetime.now(timezone.utc).timestamp()
+    for d in base.iterdir():
+        try:
+            if d.is_dir() and now - d.stat().st_mtime > max_age_seconds:
+                shutil.rmtree(d, ignore_errors=True)
+        except OSError:
+            pass
+
+
+@app.post("/api/imports/upload-chunk")
+async def api_upload_chunk(request: Request) -> Dict[str, Any]:
+    upload_id = (request.query_params.get("upload_id") or "").strip()
+    name = Path(request.query_params.get("name") or "").name
+    try:
+        idx = int(request.query_params.get("idx", "-1"))
+        total = int(request.query_params.get("total", "0"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="idx/total must be integers.")
+    if not _CHUNK_ID_RE.match(upload_id):
+        raise HTTPException(status_code=400, detail="Invalid upload_id.")
+    if not name:
+        raise HTTPException(status_code=400, detail="Missing file name.")
+    if total < 1 or total > 2000 or idx < 0 or idx >= total:
+        raise HTTPException(status_code=400, detail="Invalid chunk coordinates (idx/total).")
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty chunk body.")
+    if len(body) > _MAX_CHUNK_BYTES:
+        raise HTTPException(status_code=413, detail=f"Chunk exceeds {_MAX_CHUNK_BYTES} bytes; the browser should slice smaller.")
+    d = _chunk_dir(upload_id)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{idx:06d}.part").write_bytes(body)
+    meta = {"name": name, "total": total, "updated_at": datetime.now(timezone.utc).isoformat()}
+    (d / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+    return {"stored": True, "idx": idx, "total": total, "name": name}
+
+
+@app.post("/api/imports/stage-chunked")
+def api_stage_chunked(req: ChunkedStageRequest) -> Dict[str, Any]:
+    if not req.uploads:
+        raise HTTPException(status_code=400, detail="No uploads provided.")
+    _sweep_stale_chunks()
+    payload = []
+    missing_report: List[Dict[str, Any]] = []
+    for entry in req.uploads:
+        if not _CHUNK_ID_RE.match(entry.upload_id):
+            raise HTTPException(status_code=400, detail=f"Invalid upload_id '{entry.upload_id}'.")
+        name = Path(entry.name).name
+        if not name:
+            raise HTTPException(status_code=400, detail="Missing file name in uploads entry.")
+        d = _chunk_dir(entry.upload_id)
+        parts = sorted(d.glob("*.part")) if d.exists() else []
+        have = {int(p.stem) for p in parts}
+        total = entry.total_chunks
+        missing = sorted(set(range(total)) - have)
+        if missing:
+            missing_report.append({"name": name, "upload_id": entry.upload_id, "missing": missing[:50]})
+            continue
+        total_size = sum(p.stat().st_size for p in parts)
+        if total_size > _MAX_ASSEMBLED_BYTES:
+            shutil.rmtree(d, ignore_errors=True)
+            raise HTTPException(status_code=413, detail=f"Assembled file '{name}' exceeds {_MAX_ASSEMBLED_BYTES // (1024*1024)} MB limit.")
+        assembled = b"".join((d / f"{i:06d}.part").read_bytes() for i in range(total))
+        payload.append((name, assembled))
+        shutil.rmtree(d, ignore_errors=True)
+    if missing_report:
+        # 409 Conflict: client should re-upload the missing chunk indexes, then retry.
+        raise HTTPException(status_code=409, detail={"message": "Some chunks are missing on this server instance. Re-upload the missing indexes and retry.", "uploads": missing_report})
     orch = ImportOrchestrator(DB_PATH, DATA_ROOT)
     return orch.stage_uploaded_files(payload, source_label="Manual UI Upload")
 

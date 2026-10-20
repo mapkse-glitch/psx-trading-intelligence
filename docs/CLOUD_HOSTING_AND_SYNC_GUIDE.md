@@ -88,3 +88,6 @@ If the Import Center shows **"⚠ Sync Issue: GitHub 403 Forbidden"**, your `GIT
 - **Every successful upload Commit automatically pushes** the fresh `latest_cloud_sync.db.gz` snapshot to GitHub — you never need to push manually.
 - The **"Push Snapshot to GitHub Now"** button is an **emergency-only** control: it is **hidden whenever auto-sync is healthy** and automatically **reappears in red** if a push ever fails (e.g. token issue). Success/failure state is persisted in the SQLite `sync_state` table, so the healthy state survives Vercel cold starts.
 - After fixing the token, the commit toast confirms: `✓ … auto-pushed to GitHub (abc1234)`.
+
+### Large files (previously HTTP 413 — fixed)
+Vercel rejects any single HTTP request body over ~4.5 MB. The Import Center now detects files near that limit and **automatically slices every file into ~3 MB pieces**, uploads them one at a time, and the server reassembles them before staging — so file size is no longer a problem for daily uploads from the cloud UI. Pieces are validated (missing-piece recovery is built in — if a piece lands on a different server instance, the browser re-sends just the missing pieces automatically) and temporary chunk folders are cleaned after assembly and swept after 3 hours.
