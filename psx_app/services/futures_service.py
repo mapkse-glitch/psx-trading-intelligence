@@ -98,6 +98,30 @@ class FuturesService:
             "contract_symbols": contract_symbols,
         }
 
+    # ------------------------------------------------------------------
+    # Calendar-style free date selection:
+    # The user may pick ANY date (calendar input, same as typing a value into the
+    # Excel filter cells). If the chosen date is not an available trading day in
+    # the active window, resolve to the nearest available trading day <= selected
+    # (or the earliest available day if everything is later), and report both the
+    # requested and resolved dates so the UI can show exactly what is displayed.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _resolve_selected_date(sel_date: Optional[str], pool_dates: List[str]):
+        if not sel_date or sel_date in ("ALL", "ALL_HISTORY"):
+            return sel_date, sel_date, False
+        try:
+            datetime.strptime(sel_date, "%Y-%m-%d")
+        except Exception:
+            return None, sel_date, True
+        pool = sorted(pool_dates or [])
+        if sel_date in pool:
+            return sel_date, sel_date, False
+        le = [d for d in pool if d <= sel_date]
+        if le:
+            return le[-1], sel_date, True
+        return (pool[0] if pool else None), sel_date, True
+
     def get_comparison_rows(
         self,
         view_name: str = "monthly_comparison",
@@ -136,6 +160,13 @@ class FuturesService:
                 "rows": [],
                 "metadata": meta,
             }
+
+        # Resolve any free calendar-picked date to the nearest available trading day
+        requested_date = sel_date
+        date_was_resolved = False
+        if sel_date not in ("ALL", "ALL_HISTORY", None):
+            date_pool = meta.get("dates") or meta.get("retained_dates") or []
+            sel_date, requested_date, date_was_resolved = self._resolve_selected_date(sel_date, date_pool)
 
         clauses: List[str] = []
         params: List[Any] = []
@@ -247,6 +278,8 @@ class FuturesService:
         return {
             "view": view_name,
             "selected_date": sel_date,
+            "requested_date": requested_date,
+            "date_was_resolved": date_was_resolved,
             "selected_contract": sel_contract,
             "selected_symbol": sel_symbol,
             "days": eff_days,
@@ -338,6 +371,13 @@ class FuturesService:
         sel_date = selected_date if selected_date else meta["latest_date"]
         cutoff = meta["cutoff_date"]
 
+        # Resolve any free calendar-picked date to the nearest available trading day
+        requested_date = sel_date
+        date_was_resolved = False
+        if sel_date not in ("ALL", "ALL_HISTORY", None):
+            date_pool = meta.get("dates") or meta.get("retained_dates") or []
+            sel_date, requested_date, date_was_resolved = self._resolve_selected_date(sel_date, date_pool)
+
         clauses: List[str] = []
         params: List[Any] = []
         if sel_date == "ALL_HISTORY":
@@ -386,6 +426,8 @@ class FuturesService:
         return {
             "view": "date_summary",
             "selected_date": sel_date,
+            "requested_date": requested_date,
+            "date_was_resolved": date_was_resolved,
             "rows_count": len(rows),
             "no_data_message": None if rows else "No data available for this date.",
             "message": None if rows else "No data available for this date.",

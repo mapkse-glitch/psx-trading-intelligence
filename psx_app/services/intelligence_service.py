@@ -322,6 +322,20 @@ class IntelligenceService:
             macd_s = it.get("macd_sig") or 0.0
             macd_h = it.get("macd_hist") or 0.0
 
+            ema9_v = float(it.get("ema9") or 0.0)
+            trend_state = (
+                "Bullish stack (EMA 9 > 21 > 50)"
+                if ema9_v >= e21 >= e50
+                else ("Bearish stack (EMA 9 < 21 < 50)" if ema9_v <= e21 <= e50 else "Mixed / transitioning MAs")
+            )
+            momentum_state = (
+                f"{'Rising' if macd_h > 0 else 'Fading'} (MACD Hist {macd_h:+.3f})"
+            )
+            if is_bullish:
+                invalidation = f"Below {stop_loss:.2f} PKR — daily pivot support S1={s1:.2f} / EMA-21={e21:.2f} zone."
+            else:
+                invalidation = f"Above {stop_loss:.2f} PKR — daily pivot resistance R1={r1:.2f} / EMA-21={e21:.2f} zone."
+
             tech_reasons = [
                 f"Composite Score {score:+d}/9 ({sig['combined_signal']}) with Wilder RSI(14) at {rsi:.2f} ({it['rsi_zone']}).",
                 f"Price ({c_price:.2f} PKR) vs EMA stack: EMA9={it.get('ema9') or 0:.2f}, EMA21={e21:.2f}, EMA50={e50:.2f}.",
@@ -364,6 +378,13 @@ class IntelligenceService:
                 "risk_per_share": round(risk, 2),
                 "risk_reward_t1": f"{rr_t1:.2f} : 1",
                 "risk_reward_t2": f"{rr_t2:.2f} : 1",
+                "rsi14": round(rsi, 1),
+                "adx14": round(adx, 1),
+                "volume_ratio": round(vol_ratio, 2),
+                "trend_state": trend_state,
+                "momentum_state": momentum_state,
+                "weekly_pivot_p": round(float(wp.get("P") or 0.0), 2),
+                "invalidation": invalidation,
                 "technical_why": tech_reasons,
                 "fundamental_why": liq_notes,
             })
@@ -375,15 +396,9 @@ class IntelligenceService:
             st["rank"] = idx
 
         target_label = custom_query.strip().upper() or scope_or_sector
-        prompt_template = (
-            f"Scan today's market and generate 5 high-probability trading setups for {target_label}. "
-            f"Include entry price, exit targets, stop-loss, and risk/reward ratio. "
-            f"Explain why each setup works based on technical and fundamental factors."
-        )
 
         return {
             "target_label": target_label,
-            "prompt_used": prompt_template,
             "candidates_scanned": len(filtered),
             "setups_count": len(top_setups),
             "setups": top_setups,
@@ -553,11 +568,32 @@ class IntelligenceService:
             },
         ]
 
-        prompt_template = (
-            f"Analyze {intended_action} on {sym} using daily and weekly charts. "
-            f"Break down support/resistance levels, trend lines, moving averages, and momentum indicators. "
-            f"Provide a step-by-step trading signal (Buy/Hold/Sell) with justification."
-        )
+        bullish_mas = sum(1 for m in ma_list if "Above" in m["status"])
+        macd_h2 = float(lat.get("macd_hist") or 0.0)
+        structure_snapshot = {
+            "weekly_trend": weekly_trend,
+            "price_vs_daily_pivot": "ABOVE Daily Pivot" if c_val >= dp["P"] else "BELOW Daily Pivot",
+            "ma_alignment": f"{bullish_mas}/{len(ma_list)} MAs Bullish",
+            "rsi_zone": f"RSI {float(lat.get('rsi14') or 0):.1f} — {lat['rsi_zone']}",
+            "adx_strength": f"ADX {float(lat.get('adx14') or 0):.1f} ({'Trending' if float(lat.get('adx14') or 0) >= 20 else 'Weak/Range'})",
+            "macd_momentum": f"{'Rising' if macd_h2 > 0 else 'Fading'} (Hist {macd_h2:+.3f})",
+        }
+
+        key_levels = {
+            "daily_pivot": round(float(dp["P"]), 2),
+            "r1": round(float(dp["R1"]), 2),
+            "r2": round(float(dp["R2"]), 2),
+            "r3": round(float(dp["R3"]), 2) if dp.get("R3") is not None else None,
+            "s1": round(float(dp["S1"]), 2),
+            "s2": round(float(dp["S2"]), 2),
+            "s3": round(float(dp["S3"]), 2) if dp.get("S3") is not None else None,
+            "weekly_pivot": round(float(wp.get("P") or 0.0), 2),
+            "swing_high_20d": round(swing_high_20, 2),
+            "swing_low_20d": round(swing_low_20, 2),
+            "regression_center": round(reg_now, 2),
+            "upper_channel": round(upper_trendline, 2),
+            "lower_channel": round(lower_trendline, 2),
+        }
 
         return {
             "symbol": sym,
@@ -565,7 +601,8 @@ class IntelligenceService:
             "sector": sec_info["sector"],
             "fundamental_summary": sec_info["fundamental"],
             "intended_action": intended_action,
-            "prompt_used": prompt_template,
+            "structure_snapshot": structure_snapshot,
+            "key_levels": key_levels,
             "latest": lat,
             "trend_line": {
                 "period_days": n20,

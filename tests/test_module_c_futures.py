@@ -60,10 +60,13 @@ def test_futures_summaries_and_rolling_window():
     syms = [r["SYMBOL"] for r in date_sum["rows"]]
     assert syms == sorted(syms)
 
-    # Non-existent date returns empty rows with message
-    empty_sum = svc.get_date_summary("2026-12-31", apply_rolling=True)
-    assert empty_sum["rows_count"] == 0
-    assert empty_sum["message"] == "No data available for this date."
+    # Calendar-picked non-trading dates resolve to the nearest earlier trading day
+    # (with explicit requested/resolved flags surfaced to the UI)
+    resolved = svc.get_date_summary("2026-12-31", apply_rolling=True)
+    assert resolved["rows_count"] == 98
+    assert resolved["requested_date"] == "2026-12-31"
+    assert resolved["date_was_resolved"] is True
+    assert resolved["selected_date"] == "2026-10-16"
 
     prev = svc.preview_rolling_window_cleanup(months=2)
     assert prev["cutoff_date"] == "2026-09-01"

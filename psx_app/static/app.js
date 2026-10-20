@@ -224,13 +224,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
           </div>
           <div class="card-subtitle">Scans today's PSX market (${ideasRes.candidates_scanned} candidates analyzed) combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-secondary" onclick="copyTextToClipboard(${JSON.stringify(ideasRes.prompt_used).replace(/"/g, "&quot;")}, 'Trading Ideas Prompt')">📋 Copy Prompt</button>
-        </div>
-      </div>
-
-      <div class="prompt-quote-box">
-        “Scan today's market and generate 5 high-probability trading setups for <b>[${ideasRes.target_label}]</b>. Include entry price, exit targets, stop-loss, and risk/reward ratio. Explain why each setup works based on technical and fundamental factors.”
+        <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data"}</span>
       </div>
 
       <div class="filter-bar" style="margin-bottom:14px;">
@@ -287,6 +281,15 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
                 <div class="setup-price-cell"><span>R/R (T2)</span><b>${st.risk_reward_t2}</b></div>
               </div>
 
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+                <span class="badge badge-blue" title="Wilder RSI(14)">RSI ${st.rsi14}</span>
+                <span class="badge badge-blue" title="Average Directional Index — trend strength">ADX ${st.adx14}</span>
+                <span class="badge ${st.trend_state.startsWith("Bullish") ? "badge-green" : (st.trend_state.startsWith("Bearish") ? "badge-red" : "badge-blue")}" title="EMA 9 / 21 / 50 alignment">${st.trend_state}</span>
+                <span class="badge ${st.momentum_state.startsWith("Rising") ? "badge-green" : "badge-red"}" title="MACD histogram momentum">${st.momentum_state}</span>
+                <span class="badge badge-blue" title="Session volume vs 20-day average">Vol ${st.volume_ratio}× avg</span>
+              </div>
+              <div style="font-size:11.4px;color:#fcd34d;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;"><b>⚠ Invalidation:</b> ${st.invalidation}</div>
+
               <div style="font-size:11.6px;color:#cbd5e1;">
                 <b style="color:var(--accent-blue);">Why It Works — Technical Factors:</b>
                 <ul style="padding-left:16px;margin-top:3px;">
@@ -327,14 +330,10 @@ function buildAutomatedAnalystCardHtml(analystRes) {
           </div>
           <div class="card-subtitle">Multi-timeframe Daily + Weekly chart analysis, Linear Regression Trend Lines, Support/Resistance, Moving Averages &amp; Momentum</div>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-secondary" onclick="copyTextToClipboard(${JSON.stringify(analystRes.prompt_used || "").replace(/"/g, "&quot;")}, 'Analyst Prompt')">📋 Copy Prompt</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-green" title="Computed directly from daily &amp; weekly OHLCV, Wilder RSI, MACD, Bollinger, EMA stack, ADX and pivot data — no external AI/prompts involved.">Pure Data &amp; Analysis</span>
           <button class="btn btn-primary" onclick="openTickerDeepDive('${analystRes.symbol}')">📈 Open Interactive Chart →</button>
         </div>
-      </div>
-
-      <div class="prompt-quote-box">
-        “Analyze <b>[${analystRes.intended_action} — ${analystRes.display_label}]</b> using daily and weekly charts. Break down support/resistance levels, trend lines, moving averages, and momentum indicators. Provide a step-by-step trading signal (Buy/Hold/Sell) with justification.”
       </div>
 
       <div class="filter-bar" style="margin-bottom:14px;">
@@ -380,6 +379,20 @@ function buildAutomatedAnalystCardHtml(analystRes) {
         </div>
       </div>
 
+      ${(() => {
+        const ss = analystRes.structure_snapshot || {};
+        return `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
+          ${[
+            [ss.weekly_trend, ss.weekly_trend && ss.weekly_trend.startsWith("BULLISH") ? "badge-green" : (ss.weekly_trend && ss.weekly_trend.startsWith("BEARISH") ? "badge-red" : "badge-blue")],
+            [ss.price_vs_daily_pivot, ss.price_vs_daily_pivot && ss.price_vs_daily_pivot.startsWith("ABOVE") ? "badge-green" : "badge-red"],
+            [ss.ma_alignment, ss.ma_alignment && parseInt(ss.ma_alignment) >= 5 ? "badge-green" : "badge-blue"],
+            [ss.rsi_zone, "badge-blue"],
+            [ss.adx_strength, "badge-blue"],
+            [ss.macd_momentum, ss.macd_momentum && ss.macd_momentum.startsWith("Rising") ? "badge-green" : "badge-red"],
+          ].filter(x => x[0]).map(([txt, cls]) => `<span class="badge ${cls}">${txt}</span>`).join("")}
+        </div>`;
+      })()}
+
       <div class="grid-2" style="margin-bottom:0;">
         <div class="step-list">
           ${(analystRes.step_by_step_analysis || []).map((st) => `
@@ -394,6 +407,31 @@ function buildAutomatedAnalystCardHtml(analystRes) {
         </div>
 
         <div style="display:flex;flex-direction:column;gap:12px;">
+          ${(() => {
+            const kl = analystRes.key_levels || {};
+            const lvl = (name, v, role, tone) => v == null ? "" : `<tr><td>${name}</td><td class="num"><b>${fmtNum(v)}</b></td><td><span class="badge ${tone}">${role}</span></td></tr>`;
+            return `<div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Key Levels Map (${analystRes.symbol})</th><th class="num">Price (PKR)</th><th>Role</th></tr></thead>
+              <tbody>
+                ${lvl("Upper Channel Resistance", kl.upper_channel, "Trend Limit", "badge-blue")}
+                ${lvl("Swing High (20D)", kl.swing_high_20d, "Major Resistance", "badge-red")}
+                ${lvl("Daily R3", kl.r3, "Resistance", "badge-red")}
+                ${lvl("Daily R2", kl.r2, "Resistance", "badge-red")}
+                ${lvl("Daily R1", kl.r1, "Resistance", "badge-red")}
+                ${lvl("Regression Center (20D)", kl.regression_center, "Fair Value", "badge-blue")}
+                ${lvl("Daily Pivot (P)", kl.daily_pivot, "Balance Point", "badge-blue")}
+                ${lvl("Weekly Pivot (W-P)", kl.weekly_pivot, "Weekly Balance", "badge-blue")}
+                ${lvl("Daily S1", kl.s1, "Support", "badge-green")}
+                ${lvl("Daily S2", kl.s2, "Support", "badge-green")}
+                ${lvl("Daily S3", kl.s3, "Support", "badge-green")}
+                ${lvl("Swing Low (20D)", kl.swing_low_20d, "Major Support", "badge-green")}
+                ${lvl("Lower Channel Support", kl.lower_channel, "Trend Limit", "badge-blue")}
+              </tbody>
+            </table>
+          </div>`;
+          })()}
+
           <div class="table-wrap">
             <table class="data-table">
               <thead>
@@ -1735,31 +1773,23 @@ function openAccountDateDetail(accountId, tradeDate) {
 // 06. MODULE C: FUTURES COMPARISON & ANNUALIZED ANALYSIS
 // Separate per-sheet filter bars matching Futures_Analysis (3).xlsx 100%
 // ============================================================================
-function buildDateSelectOptions(availDates, allDatesInDb, selectedVal) {
-  const rev = availDates.slice().reverse();
-  return `
-    <option value="ALL" ${selectedVal === "ALL" ? "selected" : ""}>★ ALL RETAINED DATES (${availDates[0] || ""} → ${availDates[availDates.length - 1] || ""})</option>
-    <option value="ALL_HISTORY" ${selectedVal === "ALL_HISTORY" ? "selected" : ""}>★ ALL DATES FROM START (${allDatesInDb[0] || ""} → ${allDatesInDb[allDatesInDb.length - 1] || ""})</option>
-    ${rev.map((d) => `<option value="${d}" ${d === selectedVal ? "selected" : ""}>${d}</option>`).join("")}
-  `;
-}
 
 async function renderFuturesView(container) {
   const f = state.futures;
   const meta = await apiGet(`/api/futures/metadata?apply_rolling=${f.apply_rolling}`);
   f.meta = meta;
   const availDates = meta.dates || meta.retained_dates || [];
-  const allDatesInDb = meta.all_dates_in_db || availDates;
   const latestDate = meta.latest_date || "2026-10-16";
 
+  // Exact Excel sheet names from Futures_Analysis (3).xlsx — 7 sheets + one app extra policy tab
   const subtabs = [
-    ["monthly_comparison", "1. Monthly Comparison"],
-    ["month_filter", "2. Month Filter"],
-    ["symbol_filter", "3. Symbol Filter"],
-    ["annualized_comparison", "4. Annualized Comparison"],
-    ["date_filter", "5. Date Filter"],
-    ["future_symbol_summary", "6. Future Symbol Summary"],
-    ["date_summary", "7. Date Summary"],
+    ["monthly_comparison", "Monthly Comparison"],
+    ["month_filter", "Month Filter"],
+    ["symbol_filter", "Symbol Filter"],
+    ["annualized_comparison", "Annualized Comparison"],
+    ["date_filter", "Date Filter"],
+    ["future_symbol_summary", "Future Symbol Summary"],
+    ["date_summary", "Date Summary"],
     ["rolling_window", "2-Month Rolling Retention"],
   ];
 
@@ -1771,6 +1801,35 @@ async function renderFuturesView(container) {
       <a class="btn btn-primary" href="/api/exports/generate/futures_xlsx?selected_date=${latestDate}&selected_contract=${f.month_filter.contract_month}&selected_symbol=${f.symbol_filter.base_symbol}&days=${f.monthly_comparison.days}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
     </div>
   `;
+
+  // Calendar-type date filter — a free date input exactly like typing a value into the
+  // Excel workbook's "Selected Date:" filter cell. If the picked date is not a trading
+  // day, the server returns the nearest earlier trading day and this UI says so.
+  const dateCtrl = (tabKey, st) => {
+    const val = st.selected_date;
+    const isAll = !/^\d{4}-\d{2}-\d{2}$/.test(val || "");
+    const shown = isAll ? latestDate : val;
+    return `
+      <div class="filter-group" title="Calendar date filter — pick ANY date of your choice (same as typing a date into this sheet's 'Selected Date:' cell in the Excel workbook). If your date is not a trading day, the app automatically shows the nearest earlier trading day available in the active 2-month window.">
+        <label>Selected Date:</label>
+        <input type="date" value="${shown}" min="2025-01-01" style="font-weight:700;" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.selected_date=this.value||'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+      </div>
+      <div class="filter-group">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;" title="The Excel sheets show the single selected date; tick this only if you want the full 2-month retained window returned instead.">
+          <input type="checkbox" ${isAll ? "checked" : ""} onchange="state.futures.${tabKey}.selected_date=this.checked?'ALL':'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+          All retained 2-month dates
+        </label>
+      </div>
+    `;
+  };
+  const daysCtrl = (tabKey, st) => `
+      <div class="filter-group" title="Same as this sheet's 'Days:' filter cell in Excel (default 30).">
+        <label>Days:</label>
+        <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.${tabKey}.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
+      </div>`;
+  const resolvedNote = (res) => res.date_was_resolved && res.requested_date
+    ? ` <span class="badge" style="background:#f59e0b;color:#111827;" title="${res.requested_date} is not a trading day in the active window">Picked ${res.requested_date} → showing nearest trading day ${res.selected_date}</span>`
+    : "";
 
   if (f.subtab === "monthly_comparison") {
     const st = f.monthly_comparison;
@@ -1784,23 +1843,15 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 1 FILTERS</span>
-        <div class="filter-group">
-          <label>Selected Date:</label>
-          <select onchange="state.futures.monthly_comparison.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Days:</label>
-          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.monthly_comparison.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-        </div>
+        <span class="badge badge-blue">FILTERS — same as 'Monthly Comparison' sheet cells C4 / F4</span>
+        ${dateCtrl("monthly_comparison", st)}
+        ${daysCtrl("monthly_comparison", st)}
         ${exportBtnHtml}
       </div>
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTHLY COMPARISON — FUTURES vs CURRENT",
-      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "month_filter") {
@@ -1816,18 +1867,10 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 2 FILTERS</span>
-        <div class="filter-group">
-          <label>Selected Date:</label>
-          <select onchange="state.futures.month_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Days:</label>
-          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.month_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-        </div>
-        <div class="filter-group">
+        <span class="badge badge-blue">FILTERS — same as 'Month Filter' sheet cells C4 / F4 / I4</span>
+        ${dateCtrl("month_filter", st)}
+        ${daysCtrl("month_filter", st)}
+        <div class="filter-group" title="Same as this sheet's 'Month/Contract:' filter cell in Excel (e.g. OCT).">
           <label>Month/Contract:</label>
           <select onchange="state.futures.month_filter.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.contract_month === "ALL" ? "selected" : ""}>ALL CONTRACTS</option>
@@ -1839,7 +1882,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTH / CONTRACT FILTER",
-      `Selected Date: ${st.selected_date} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "symbol_filter") {
@@ -1856,26 +1899,23 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-green">SHEET 3 FILTERS (EXCEL MATCH)</span>
-        <div class="filter-group">
+        <span class="badge badge-blue">FILTERS — same as 'Symbol Filter' sheet cells C4 / F4 / I4</span>
+        <div class="filter-group" title="Same as this sheet's 'Month/Contract:' filter cell in Excel (e.g. OCTB).">
           <label>Month/Contract:</label>
           <select onchange="state.futures.symbol_filter.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.contract_month === "ALL" ? "selected" : ""}>ALL CONTRACTS</option>
             ${(meta.contracts || []).map((c) => `<option value="${c}" ${c === st.contract_month ? "selected" : ""}>${c}</option>`).join("")}
           </select>
         </div>
-        <div class="filter-group">
-          <label>Days:</label>
-          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.symbol_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-        </div>
-        <div class="filter-group">
+        ${daysCtrl("symbol_filter", st)}
+        <div class="filter-group" title="Same as this sheet's 'Symbol:' filter cell in Excel (e.g. OGDC).">
           <label>Symbol:</label>
           <select onchange="state.futures.symbol_filter.base_symbol=this.value;recordSymbolSearch(this.value);renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.base_symbol === "ALL" ? "selected" : ""}>ALL SYMBOLS</option>
-            ${(meta.base_symbols || []).map((s) => `<option value="${s}" ${s === st.base_symbol ? "selected" : ""}>${s}</option>`).join("")}
+            ${(meta.base_symbols || []).map((s2) => `<option value="${s2}" ${s2 === st.base_symbol ? "selected" : ""}>${s2}</option>`).join("")}
           </select>
         </div>
-        <div class="filter-group">
+        <div class="filter-group" title="Excel shows ALL dates for the selected Month/Contract &amp; Symbol by default; you can narrow it here.">
           <label>Date Scope:</label>
           <select onchange="state.futures.symbol_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.selected_date === "ALL" ? "selected" : ""}>All Retained Dates (Excel Default)</option>
@@ -1903,23 +1943,15 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 4 FILTERS</span>
-        <div class="filter-group">
-          <label>Selected Date:</label>
-          <select onchange="state.futures.annualized_comparison.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Days:</label>
-          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.annualized_comparison.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-        </div>
+        <span class="badge badge-blue">FILTERS — same as 'Annualized Comparison' sheet cells C4 / F4</span>
+        ${dateCtrl("annualized_comparison", st)}
+        ${daysCtrl("annualized_comparison", st)}
         ${exportBtnHtml}
       </div>
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS",
-      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "date_filter") {
@@ -1934,23 +1966,15 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 5 FILTERS</span>
-        <div class="filter-group">
-          <label>Selected Date:</label>
-          <select onchange="state.futures.date_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Days:</label>
-          <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.date_filter.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
-        </div>
+        <span class="badge badge-blue">FILTERS — same as 'Date Filter' sheet cells C4 / F4</span>
+        ${dateCtrl("date_filter", st)}
+        ${daysCtrl("date_filter", st)}
         ${exportBtnHtml}
       </div>
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "DATE FILTER — FULL DAY COMPARISON",
-      `Selected Date: ${st.selected_date} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "future_symbol_summary") {
@@ -1959,8 +1983,8 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 6 FILTERS</span>
-        <div class="filter-group">
+        <span class="badge badge-blue">FILTERS — same as 'Future Symbol Summary' sheet cell C4</span>
+        <div class="filter-group" title="Same as this sheet's 'Symbol / Item:' filter cell in Excel (e.g. AGHA-OCT).">
           <label>Symbol / Item:</label>
           <select onchange="state.futures.future_symbol_summary.contract_symbol=this.value;renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.contract_symbol === "ALL" ? "selected" : ""}>ALL CONTRACT SYMBOLS</option>
@@ -1988,13 +2012,12 @@ async function renderFuturesView(container) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>DATE</th><th>SYMBOL</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
+              <tr><th>DATE</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
               ${res.rows.map((r) => `
                 <tr>
                   <td><b>${r.DATE}</b></td>
-                  <td><span class="badge badge-blue">${r.SYMBOL}</span></td>
                   <td class="num">${fmtNum(r.PR_CL)}</td>
                   <td class="num">${fmtNum(r.OPEN)}</td>
                   <td class="num">${fmtNum(r.High)}</td>
@@ -2016,13 +2039,8 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">SHEET 7 FILTERS</span>
-        <div class="filter-group">
-          <label>Selected Date:</label>
-          <select onchange="state.futures.date_summary.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            ${buildDateSelectOptions(availDates, allDatesInDb, st.selected_date)}
-          </select>
-        </div>
+        <span class="badge badge-blue">FILTERS — same as 'Date Summary' sheet cell C4</span>
+        ${dateCtrl("date_summary", st)}
         ${exportBtnHtml}
       </div>
     `;
@@ -2031,7 +2049,7 @@ async function renderFuturesView(container) {
         <div class="card-header">
           <div>
             <div class="card-title">DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE (2026F)</div>
-            <div class="card-subtitle">Selected Date: <b>${res.selected_date}</b> (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-subtitle">Selected Date: <b>${res.selected_date}</b>${resolvedNote(res)} (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
