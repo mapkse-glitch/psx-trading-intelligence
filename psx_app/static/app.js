@@ -102,6 +102,19 @@ function fmtNum(v, decimals = 2) {
   });
 }
 
+// Global display format for calendar dates across the whole dashboard: DD-MM-YYYY
+// (e.g. 22-09-2026) — matches the Excel workbooks. Timestamps render as "DD-MM-YYYY HH:MM".
+function fmtDate(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const s = String(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+  let out = `${m[3]}-${m[2]}-${m[1]}`;
+  const tm = s.slice(10).replace("T", "").trim();
+  if (tm) out += " " + tm.slice(0, 5);
+  return out;
+}
+
 function fmtInt(v) {
   if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "N/A";
   return Math.round(Number(v)).toLocaleString("en-US");
@@ -224,7 +237,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
           </div>
           <div class="card-subtitle">Scans today's PSX market (${ideasRes.candidates_scanned} candidates analyzed) combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
         </div>
-        <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data"}</span>
+        <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${fmtDate(ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data")}</span>
       </div>
 
       <div class="filter-bar" style="margin-bottom:14px;">
@@ -710,7 +723,7 @@ async function renderOverview(container) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Module C • Futures Spread &amp; Annualized % (${data.futures_highlights.selected_date})</div>
+            <div class="card-title">Module C • Futures Spread &amp; Annualized % (${fmtDate(data.futures_highlights.selected_date)})</div>
             <div class="card-subtitle">Sorted by Annualized % Ascending (Days = 30)</div>
           </div>
           <button class="btn btn-secondary" onclick="switchView('futures')">Futures Analysis →</button>
@@ -836,7 +849,7 @@ async function renderImportCenter(container) {
                   ${(b.filenames || []).slice(0, 2).join(", ") || "—"}${(b.filenames || []).length > 2 ? ` <span style="color:var(--accent-blue);">+${(b.filenames || []).length - 2} more</span>` : ""}
                 </td>
                 <td><b>${b.source_label}</b></td>
-                <td>${(b.committed_at || b.created_at || "").replace("T", " ").slice(0, 19)}</td>
+                <td>${fmtDate(b.committed_at || b.created_at || "")}</td>
                 <td class="num">${b.files_count}</td>
                 <td class="num">${fmtInt(b.rows_read)}</td>
                 <td class="num pos">${fmtInt(b.new_records)}</td>
@@ -1135,7 +1148,7 @@ async function renderTop5View(container) {
         <label>To Date:</label>
         <input type="date" id="top5EndInput" value="${f.end_date}" onchange="state.top5Filter.end_date_manual=true;updateTop5Filter()" />
         <span class="badge ${f.end_date_manual ? "badge-amber" : "badge-green"}" style="font-size:10px;" title="Latest date available in the database: ${latestAvailable}.${f.end_date_manual ? " You pinned a custom end date — click Reset to return to automatic latest-date tracking." : " Auto-tracking the latest available date."}">
-          ${f.end_date_manual ? `Pinned (latest: ${latestAvailable})` : `Auto → Latest: ${latestAvailable}`}
+          ${f.end_date_manual ? `Pinned (latest: ${fmtDate(latestAvailable)})` : `Auto → Latest: ${fmtDate(latestAvailable)}`}
         </span>
         ${f.end_date_manual ? `<button class="btn btn-secondary" style="padding:3px 8px;font-size:10.5px;" title="Return To Date to the latest available data (${latestAvailable})" onclick="resetTop5EndToLatest()">↺ Reset to Latest</button>` : ""}
       </div>
@@ -1153,7 +1166,7 @@ async function renderTop5View(container) {
       <div class="card-header">
         <div>
           <div class="card-title">${trendData.ticker} — Top 5 Volume &amp; Rank-1 Rate Trend (${trendData.trading_days} Trading Sessions)</div>
-          <div class="card-subtitle">Chronological progression across imported trading dates • Latest available data: ${latestAvailable || "N/A"}</div>
+          <div class="card-subtitle">Chronological progression across imported trading dates • Latest available data: ${latestAvailable ? fmtDate(latestAvailable) : "N/A"}</div>
         </div>
       </div>
       ${renderTop5SvgChart(trendData.trend)}
@@ -1163,7 +1176,7 @@ async function renderTop5View(container) {
       <div class="card-header">
         <div>
           <div class="card-title">Top 5 Volume &amp; Rate Register Blocks (${data.blocks_count} Ticker-Date Blocks • ${data.total_rows} Rows)</div>
-          <div class="card-subtitle">Date Header Format: MM/DD/YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
+          <div class="card-subtitle">Date Header Format: DD-MM-YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:14px;">
@@ -1250,7 +1263,7 @@ function renderTop5SvgChart(trend) {
     const x = padL + i * stepX;
     const bh = (d.top5_total_volume / maxVol) * plotH;
     const y = padT + plotH - bh;
-    return `<rect x="${x - 4}" y="${y}" width="8" height="${bh}" fill="rgba(56,189,248,0.35)" rx="2"><title>${d.mmddyyyy}: Top 5 Vol=${fmtInt(d.top5_total_volume)}, Rank1 Rate=${fmtNum(d.rank1_rate)}</title></rect>`;
+    return `<rect x="${x - 4}" y="${y}" width="8" height="${bh}" fill="rgba(56,189,248,0.35)" rx="2"><title>${fmtDate(d.trade_date)}: Top 5 Vol=${fmtInt(d.top5_total_volume)}, Rank1 Rate=${fmtNum(d.rank1_rate)}</title></rect>`;
   }).join("");
 
   const pts = trend.map((d, i) => {
@@ -1265,8 +1278,8 @@ function renderTop5SvgChart(trend) {
       <polyline fill="none" stroke="#10b981" stroke-width="2.2" points="${pts}" />
       <text x="${padL}" y="14" fill="#38bdf8" font-size="10">Bars: Top 5 Total Volume (Max ${fmtInt(maxVol)})</text>
       <text x="${w - 230}" y="14" fill="#10b981" font-size="10">Line: Rank 1 Rate (${fmtNum(minRate)} – ${fmtNum(maxRate)} PKR)</text>
-      <text x="${padL}" y="${h - 8}" fill="#94a3b8" font-size="10">${trend[0].mmddyyyy}</text>
-      <text x="${w - padR - 55}" y="${h - 8}" fill="#94a3b8" font-size="10">${trend[trend.length - 1].mmddyyyy}</text>
+      <text x="${padL}" y="${h - 8}" fill="#94a3b8" font-size="10">${fmtDate(trend[0].trade_date)}</text>
+      <text x="${w - padR - 55}" y="${h - 8}" fill="#94a3b8" font-size="10">${fmtDate(trend[trend.length - 1].trade_date)}</text>
     </svg>
   `;
 }
@@ -1285,7 +1298,7 @@ async function renderAccountView(container, accountId) {
   const tabs = [
     ["dashboard", "Dashboard"],
     ["daily_summary", `Daily Summary (${tDates.length}d)`],
-    ["daily_detail", `Daily Detail (${rep.selected_date})`],
+    ["daily_detail", `Daily Detail (${fmtDate(rep.selected_date)})`],
     ["mtd_qtd_ytd", "MTD / QTD / YTD"],
     ["monthly_yearly", "Monthly & Yearly Summary"],
     ["symbol_perf", `Symbol Performance (${rep.symbol_performance.length})`],
@@ -1365,7 +1378,7 @@ async function renderAccountView(container, accountId) {
             <tbody>
               ${rows.map((r) => `
                 <tr style="cursor:pointer" title="Click to open the full Daily Trade Summary for ${r.trade_date}" onclick="openAccountDateDetail('${accountId}', '${r.trade_date}')">
-                  <td><b>${r.trade_date}</b></td>
+                  <td><b>${fmtDate(r.trade_date)}</b></td>
                   <td style="max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.symbols_str || ""}"><b>${r.symbols_count || 0}</b> <span style="color:var(--text-muted);font-size:10.5px;">${r.symbols_str || "—"}</span></td>
                   <td class="num">${fmtInt(r.buy_qty)}</td>
                   <td class="num">${fmtInt(r.sell_qty)}</td>
@@ -1413,7 +1426,7 @@ async function renderAccountView(container, accountId) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Daily Trade Summary — ${det.trade_date} (Account ${accountId})</div>
+            <div class="card-title">Daily Trade Summary — ${fmtDate(det.trade_date)} (Account ${accountId})</div>
             <div class="card-subtitle">Symbol-by-symbol weighted averages, Slab 1 / Slab 2 commission, 13% SST, and Net P&amp;L</div>
           </div>
           <div class="filter-group">
@@ -1511,7 +1524,7 @@ async function renderAccountView(container, accountId) {
             <tbody>
               ${(b.daily_rows || []).map((r) => `
                 <tr>
-                  <td><b>${r.trade_date}</b></td>
+                  <td><b>${fmtDate(r.trade_date)}</b></td>
                   <td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.symbols_str || ""}"><b>${r.symbols_count || 0}</b> <span style="color:var(--text-muted);font-size:10.5px;">${r.symbols_str || "—"}</span></td>
                   <td class="num">${fmtInt(r.buy_qty)}</td>
                   <td class="num">${fmtInt(r.sell_qty)}</td>
@@ -1676,7 +1689,7 @@ async function renderAccountView(container, accountId) {
                 <tr class="total-row">
                   <td class="num">—</td>
                   <td><b>TOTAL</b></td>
-                  <td style="font-size:11px;">${sTot.first_date || "—"} → ${sTot.last_date || "—"}</td>
+                  <td style="font-size:11px;">${fmtDate(sTot.first_date) || "—"} → ${fmtDate(sTot.last_date) || "—"}</td>
                   <td class="num">${sTot.trading_days}</td>
                   <td class="num">${fmtInt(sTot.buy_qty)}</td>
                   <td class="num">${fmtInt(sTot.sell_qty)}</td>
@@ -1713,7 +1726,7 @@ async function renderAccountView(container, accountId) {
               <tbody>
                 ${rep.trade_log.map((ex) => `
                   <tr>
-                    <td>${ex.trade_date}</td><td>${ex.trade_time}</td><td><b>${ex.symbol}</b></td><td>${ex.market_type}</td>
+                    <td>${fmtDate(ex.trade_date)}</td><td>${ex.trade_time}</td><td><b>${ex.symbol}</b></td><td>${ex.market_type}</td>
                     <td>${ex.raw_side}</td>
                     <td><span class="badge ${ex.normalized_side === "BUY" ? "badge-green" : "badge-red"}">${ex.normalized_side}</span></td>
                     <td class="num">${ex.order_id}</td><td class="num">${ex.execution_id}</td>
@@ -1828,7 +1841,7 @@ async function renderFuturesView(container) {
         <input type="number" min="1" max="365" value="${st.days}" style="width:74px;" onchange="state.futures.${tabKey}.days=Number(this.value)||30;renderFuturesView(document.getElementById('viewContainer'))" />
       </div>`;
   const resolvedNote = (res) => res.date_was_resolved && res.requested_date
-    ? ` <span class="badge" style="background:#f59e0b;color:#111827;" title="${res.requested_date} is not a trading day in the active window">Picked ${res.requested_date} → showing nearest trading day ${res.selected_date}</span>`
+    ? ` <span class="badge" style="background:#f59e0b;color:#111827;" title="${res.requested_date} is not a trading day in the active window">Picked ${fmtDate(res.requested_date)} → showing nearest trading day ${fmtDate(res.selected_date)}</span>`
     : "";
 
   if (f.subtab === "monthly_comparison") {
@@ -1843,7 +1856,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Monthly Comparison' sheet cells C4 / F4</span>
         ${dateCtrl("monthly_comparison", st)}
         ${daysCtrl("monthly_comparison", st)}
         ${exportBtnHtml}
@@ -1851,7 +1863,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTHLY COMPARISON — FUTURES vs CURRENT",
-      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "month_filter") {
@@ -1867,7 +1879,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Month Filter' sheet cells C4 / F4 / I4</span>
         ${dateCtrl("month_filter", st)}
         ${daysCtrl("month_filter", st)}
         <div class="filter-group" title="Same as this sheet's 'Month/Contract:' filter cell in Excel (e.g. OCT).">
@@ -1882,14 +1893,15 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTH / CONTRACT FILTER",
-      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "symbol_filter") {
     const st = f.symbol_filter;
+    st.selected_date = "ALL";
     const qs = new URLSearchParams({
       view_mode: "symbol_filter",
-      selected_date: st.selected_date,
+      selected_date: "ALL",
       contract_month: st.contract_month,
       base_symbol: st.base_symbol,
       days: String(st.days),
@@ -1899,7 +1911,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Symbol Filter' sheet cells C4 / F4 / I4</span>
         <div class="filter-group" title="Same as this sheet's 'Month/Contract:' filter cell in Excel (e.g. OCTB).">
           <label>Month/Contract:</label>
           <select onchange="state.futures.symbol_filter.contract_month=this.value;renderFuturesView(document.getElementById('viewContainer'))">
@@ -1913,14 +1924,6 @@ async function renderFuturesView(container) {
           <select onchange="state.futures.symbol_filter.base_symbol=this.value;recordSymbolSearch(this.value);renderFuturesView(document.getElementById('viewContainer'))">
             <option value="ALL" ${st.base_symbol === "ALL" ? "selected" : ""}>ALL SYMBOLS</option>
             ${(meta.base_symbols || []).map((s2) => `<option value="${s2}" ${s2 === st.base_symbol ? "selected" : ""}>${s2}</option>`).join("")}
-          </select>
-        </div>
-        <div class="filter-group" title="Excel shows ALL dates for the selected Month/Contract &amp; Symbol by default; you can narrow it here.">
-          <label>Date Scope:</label>
-          <select onchange="state.futures.symbol_filter.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">
-            <option value="ALL" ${st.selected_date === "ALL" ? "selected" : ""}>All Retained Dates (Excel Default)</option>
-            <option value="ALL_HISTORY" ${st.selected_date === "ALL_HISTORY" ? "selected" : ""}>All Dates From Start (Aug–Oct)</option>
-            ${availDates.slice().reverse().map((d) => `<option value="${d}" ${d === st.selected_date ? "selected" : ""}>Single Date: ${d}</option>`).join("")}
           </select>
         </div>
         ${exportBtnHtml}
@@ -1943,7 +1946,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Annualized Comparison' sheet cells C4 / F4</span>
         ${dateCtrl("annualized_comparison", st)}
         ${daysCtrl("annualized_comparison", st)}
         ${exportBtnHtml}
@@ -1951,7 +1953,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS",
-      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "date_filter") {
@@ -1966,7 +1968,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Date Filter' sheet cells C4 / F4</span>
         ${dateCtrl("date_filter", st)}
         ${daysCtrl("date_filter", st)}
         ${exportBtnHtml}
@@ -1974,7 +1975,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "DATE FILTER — FULL DAY COMPARISON",
-      `Selected Date: ${comp.selected_date}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "future_symbol_summary") {
@@ -1983,7 +1984,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Future Symbol Summary' sheet cell C4</span>
         <div class="filter-group" title="Same as this sheet's 'Symbol / Item:' filter cell in Excel (e.g. AGHA-OCT).">
           <label>Symbol / Item:</label>
           <select onchange="state.futures.future_symbol_summary.contract_symbol=this.value;renderFuturesView(document.getElementById('viewContainer'))">
@@ -2017,7 +2017,7 @@ async function renderFuturesView(container) {
             <tbody>
               ${res.rows.map((r) => `
                 <tr>
-                  <td><b>${r.DATE}</b></td>
+                  <td><b>${fmtDate(r.DATE)}</b></td>
                   <td class="num">${fmtNum(r.PR_CL)}</td>
                   <td class="num">${fmtNum(r.OPEN)}</td>
                   <td class="num">${fmtNum(r.High)}</td>
@@ -2039,7 +2039,6 @@ async function renderFuturesView(container) {
 
     filterBarHtml = `
       <div class="filter-bar">
-        <span class="badge badge-blue">FILTERS — same as 'Date Summary' sheet cell C4</span>
         ${dateCtrl("date_summary", st)}
         ${exportBtnHtml}
       </div>
@@ -2049,7 +2048,7 @@ async function renderFuturesView(container) {
         <div class="card-header">
           <div>
             <div class="card-title">DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE (2026F)</div>
-            <div class="card-subtitle">Selected Date: <b>${res.selected_date}</b>${resolvedNote(res)} (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-subtitle">Selected Date: <b>${fmtDate(res.selected_date)}</b>${resolvedNote(res)} (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -2060,7 +2059,7 @@ async function renderFuturesView(container) {
             <tbody>
               ${res.rows.map((r) => `
                 <tr>
-                  <td>${r.DATE}</td>
+                  <td>${fmtDate(r.DATE)}</td>
                   <td><b>${r.SYMBOL}</b></td>
                   <td class="num">${fmtNum(r.PR_CL)}</td>
                   <td class="num">${fmtNum(r.OPEN)}</td>
@@ -2096,8 +2095,8 @@ async function renderFuturesView(container) {
       <div class="card">
         <div class="card-header"><div class="card-title">2-Month Rolling Data Retention Policy Preview</div></div>
         <div class="grid-4">
-          <div class="kpi-box"><div class="kpi-label">Latest Date in Dataset</div><div class="kpi-value">${prev.latest_date}</div></div>
-          <div class="kpi-box"><div class="kpi-label">2-Month Cutoff Date</div><div class="kpi-value">${prev.cutoff_date}</div></div>
+          <div class="kpi-box"><div class="kpi-label">Latest Date in Dataset</div><div class="kpi-value">${fmtDate(prev.latest_date)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">2-Month Cutoff Date</div><div class="kpi-value">${fmtDate(prev.cutoff_date)}</div></div>
           <div class="kpi-box"><div class="kpi-label">Active Retained Futures Rows</div><div class="kpi-value pos">${fmtInt(prev.futures_rows_retained_in_active_window)}</div></div>
           <div class="kpi-box"><div class="kpi-label">Older Futures Rows (August)</div><div class="kpi-value">${fmtInt(prev.futures_rows_older_than_cutoff)}</div></div>
         </div>
@@ -2140,7 +2139,7 @@ function renderFuturesComparisonTableCard(title, subtitle, rows) {
           <tbody>
             ${rows.map((r) => `
               <tr>
-                <td><b>${r.trade_date}</b></td>
+                <td><b>${fmtDate(r.trade_date)}</b></td>
                 <td><b>${r.symbol}</b></td>
                 <td><span class="badge badge-blue">${r.contract}</span></td>
                 <td class="num">${fmtNum(r.current_value)}</td>
@@ -2296,7 +2295,7 @@ async function renderTechnicalView(container) {
 
       <div class="grid-4">
         <div class="kpi-box">
-          <div class="kpi-label">${res.display_label} • Last Close (${lat.latest_date})</div>
+          <div class="kpi-label">${res.display_label} • Last Close (${fmtDate(lat.latest_date)})</div>
           <div class="kpi-value">${fmtNum(lat.close)} PKR</div>
           <div class="kpi-sub ${pnlClass(lat.change_pct)}">Day Change: ${fmtNum(lat.change_val)} (${fmtPct(lat.change_pct, false)})</div>
         </div>
@@ -2321,7 +2320,7 @@ async function renderTechnicalView(container) {
         <div class="card-header">
           <div>
             <div class="card-title">${res.display_label} — Price, Bollinger Bands (20,2), EMA 9/21/50 &amp; Wilder RSI(14) Chart</div>
-            <div class="card-subtitle">Last ${res.series.length} sessions (${res.series[0]?.trade_date} → ${lat.latest_date}) • No future-data leakage</div>
+            <div class="card-subtitle">Last ${res.series.length} sessions (${fmtDate(res.series[0]?.trade_date)} → ${fmtDate(lat.latest_date)}) • No future-data leakage</div>
           </div>
         </div>
         ${renderTechnicalSvgChart(res.series)}
@@ -2530,7 +2529,7 @@ async function renderReconciliationView(container) {
             <tbody>
               ${dq.unmatched_futures_contracts.items.map((u) => `
                 <tr>
-                  <td>${u.trade_date}</td><td><b>${u.contract_symbol}</b></td><td>${u.base_symbol}</td><td>${u.contract_month}</td>
+                  <td>${fmtDate(u.trade_date)}</td><td><b>${u.contract_symbol}</b></td><td>${u.base_symbol}</td><td>${u.contract_month}</td>
                   <td class="num">${fmtNum(u.future_close)}</td><td><span class="badge badge-amber">N/A (No Same-Date Cash Row)</span></td>
                 </tr>
               `).join("")}
@@ -2552,7 +2551,7 @@ async function renderReconciliationView(container) {
             <tbody>
               ${dq.indicator_history_checks.tickers_under_26_bars.map((t) => `
                 <tr>
-                  <td><b>${t.symbol}</b></td><td class="num">${t.bars_count}</td><td>${t.first_date}</td><td>${t.last_date}</td>
+                  <td><b>${t.symbol}</b></td><td class="num">${t.bars_count}</td><td>${fmtDate(t.first_date)}</td><td>${fmtDate(t.last_date)}</td>
                   <td><span class="badge badge-amber">&lt; 26 Bars (Insufficient for MACD)</span></td>
                 </tr>
               `).join("")}
@@ -2711,7 +2710,7 @@ async function renderSettingsView(container) {
               ${data.backups.map((b) => `
                 <tr>
                   <td><b>${b.zip_filename}</b><br><span style="color:var(--text-muted);font-size:10.5px;">SHA256: ${(b.db_sha256 || "").slice(0, 16)}...</span></td>
-                  <td>${(b.created_at || "").replace("T", " ").slice(0, 19)}</td>
+                  <td>${fmtDate(b.created_at || "")}</td>
                   <td class="num">${fmtInt(b.zip_size_bytes)} B</td>
                   <td><span class="badge ${b.integrity_ok ? "badge-green" : "badge-red"}">${b.integrity_ok ? "VERIFIED" : "ERR"}</span></td>
                   <td>
@@ -2744,7 +2743,7 @@ async function renderSettingsView(container) {
                   <td><span class="badge badge-blue">v${r.version}</span></td>
                   <td><b>${r.rule_name}</b></td>
                   <td>${r.effective_from}</td>
-                  <td>${(r.created_at || "").replace("T", " ").slice(0, 19)}</td>
+                  <td>${fmtDate(r.created_at || "")}</td>
                   <td style="font-family:var(--font-mono);font-size:11px;">${r.parameters_json}</td>
                 </tr>
               `).join("")}

@@ -77,11 +77,12 @@ class Top5Service:
             key = f"{r['ticker']}|{r['trade_date']}"
             if key not in blocks_map:
                 mmddyyyy = datetime.strptime(r["trade_date"], "%Y-%m-%d").strftime("%m/%d/%Y")
+                ddmmyyyy = datetime.strptime(r["trade_date"], "%Y-%m-%d").strftime("%d-%m-%Y")
                 blocks_map[key] = {
                     "ticker": r["ticker"],
                     "trade_date": r["trade_date"],
                     "mmddyyyy": mmddyyyy,
-                    "title": f"{r['ticker']} — Top 5 Volume Trades ({mmddyyyy})",
+                    "title": f"{r['ticker']} — Top 5 Volume Trades ({ddmmyyyy})",
                     "max_volume": 0,
                     "rows": [],
                 }

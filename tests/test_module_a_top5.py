@@ -68,7 +68,7 @@ def test_top5_service_and_legacy_excel_export():
     reg = svc.get_register(ticker="ATRL", start_date="2026-10-16", end_date="2026-10-16")
     assert reg["blocks_count"] == 1
     blk = reg["date_blocks"][0]
-    assert blk["title"] == "ATRL — Top 5 Volume Trades (10/16/2026)"
+    assert blk["title"] == "ATRL — Top 5 Volume Trades (16-10-2026)"
     assert len(blk["rows"]) == 5
 
     exp = ExportService()
