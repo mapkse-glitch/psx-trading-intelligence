@@ -227,11 +227,17 @@ def test_synthetic_import_is_idempotent(fresh_db,tmp_path):
     with get_connection(fresh_db) as c:assert c.execute('SELECT COUNT(*) FROM top5_volume_records').fetchone()[0]==1
 
 
-def test_public_repository_sync_is_refused(fresh_db,monkeypatch):
+def test_public_repository_sync_remains_supported(fresh_db,monkeypatch):
     svc=CloudSyncService(fresh_db);svc.token='test-token';svc.repo='public/repo'
-    monkeypatch.setattr(svc,'_gh_request',lambda *args,**kwargs:{'private':False})
-    with pytest.raises(RuntimeError,match='private GitHub'):
-        svc.assert_current_base()
+    def public_remote(method,endpoint,payload=None):
+        if endpoint == "": return {"private":False}
+        if endpoint.startswith('/git/ref/'): return {'object':{'sha':'head'}}
+        if endpoint.startswith('/git/commits/'): return {'tree':{'sha':'tree'}}
+        if endpoint.startswith('/git/trees/'): return {'tree':[{'path':svc.REMOTE_FILE_PATH,'sha':'blob'}]}
+        raise AssertionError(endpoint)
+    monkeypatch.setattr(svc,'_gh_request',public_remote)
+    svc._save_base(initialized=True,blob='blob',pending=False,repo=svc.repo,branch=svc.branch)
+    assert svc.assert_current_base()==('head','tree','blob')
 
 
 def test_date_repair_requires_review_and_rejects_stale_plan(fresh_db,tmp_path):

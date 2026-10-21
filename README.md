@@ -1,4 +1,4 @@
-# PSX Intelligence 1.3.1 — no login
+# PSX Intelligence 1.3.2 — no login, restored public-repository sync
 
 This version removes the unrequested password and sign-in system. The dashboard opens directly. No owner password, session secret, account creation or sign-out step is required. Existing PSX_ADMIN_PASSWORD / PSX_SESSION_SECRET / PSX_AUTH_DISABLED environment variables are ignored and may be removed from your hosting settings.
 
@@ -8,7 +8,7 @@ This version removes the unrequested password and sign-in system. The dashboard 
 2. Extract this ZIP. Upload its **contents** into the existing repository root, replacing matching source files—not the ZIP itself and not an extra enclosing folder.
 3. **Preserve the existing `latest_cloud_sync.db.gz` exactly. Do not delete or overwrite it.** This is a source-only release: databases, raw uploads, backups and credentials are intentionally excluded.
 4. Commit and redeploy the existing Vercel project. Open the site: the dashboard should appear immediately. No new password variables are needed.
-5. Keep the existing GitHub sync configuration (`GITHUB_SYNC_REPO`, `GITHUB_SYNC_BRANCH`, `GITHUB_SYNC_TOKEN`) if you use cloud persistence. The sync repository must remain private. GitHub integration credentials are separate from the removed dashboard login.
+5. Keep the existing GitHub sync configuration (`GITHUB_SYNC_REPO`, `GITHUB_SYNC_BRANCH`, `GITHUB_SYNC_TOKEN`) if you use cloud persistence. Existing public or private repositories are supported. A private repository is recommended for confidential snapshots but is not required for sync. GitHub integration credentials are separate from the removed dashboard login.
 
 Read [deployment and recovery](docs/DEPLOY_1_3.md). Password-free access means anyone who can reach the deployed site can view account data, download data and invoke data-changing actions. A private GitHub repository does **not** make the Vercel website private. Same-origin browser checks are request hygiene, not access control.
 
@@ -37,6 +37,6 @@ pip install -r requirements.txt
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. No login is needed. `PSX_DATA_DIR` chooses local runtime storage; default `./psx_data`. Local launchers are also included. A source-only checkout begins empty unless restored, imported, or hydrated from your configured private repository.
+Open http://127.0.0.1:8000. No login is needed. `PSX_DATA_DIR` chooses local runtime storage; default `./psx_data`. Local launchers are also included. A source-only checkout begins empty unless restored, imported, or hydrated from your configured GitHub repository.
 
 See [changes](docs/RELEASE_1_3.md), [verification](docs/TESTING_1_3.md) and [design rationale](docs/DESIGN_1_3.md). No zero-defect guarantee or live Vercel deployment claim is made.

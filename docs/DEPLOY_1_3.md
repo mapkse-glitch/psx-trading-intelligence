@@ -1,4 +1,4 @@
-# Deployment & recovery — 1.3.1 (password-free)
+# Deployment & recovery — 1.3.2 (password-free)
 
 ## Upload checklist
 
@@ -11,9 +11,9 @@
 
 ## Existing cloud persistence
 
-Keep `GITHUB_SYNC_REPO=owner/repository`, the correct `GITHUB_SYNC_BRANCH` (usually main), and `GITHUB_SYNC_TOKEN` if cloud sync is in use. The token is an integration credential kept only in hosting environment settings—not a dashboard password. Use a fine-grained token restricted to the selected private repository with Contents Read and Write. No token is included in this archive.
+Keep `GITHUB_SYNC_REPO=owner/repository`, the correct `GITHUB_SYNC_BRANCH` (usually main), and `GITHUB_SYNC_TOKEN` if cloud sync is in use. The token is an integration credential kept only in hosting environment settings—not a dashboard password. Use a fine-grained token restricted to the selected repository with Contents Read and Write. No token is included in this archive.
 
-The sync repository must be private. This does not restrict access to the hosted website: this release deliberately has **no application authentication**, per the user's request. Anyone with network access to the website can view financial data, export/download it, upload files and invoke changes. Origin checks reduce ordinary cross-site browser requests but do not stop direct API clients. Password-free access is not a security boundary.
+Public and private sync repositories are supported. Private visibility is recommended when the snapshot contains confidential data, but it is not a functional requirement. Repository visibility also does not restrict access to the hosted website: this release deliberately has **no application authentication**, per the user's request. Anyone with network access to the website can view financial data, export/download it, upload files and invoke changes. Origin checks reduce ordinary cross-site browser requests but do not stop direct API clients. Password-free access is not a security boundary.
 
 Vercel's `/tmp/psx_data` storage is temporary. Only a confirmed GitHub snapshot push counts as a cloud save. Preserve independent downloads. Stale workers reject changes rather than blindly overwriting newer remote snapshots. Use one writer at a time; GitHub snapshots are not a multi-writer transactional database.
 

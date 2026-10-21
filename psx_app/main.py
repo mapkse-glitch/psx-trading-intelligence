@@ -55,7 +55,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.1",
+    version="1.3.2",
     lifespan=lifespan,
 )
 
@@ -121,7 +121,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.0",
+        "version": "1.3.2",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -799,7 +799,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.0", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.2", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 

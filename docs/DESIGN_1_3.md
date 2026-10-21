@@ -1,4 +1,4 @@
-# Interface design rationale — 1.3.1
+# Interface design rationale — 1.3.2
 
 The goal is easier scanning, not manipulating perception or implying certainty.
 

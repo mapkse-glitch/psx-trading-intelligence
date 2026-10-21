@@ -1,6 +1,6 @@
-# Verification — 1.3.1 no-login release
+# Verification — 1.3.2 compatibility correction
 
-The authentication tests from 1.3.0 were removed because that feature was explicitly removed, not silently bypassed. New regressions check direct access without password/session variables, serverless read access without login, absence of the login form and session cookies, password-free local mutation, retained rejection of ordinary cross-origin browser mutations, and retained settings validation.
+The authentication tests from 1.3.0 were removed because that feature was explicitly removed, not silently bypassed. New regressions check direct access without password/session variables, serverless read access without login, absence of the login form and session cookies, password-free local mutation, retained rejection of ordinary cross-origin browser mutations, retained settings validation, and successful cloud-baseline validation for a public GitHub repository.
 
 Run portable tests from a clean checkout:
 

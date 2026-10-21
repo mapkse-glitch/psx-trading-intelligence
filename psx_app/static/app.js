@@ -631,7 +631,7 @@ async function renderImportCenter(container) {
         </div>
       </div>
       <div style="font-size:12px;color:var(--text-main);">
-        <b>Where your uploaded data is saved:</b> Commit writes to the active SQLite database, then attempts a verified save to your <b>private</b> GitHub repository. Check the returned cloud-save status; a local commit is not proof of a remote save. On Vercel, local data, staged uploads and local backup archives are temporary. Download an independent snapshot after important changes. A stale worker is blocked rather than allowed to overwrite newer cloud data.
+        <b>Where your uploaded data is saved:</b> Commit writes to the active SQLite database, then attempts a verified save to your configured GitHub repository. Check the returned cloud-save status; a local commit is not proof of a remote save. On Vercel, local data, staged uploads and local backup archives are temporary. Download an independent snapshot after important changes. A stale worker is blocked rather than allowed to overwrite newer cloud data.
 
       </div>
     </div>
@@ -2452,7 +2452,7 @@ async function renderSettingsView(container) {
         </div>
       </div>
       <div style="font-size:12px;color:var(--text-main);">
-        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo after a confirmed cloud save. Local files on Vercel are temporary; keep an independent downloaded backup. The repository must be private.
+        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo after a confirmed cloud save. Local files on Vercel are temporary; keep an independent downloaded backup. Public and private repositories are supported; private is recommended when the snapshot contains confidential data.
       </div>
     </div>
 

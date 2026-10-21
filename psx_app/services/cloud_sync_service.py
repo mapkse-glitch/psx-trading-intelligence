@@ -59,9 +59,10 @@ class CloudSyncService:
         os.replace(temp, self.base_file)
 
     def _remote_head(self):
-        info = self._gh_request("GET", "")
-        if info.get("private") is not True:
-            raise RuntimeError("Cloud sync requires a private GitHub repository. Make this repository private before syncing financial data.")
+        # Read repository metadata to verify that the configured token can see
+        # the repository.  Public and private repositories are both supported.
+        # Visibility is a deployment/privacy choice, not a sync prerequisite.
+        self._gh_request("GET", "")
         ref = self._gh_request("GET", f"/git/ref/heads/{self.branch}")
         head = ref["object"]["sha"]
         commit = self._gh_request("GET", f"/git/commits/{head}")
