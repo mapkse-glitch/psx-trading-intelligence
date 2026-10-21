@@ -35,58 +35,14 @@ def add_market(db):
         c.commit()
 
 
-def owner_client(monkeypatch):
-    monkeypatch.delenv('PSX_AUTH_DISABLED', raising=False)
-    monkeypatch.setenv('PSX_ADMIN_PASSWORD', 'test-only-long-password')
-    monkeypatch.setenv('PSX_SESSION_SECRET', 'test-only-signing-key-' + 'x'*40)
-    return TestClient(app)
 
 
-def test_auth_fail_closed_and_private_endpoints(monkeypatch):
-    monkeypatch.delenv('PSX_AUTH_DISABLED', raising=False)
-    monkeypatch.delenv('PSX_ADMIN_PASSWORD', raising=False)
-    monkeypatch.delenv('PSX_SESSION_SECRET', raising=False)
-    client = TestClient(app)
-    assert client.get('/').status_code == 200
-    assert client.get('/api/auth/status').json()['configured'] is False
-    for path in ['/api/accounts/91404','/api/settings','/api/health','/api/cloud-sync/download-snapshot','/api/exports/generate/futures_xlsx','/openapi.json','/docs']:
-        assert client.get(path).status_code == 401, path
-    assert client.post('/api/auth/login', json={'password':'anything'}).status_code == 503
 
 
-def test_login_csrf_logout_and_cookie_flags(monkeypatch):
-    client = owner_client(monkeypatch)
-    assert client.post('/api/auth/login', json={'password':'incorrect'}).status_code == 401
-    login = client.post('/api/auth/login', json={'password':'test-only-long-password','remember':True})
-    assert login.status_code == 200
-    assert 'HttpOnly' in login.headers['set-cookie']
-    assert 'SameSite=strict' in login.headers['set-cookie']
-    assert 'Max-Age=604800' in login.headers['set-cookie']
-    status = client.get('/api/auth/status').json()
-    assert status['authenticated'] and status['csrf']
-    assert client.get('/api/settings').status_code == 200
-    assert client.post('/api/backups/create',json={}).status_code == 403
-    assert client.post('/api/settings',json={'updates':{}},headers={'X-PSX-CSRF':status['csrf'], 'Origin':'https://evil.example'}).status_code == 403
-    assert client.post('/api/auth/logout',headers={'X-PSX-CSRF':status['csrf']}).status_code == 200
-    assert client.get('/api/settings').status_code == 401
 
 
-def test_serverless_cannot_enable_local_auth_bypass(monkeypatch):
-    monkeypatch.setenv('VERCEL','1')
-    monkeypatch.setenv('PSX_AUTH_DISABLED','1')
-    monkeypatch.delenv('PSX_ADMIN_PASSWORD',raising=False)
-    assert TestClient(app).get('/api/settings').status_code == 401
 
 
-def test_auth_cookie_tamper_expiry_and_cross_origin(monkeypatch):
-    client = owner_client(monkeypatch)
-    assert client.post('/api/auth/login',json={'password':'test-only-long-password'}, headers={'Origin':'https://evil.example'}).status_code == 403
-    from psx_app.security import COOKIE, sign
-    payload=base64.urlsafe_b64encode(json.dumps({'exp':1,'csrf':'bad'}).encode()).decode()
-    client.cookies.set(COOKIE,payload+'.'+sign(payload))
-    assert client.get('/api/settings').status_code == 401
-    client.cookies.set(COOKIE,payload+'.'+'0'*64)
-    assert client.get('/api/settings').status_code == 401
 
 
 class FakeGit:
@@ -353,11 +309,29 @@ def test_setup_context_is_same_date_and_most_liquid(fresh_db,monkeypatch):
     assert '123 shares' in ' '.join(matched['fundamental_why'])
 
 
-def test_https_cookie_and_malformed_login(monkeypatch):
-    owner_client(monkeypatch)
-    client=TestClient(app,base_url='https://testserver')
-    assert client.post('/api/auth/login',json=[]).status_code==400
-    response=client.post('/api/auth/login',json={'password':'test-only-long-password','remember':True})
-    assert response.status_code==200
-    assert 'Secure' in response.headers['set-cookie']
-    assert client.get('/api/settings').status_code==200
+
+
+def test_dashboard_opens_without_password_or_session(monkeypatch):
+    for key in ['PSX_ADMIN_PASSWORD','PSX_SESSION_SECRET','PSX_AUTH_DISABLED']:
+        monkeypatch.delenv(key,raising=False)
+    client=TestClient(app)
+    page=client.get('/')
+    assert page.status_code==200 and 'ownerPassword' not in page.text and 'Sign out' not in page.text
+    for path in ['/api/overview','/api/accounts/91404','/api/settings','/openapi.json']:
+        assert client.get(path).status_code==200,path
+    assert client.get('/api/auth/status').status_code==404
+    assert 'set-cookie' not in page.headers
+
+
+def test_password_free_serverless_read_access(monkeypatch):
+    monkeypatch.setenv('VERCEL','1')
+    monkeypatch.delenv('PSX_ADMIN_PASSWORD',raising=False)
+    monkeypatch.delenv('PSX_SESSION_SECRET',raising=False)
+    assert TestClient(app).get('/api/settings').status_code==200
+
+
+def test_password_free_mutations_and_cross_origin_hygiene():
+    client=TestClient(app)
+    assert client.post('/api/backups/create',json={'label':'no_login_test'}).status_code==200
+    assert client.post('/api/backups/create',json={},headers={'Origin':'https://unrelated.example'}).status_code==403
+    assert client.post('/api/settings',json={'updates':{'futures_default_days':0}}).status_code==422

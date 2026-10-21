@@ -1,32 +1,32 @@
-# PSX Intelligence — corrected release 1.3.0
+# PSX Intelligence 1.3.1 — no login
 
-Private, local-first PSX analysis workspace: FastAPI, SQLite WAL, vanilla JavaScript and OpenPyXL. Imported historical/end-of-day data, not a live feed or order execution service. No external LLM subscription is required.
+This version removes the unrequested password and sign-in system. The dashboard opens directly. No owner password, session secret, account creation or sign-out step is required. Existing PSX_ADMIN_PASSWORD / PSX_SESSION_SECRET / PSX_AUTH_DISABLED environment variables are ignored and may be removed from your hosting settings.
 
-## Start here — existing GitHub/Vercel deployment
+## Update the existing GitHub / Vercel application
 
-1. **Download an independent backup before updating. Make the GitHub repository private.** A previously public snapshot may already have been downloaded; changing visibility cannot undo that exposure.
-2. Extract this ZIP and upload its **contents into the existing repository root**, replacing matching code files. **Do not delete, replace or overwrite your existing `latest_cloud_sync.db.gz`.** No database, raw inputs, credentials or snapshot are included in this ZIP. It is a complete source-code release, not a replacement for your live financial data.
-3. In Vercel project Settings → Environment Variables, set `PSX_ADMIN_PASSWORD` (a unique password, 12+ characters), `PSX_SESSION_SECRET` (random, 32+ characters), `GITHUB_SYNC_REPO` (`owner/repository`), `GITHUB_SYNC_BRANCH` (`main`, unless different), and `GITHUB_SYNC_TOKEN` (fine-grained token restricted to this private repository, Contents Read and Write). Redeploy. **Never commit these secrets to GitHub. Do not enable `PSX_AUTH_DISABLED` on Vercel.**
-4. Sign in. Verify Settings → database integrity and cloud state, download another snapshot, then inspect the date-normalization dry run. Apply only after reviewing its candidates. The release does **not** automatically repair your live database.
+1. Download an independent current-data backup first.
+2. Extract this ZIP. Upload its **contents** into the existing repository root, replacing matching source files—not the ZIP itself and not an extra enclosing folder.
+3. **Preserve the existing `latest_cloud_sync.db.gz` exactly. Do not delete or overwrite it.** This is a source-only release: databases, raw uploads, backups and credentials are intentionally excluded.
+4. Commit and redeploy the existing Vercel project. Open the site: the dashboard should appear immediately. No new password variables are needed.
+5. Keep the existing GitHub sync configuration (`GITHUB_SYNC_REPO`, `GITHUB_SYNC_BRANCH`, `GITHUB_SYNC_TOKEN`) if you use cloud persistence. The sync repository must remain private. GitHub integration credentials are separate from the removed dashboard login.
 
-**Read [the complete deployment and recovery guide](docs/DEPLOY_1_3.md) before uploading.**
+Read [deployment and recovery](docs/DEPLOY_1_3.md). Password-free access means anyone who can reach the deployed site can view account data, download data and invoke data-changing actions. A private GitHub repository does **not** make the Vercel website private. Same-origin browser checks are request hygiene, not access control.
 
-## What changed
+## Retained corrections
 
-- Owner login, signed HttpOnly/SameSite cookies, protected finance/export/backup APIs, CSRF checks and fail-closed setup.
-- Private-repository requirement, known-base cloud snapshots, stale-worker rejection, pending/error status instead of false success, verified online backups and restore-to-cloud handling.
-- Date-repair plan fingerprint, confirmation, pre-repair verified backup, transactional repair and cache invalidation. Future-dated data blocks generated setup candidates.
-- Scoped reference reconciliation with evidence; missing references show NOT_CHECKED, not MATCH. No blanket “100% reconciled” claim.
-- Independent filters carried into each of the seven visible futures worksheets; hidden source Data sheet retained. Symbol Filter keeps all retained dates. Sortable Excel dates display DD-MM-YYYY; machine-readable CSV remains ISO.
-- Rule scores are not win probabilities. Static business background is labeled unverified; same-date volume/futures evidence uses the most liquid matching contract.
-- Cleaner overview, separate account cards, light/dark themes, mobile navigation, keyboard-friendly scrollable tables, visible focus, labeled inputs and readable contrast. All ten modules remain.
-- Safer settings validation, multi-file chunk retry, unique export response copies, no automatic backup deletion, and graceful empty-workspace exports.
+- Clean light/dark interface, separate account cards, responsive navigation, keyboard-friendly tables and readable financial figures.
+- Independent filters in all futures worksheets, eight-sheet export, sortable DD-MM-YYYY Excel date display, and machine-readable ISO dates in CSV.
+- Stale cloud-snapshot rejection, pending/error reporting, verified online backups and restore-to-cloud attempt.
+- Reviewed transactional date repair with plan fingerprint and safety backup; no automatic live repair on deployment.
+- Scoped reconciliation with evidence; absent private reference workbooks show NOT_CHECKED.
+- Rule scores—not probability of profit—and same-date volume/most-liquid futures context.
+- Settings validation, import retry handling, isolated export responses and graceful first-run/empty-account screens.
 
-## Preserved rules
+Accounts 91404 and 91269 remain separate. Existing financial calculation semantics and manual import workflow are retained. No missing cash-price backfill, live price feed, trade execution or external LLM dependency was added.
 
-Accounts 91404 and 91269 stay separate. Existing commission/SST and trading calculation semantics are retained. Missing same-date cash prices remain N/A—no forward filling. Manual import/stage/review/commit is primary. Futures filters remain worksheet-local, not universal. Original raw files are retained locally; cloud database snapshots do not include those raw files.
+## Local launch
 
-## Local launch (Python 3.12+; verified on 3.13)
+Python 3.12+ (tests use Python 3.13):
 
 ```sh
 python -m venv .venv
@@ -34,12 +34,9 @@ python -m venv .venv
 . .venv/bin/activate
 # Windows PowerShell instead: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Set `PSX_ADMIN_PASSWORD` and `PSX_SESSION_SECRET` in your shell before starting. The application does not automatically read a `.env` file. Set `PSX_DATA_DIR` to a persistent local folder if desired; otherwise the local runtime is `./psx_data`. Run `bash start_dashboard.sh` or `start_dashboard.bat`, then visit `http://127.0.0.1:8000`.
+Open http://127.0.0.1:8000. No login is needed. `PSX_DATA_DIR` chooses local runtime storage; default `./psx_data`. Local launchers are also included. A source-only checkout begins empty unless restored, imported, or hydrated from your configured private repository.
 
-A loopback-only, explicit development bypass (`PSX_AUTH_DISABLED=1`) exists for isolated tests, not public access. Never use it for an Internet-facing deployment. A source-only checkout starts empty unless restored/imported or hydrated from the configured private repository; this is intentional.
-
-## Verification and limits
-
-See [testing](docs/TESTING_1_3.md), [release changes](docs/RELEASE_1_3.md) and [design rationale](docs/DESIGN_1_3.md). Historical documents are retained with a superseded notice. Local tests do not prove a live Vercel deployment or guarantee zero defects. GitHub snapshot persistence is a single-owner compromise, **not a transactional multi-writer database**. Keep independent backups and operate one import/settings/repair writer at a time.
+See [changes](docs/RELEASE_1_3.md), [verification](docs/TESTING_1_3.md) and [design rationale](docs/DESIGN_1_3.md). No zero-defect guarantee or live Vercel deployment claim is made.

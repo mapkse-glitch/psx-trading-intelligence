@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from psx_app.security import install_auth, MUTATION_LOCK
+from psx_app.security import install_request_safety, MUTATION_LOCK
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -55,12 +55,12 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.0",
+    version="1.3.1",
     lifespan=lifespan,
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-install_auth(app)
+install_request_safety(app)
 
 @app.middleware("http")
 async def serialize_mutations(request: Request, call_next):
@@ -71,16 +71,6 @@ async def serialize_mutations(request: Request, call_next):
     if not guarded:
         return await call_next(request)
     async with MUTATION_LOCK:
-        # Authentication is enforced again before any remote request to avoid unauthenticated network work.
-        from psx_app.security import session, local_bypass, same_origin
-        if not session(request):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({"detail": "Owner sign-in required."}, status_code=401)
-        auth = session(request)
-        import hmac
-        if not local_bypass(request) and (not same_origin(request) or not hmac.compare_digest(request.headers.get("x-psx-csrf", ""), auth["csrf"])):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({"detail": "Invalid CSRF token."}, status_code=403)
         if request.url.path != "/api/cloud-sync/reload":
             try:
                 CloudSyncService(DB_PATH).assert_current_base()

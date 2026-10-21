@@ -8,26 +8,15 @@
 </head>
 <body>
   <a class="skip-link" href="#viewContainer">Skip to workspace</a>
-  <section id="authScreen" class="auth-screen" role="main" aria-labelledby="authTitle">
-    <form class="auth-card" id="loginForm">
-      <div class="eyebrow">PRIVATE WORKSPACE</div><h1 id="authTitle">PSX Intelligence</h1>
-      <p>Sign in to access your accounts, market data and backups.</p>
-      <label for="ownerPassword">Owner password</label>
-      <input id="ownerPassword" type="password" autocomplete="current-password" required minlength="12" />
-      <label class="remember"><input id="rememberOwner" type="checkbox" checked /> Keep me signed in</label>
-      <button class="btn btn-primary" type="submit">Sign in</button>
-      <p id="authMessage" role="alert"></p>
-    </form>
-  </section>
   <button class="drawer-backdrop" aria-label="Close navigation" onclick="toggleMenu(false)" hidden></button>
-  <div class="app-shell" id="appShell" hidden>
+  <div class="app-shell" id="appShell">
     <!-- Left Institutional Sidebar (10 Core Sections) -->
     <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
       <div class="brand-header">
         <div class="brand-logo">PSX</div>
         <div class="brand-titles">
           <h1>PSX Intelligence</h1>
-          <span>Private workspace · v1.3</span>
+          <span>Trading workspace · v1.3.1</span>
         </div>
       </div>
 
@@ -95,11 +84,10 @@
         </div>
         <div class="topbar-right">
           <button class="btn btn-secondary desktop-utility" id="themeToggle" onclick="toggleTheme()" aria-label="Change colour theme">Theme</button>
-          <button class="btn btn-secondary desktop-utility" onclick="signOut()">Sign out</button>
           <button class="btn btn-secondary desktop-utility" onclick="refreshCurrentView()" title="Clear client cache and reload current section">Refresh</button>
           <button class="btn btn-secondary" onclick="switchView('import')">Import</button>
           <button class="btn btn-primary" onclick="switchView('exports')">Export</button>
-          <details class="mobile-utilities"><summary class="btn btn-secondary">More</summary><div><button class="btn btn-secondary" onclick="toggleTheme()">Change theme</button><button class="btn btn-secondary" onclick="refreshCurrentView()">Refresh data</button><button class="btn btn-secondary" onclick="signOut()">Sign out</button></div></details>
+          <details class="mobile-utilities"><summary class="btn btn-secondary">More</summary><div><button class="btn btn-secondary" onclick="toggleTheme()">Change theme</button><button class="btn btn-secondary" onclick="refreshCurrentView()">Refresh data</button></div></details>
         </div>
       </header>
 

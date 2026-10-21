@@ -945,14 +945,6 @@ details[open]>summary {margin-bottom:12px;}
 .notice {background:var(--warn-amber-bg);border-color:var(--warn-amber);color:var(--text-main);}
 .notice h3 {font-size:17px;margin-bottom:8px;}
 .notice p {margin-bottom:12px;line-height:1.6;}
-.auth-screen {min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg-dark);}
-.auth-card {width:100%;max-width:440px;padding:36px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;}
-.auth-card h1 {font-size:28px;letter-spacing:-.8px;margin:10px 0;}
-.auth-card p {color:var(--text-muted);line-height:1.6;margin:12px 0 24px;}
-.auth-card input[type="password"] {display:block;width:100%;background:var(--bg-input);color:var(--text-main);border:1px solid var(--border-color);border-radius:8px;padding:10px;margin:8px 0 14px;}
-.auth-card .remember {display:flex;align-items:center;gap:10px;margin:18px 0;font-size:13px;}
-.auth-card .btn {width:100%;}
-#authMessage {font-size:13px;overflow-wrap:anywhere;margin-bottom:0;}
 .menu-toggle {display:none;}
 .drawer-backdrop {position:fixed;inset:0;background:#0008;border:0;z-index:35;}
 .skip-link {position:fixed;top:-100px;left:15px;z-index:100;background:var(--bg-card);padding:14px;color:var(--text-main);}
@@ -997,7 +989,6 @@ details[open]>summary {margin-bottom:12px;}
   .settings-table td:first-child {width:58%;}
   .settings-table td {padding:10px 5px;}
   .settings-table label {font-size:11px;}
-  .auth-card {padding:28px 24px;}
 }
 @media(prefers-reduced-motion:reduce) {*,*::before,*::after {animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 .sidebar-footer {background:var(--bg-sidebar);}

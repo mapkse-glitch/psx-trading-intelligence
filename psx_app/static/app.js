@@ -2669,22 +2669,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
 
 window.addEventListener("DOMContentLoaded", bootWorkspace);
 
-// Release 1.3: authentication, accessibility, independent exports and mobile shell.
-let csrfToken = '';
-const nativeFetch = window.fetch.bind(window);
-window.fetch = async function(input, init = {}) {
-  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
-  const method = (init.method || 'GET').toUpperCase();
-  const headers = new Headers(init.headers || {});
-  if (url.origin === location.origin && url.pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(method)) headers.set('X-PSX-CSRF', csrfToken);
-  const response = await nativeFetch(input, {...init, headers});
-  if (response.status === 401 && !url.pathname.startsWith('/api/auth/')) {
-    document.getElementById('appShell').hidden = true;
-    document.getElementById('authScreen').hidden = false;
-    clearClientCache();
-  }
-  return response;
-};
+// Password-free startup, accessibility, independent exports and mobile shell.
 const viewTickets = new WeakMap();
 function beginViewRender(container) { const token = {}; viewTickets.set(container, token); return token; }
 function currentViewRender(container, token) { return container.isConnected && viewTickets.get(container) === token; }
@@ -2741,36 +2726,8 @@ function toggleTheme() {
 }
 async function bootWorkspace() {
   setTheme(localStorage.getItem('psx_theme') || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
-  const status = await (await nativeFetch('/api/auth/status')).json();
-  csrfToken = status.csrf || '';
-  if (!status.configured) {
-    document.getElementById('ownerPassword').disabled = true;
-    document.querySelector('#loginForm button').disabled = true;
-    document.getElementById('authMessage').textContent = 'Setup required: set PSX_ADMIN_PASSWORD (12+ characters) and PSX_SESSION_SECRET (32+ characters) in the hosting environment, then redeploy. Data stays locked until configured. See docs/DEPLOY_1_3.md.';
-    return;
-  }
-  if (!status.authenticated) return;
-  document.getElementById('authScreen').hidden = true;
-  document.getElementById('appShell').hidden = false;
   await switchView('overview');
   updateSystemStatus();
-}
-document.getElementById('loginForm').addEventListener('submit', async event => {
-  event.preventDefault();
-  const button = event.currentTarget.querySelector('button'); button.disabled = true;
-  try {
-    const res = await nativeFetch('/api/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('ownerPassword').value,remember:document.getElementById('rememberOwner').checked})});
-    const out = await res.json();
-    document.getElementById('ownerPassword').value = '';
-    if (!res.ok) throw new Error(out.detail || 'Sign-in failed.');
-    document.getElementById('authMessage').textContent = '';
-    await bootWorkspace();
-  } catch(error) {document.getElementById('authMessage').textContent = error.message;}
-  finally {button.disabled=false;}
-});
-async function signOut() {
-  await fetch('/api/auth/logout', {method:'POST'});
-  clearClientCache(); location.reload();
 }
 async function updateSystemStatus() {
   try {

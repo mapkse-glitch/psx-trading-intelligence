@@ -1,5 +1,6 @@
 {
-  "release": "1.3.0",
+  "release": "1.3.1",
+  "application_authentication": "none",
   "purpose": "Source-only corrected dashboard; upload contents to existing private repository root.",
   "preserve_existing_live_snapshot": "latest_cloud_sync.db.gz",
   "database_included": false,
@@ -22,8 +23,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4776,
-      "sha256": "b942c03574f4593d0a9b93dc792dbd3c96a5896a2c49d155f9ac887d79e7d55f"
+      "bytes": 3373,
+      "sha256": "860c5f3ae081124724c3f3326f78c2141cd3ce68fe3b41c4aacb0c0d48c82e59"
     },
     {
       "path": "api/index.py",
@@ -32,28 +33,28 @@
     },
     {
       "path": "docs/DEPLOY_1_3.md",
-      "bytes": 8898,
-      "sha256": "3c866393e6e8dbd988624690486dd48e44d9acd0c8d1317cab854b3f7cef6d6e"
+      "bytes": 4543,
+      "sha256": "fa4d45e727318b4829b90ec55d36161511d92b67463702987bb8ed2892c13290"
     },
     {
       "path": "docs/DESIGN_1_3.md",
-      "bytes": 2056,
-      "sha256": "8de0e667de23694e51813012d3a2278de8f8bf1bb34234a12208ec0521c08c98"
+      "bytes": 2058,
+      "sha256": "8e113ac8b34e851838ea4f61364bedaaf4bec9befc14e3590caedf0dd7aed124"
     },
     {
       "path": "docs/QA_SUMMARY_1_3.json",
-      "bytes": 434,
-      "sha256": "dbddac2904819f58c6b324ad3e20d721dabef589c80a260aad6b6e2c78ae8d2d"
+      "bytes": 554,
+      "sha256": "42c1229ac06c94f6fa9bf642bb85879cf617338bad7fe4cde8d78ed11e7d66cb"
     },
     {
       "path": "docs/RELEASE_1_3.md",
-      "bytes": 3818,
-      "sha256": "099019363d1243c0334c0236434532f4164a293a1b3c3b29944095bd0464838d"
+      "bytes": 1321,
+      "sha256": "a2abf2cba86e3a378fe54d9e0f86b0c80972ad28557bb6ef6b65300974d95ac4"
     },
     {
       "path": "docs/TESTING_1_3.md",
-      "bytes": 4979,
-      "sha256": "cc50b9817a50da232af0a5628fd3e78a678a4171bffd492c80e1eea3bf45b0ff"
+      "bytes": 2178,
+      "sha256": "e29c191764f4342fa7f74b1f3cc4cfe81f616ca7890901310ee6ad2e9abd8d84"
     },
     {
       "path": "docs/historical/ARCHITECTURE.md",
@@ -162,8 +163,8 @@
     },
     {
       "path": "psx_app/main.py",
-      "bytes": 35049,
-      "sha256": "7f6ef9a707b48139daa79d7d7c30a1962d9750b2d9a7202b8798dffa5296a06e"
+      "bytes": 34373,
+      "sha256": "317a6afcfbe81d5ea11f6799c12b462faf1453593f84b29cbfb337dab73f75fb"
     },
     {
       "path": "psx_app/parsers/__init__.py",
@@ -192,8 +193,8 @@
     },
     {
       "path": "psx_app/security.py",
-      "bytes": 5849,
-      "sha256": "28adc2c7721b4a5881c22ec6f8a876278fab630c980532e2e0e2c8680b0dfde2"
+      "bytes": 1527,
+      "sha256": "a663e0db1e168f6fd416d4e855b522d21c497bb513e61470c9507b5fb759f04a"
     },
     {
       "path": "psx_app/services/__init__.py",
@@ -267,18 +268,18 @@
     },
     {
       "path": "psx_app/static/app.js",
-      "bytes": 158385,
-      "sha256": "4e7efe30386d4501618b75509ec2e6ea9a23e21ec49da631dc931f6ac2500e5d"
+      "bytes": 155981,
+      "sha256": "e60a490b71be23653d7d160c469f8ae5941337895ecfe67ef44988a7bdb14deb"
     },
     {
       "path": "psx_app/static/index.html",
-      "bytes": 5721,
-      "sha256": "00fb3887d422826a63c4a6dd8dbcac5c3e5f8d320099cd76e1dc248f3792e83f"
+      "bytes": 4843,
+      "sha256": "290a2c36f78690db8770427e9bc501c5c12656839bd79433ea2759fad39fc76c"
     },
     {
       "path": "psx_app/static/styles.css",
-      "bytes": 30012,
-      "sha256": "ab4805f74870ad558fb0f50dc7113498f3b02d1779e6cbd2bd07f0a8105bea16"
+      "bytes": 29203,
+      "sha256": "1df51b500d3b3f58d1216490444009cfd5670ab055bc05d79eb1eb333534d1eb"
     },
     {
       "path": "pytest.ini",
@@ -287,8 +288,8 @@
     },
     {
       "path": "render.yaml",
-      "bytes": 602,
-      "sha256": "bcb770c9f161d78082e31cc7929a8361cde468ad2629fbb1f25385e8c5a99840"
+      "bytes": 498,
+      "sha256": "dee0e4ad0e3e0262b71f24a689a8765d10e1dce4b761dfc8246d00e54a57348f"
     },
     {
       "path": "requirements.txt",
@@ -307,8 +308,8 @@
     },
     {
       "path": "tests/conftest.py",
-      "bytes": 2364,
-      "sha256": "eaa5e379dcc721c7343658237ae6dbc026199a186b99351cec5f8065daaba1a3"
+      "bytes": 2326,
+      "sha256": "1fab896b360a9105d717600361dea025fa437f440f1077a64b11c868b8c6b23c"
     },
     {
       "path": "tests/test_chunked_upload.py",
@@ -357,8 +358,8 @@
     },
     {
       "path": "tests/test_release_safety.py",
-      "bytes": 20297,
-      "sha256": "a76577c8ecd0240d9b075744bf831f21a6a6d3e26f7da48adf212fc1f73f39f6"
+      "bytes": 18208,
+      "sha256": "414644416b077782b048eddef5ceec54c32795ae6642afda0ea9c57f43182131"
     },
     {
       "path": "vercel.json",

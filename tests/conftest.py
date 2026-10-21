@@ -11,7 +11,6 @@ REFERENCE_DIR = os.environ.get('PSX_TEST_REFERENCE_DIR')
 os.environ['PSX_DATA_DIR'] = str(TEST_ROOT)
 os.environ['PSX_DB_PATH'] = str(TEST_ROOT / 'database' / 'app.db')
 os.environ['PSX_DRIVE_MIRROR'] = REFERENCE_DIR or str(TEST_ROOT / 'absent-references')
-os.environ['PSX_AUTH_DISABLED'] = '1'
 os.environ.pop('GITHUB_SYNC_TOKEN', None)
 os.environ.pop('VERCEL', None)
 os.environ.pop('AWS_LAMBDA_FUNCTION_NAME', None)
