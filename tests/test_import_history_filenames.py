@@ -1,3 +1,5 @@
+from pathlib import Path
+import os
 import shutil
 from fastapi.testclient import TestClient
 from psx_app.main import app
@@ -19,7 +21,7 @@ def _cleanup_batch(b_uuid: str) -> None:
 
 def test_audit_history_exposes_filenames_and_staged_resumable_flags():
     client = TestClient(app)
-    atrl_bytes = open("/home/user/drive_mirror/Input folder/ATRL.txt", "rb").read()
+    atrl_bytes = open(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"), "rb").read()
 
     res_stage = client.post(
         "/api/imports/stage",
@@ -55,7 +57,7 @@ def test_audit_history_exposes_filenames_and_staged_resumable_flags():
 
 def test_discard_staged_batch_and_protect_committed_data():
     client = TestClient(app)
-    atrl_bytes = open("/home/user/drive_mirror/Input folder/ATRL.txt", "rb").read()
+    atrl_bytes = open(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"), "rb").read()
 
     res_stage = client.post(
         "/api/imports/stage",

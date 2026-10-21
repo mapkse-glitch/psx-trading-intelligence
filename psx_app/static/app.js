@@ -56,21 +56,21 @@ const state = {
     symbol: "ATRL",
     action: "Evaluate Buy / Hold / Sell",
   },
-  top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: "2026-10-16", search: "", end_date_manual: false },
+  top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: null, search: "", end_date_manual: false },
   accTab: { "91404": "dashboard", "91269": "dashboard" },
-  accSelectedDate: { "91404": "2026-10-16", "91269": "2026-10-15" },
+  accSelectedDate: { "91404": null, "91269": null },
   // Separate, independent per-sheet filter state for Module C (matching Futures_Analysis.xlsx)
   futures: {
     subtab: "monthly_comparison",
     apply_rolling: true,
     meta: null,
-    monthly_comparison: { selected_date: "2026-10-16", days: 30 },
-    month_filter: { selected_date: "2026-10-16", days: 30, contract_month: "OCT" },
+    monthly_comparison: { selected_date: null, days: 30 },
+    month_filter: { selected_date: null, days: 30, contract_month: "OCT" },
     symbol_filter: { contract_month: "OCTB", days: 30, base_symbol: "OGDC", selected_date: "ALL" },
-    annualized_comparison: { selected_date: "2026-10-16", days: 30 },
-    date_filter: { selected_date: "2026-10-16", days: 30 },
+    annualized_comparison: { selected_date: null, days: 30 },
+    date_filter: { selected_date: null, days: 30 },
     future_symbol_summary: { contract_symbol: "AGHA-OCT" },
-    date_summary: { selected_date: "2026-10-16" },
+    date_summary: { selected_date: null },
   },
   technical: {
     subtab: "core36",
@@ -82,7 +82,7 @@ const state = {
 };
 
 const VIEW_TITLES = {
-  overview: "01 • Overview & Trading Intelligence Cards",
+  overview: "Overview",
   import: "02 • Import and Update Center",
   top5: "03 • Top 5 Volume & Rate Register",
   acc91404: "04 • Account 91404 Performance (THM00601)",
@@ -90,7 +90,7 @@ const VIEW_TITLES = {
   futures: "06 • Futures Comparison & Annualized Analysis",
   technical: "07 • Technical Analysis, Setup Generator & 36-Ticker",
   reconciliation: "08 • Data Quality & Legacy Reconciliation",
-  exports: "09 • Exports, Reports & Verified Skills Catalog",
+  exports: "09 • Exports & reports",
   settings: "10 • Settings, Rule Versioning & SQLite Backup",
 };
 
@@ -105,15 +105,20 @@ function fmtNum(v, decimals = 2) {
 // Global display format for calendar dates across the whole dashboard: DD-MM-YYYY
 // (e.g. 22-09-2026) — matches the Excel workbooks. Timestamps render as "DD-MM-YYYY HH:MM".
 function fmtDate(v) {
-  if (v === null || v === undefined || v === "") return "";
-  const s = String(v);
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return s;
-  let out = `${m[3]}-${m[2]}-${m[1]}`;
-  const tm = s.slice(10).replace("T", "").trim();
-  if (tm) out += " " + tm.slice(0, 5);
-  return out;
+  if (!v) return "—";
+  const str = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return `${str.slice(8,10)}-${str.slice(5,7)}-${str.slice(0,4)}`;
+  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(str)) {
+    const date = new Date(str);
+    if (!Number.isNaN(date.getTime())) {
+      const parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Karachi', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
+      const get = type => parts.find(p=>p.type===type)?.value;
+      return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')} PKT`;
+    }
+  }
+  return str;
 }
+function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
 function fmtInt(v) {
   if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "N/A";
@@ -140,12 +145,12 @@ function showToast(msg, isError = false) {
   el.textContent = msg;
   el.style.borderColor = isError ? "var(--neg-red)" : "var(--pos-green)";
   el.style.backgroundColor = isError ? "var(--neg-red-bg)" : "var(--pos-green-bg)";
-  el.style.color = isError ? "#fecdd3" : "#a7f3d0";
+  el.style.color = isError ? "var(--neg-red)" : "var(--pos-green)";
   el.classList.remove("hidden");
   setTimeout(() => el.classList.add("hidden"), 5500);
 }
 
-function copyTextToClipboard(text, label = "Prompt / Report") {
+function copyTextToClipboard(text, label = "Analysis report") {
   navigator.clipboard.writeText(text).then(() => {
     showToast(`Copied ${label} to clipboard!`);
   }).catch(() => {
@@ -181,11 +186,16 @@ async function refreshCurrentView() {
 
 async function switchView(view) {
   state.currentView = view;
+  toggleMenu(false);
   document.querySelectorAll(".nav-btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.view === view);
   });
   document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || "Dashboard";
-  const container = document.getElementById("viewContainer");
+  const previous = document.getElementById("viewContainer");
+  const container = document.createElement('div');
+  container.id = 'viewContainer'; container.className = 'view-container'; container.tabIndex = -1;
+  container.innerHTML = '<p class="loading" role="status">Loading workspace…</p>';
+  previous.replaceWith(container);
 
   container.style.animation = "none";
   container.offsetHeight;
@@ -203,7 +213,7 @@ async function switchView(view) {
     else if (view === "exports") await renderExportsView(container);
     else if (view === "settings") await renderSettingsView(container);
   } catch (err) {
-    container.innerHTML = `<div class="card"><h3 class="neg">Error loading view</h3><p>${err.message}</p></div>`;
+    container.innerHTML = `<div class="card"><h3 class="neg">Error loading view</h3><p>${escapeHtml(err.message)}</p></div>`;
   }
 }
 
@@ -222,6 +232,7 @@ function buildQuickSelectBarHtml(activeSymbol, onClickFnName) {
 }
 
 function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
+  if (ideasRes.status === "BLOCKED") return `<section class="card notice" id="tradingIdeasCard"><h3>Setups paused: check dates</h3><p>${escapeHtml(ideasRes.message)}</p><button class="btn btn-secondary" onclick="switchView('settings')">Review date integrity</button></section>`;
   const idState = state.ideas;
   const sectorOptions = (filtersMeta?.sectors || []).map(
     (s) => `<option value="${s}" ${idState.scope_or_sector === s ? "selected" : ""}>Sector: ${s}</option>`
@@ -233,9 +244,9 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <div>
           <div class="card-title">
             <span class="badge badge-blue">CARD 1</span>
-            1. Trading Ideas Generator — 5 High-Probability Setups
+            1. Trading Ideas Generator — Rule-scored candidates
           </div>
-          <div class="card-subtitle">Scans today's PSX market (${ideasRes.candidates_scanned} candidates analyzed) combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
+          <div class="card-subtitle">Scans imported historical prices (${ideasRes.candidates_scanned} candidates analyzed) combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
         </div>
         <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${fmtDate(ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data")}</span>
       </div>
@@ -258,7 +269,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <div class="filter-group">
           <label>Setup Direction:</label>
           <select id="ideasDirSelect" onchange="runTradingIdeasGenerator()">
-            <option value="ALL" ${idState.direction === "ALL" ? "selected" : ""}>All High-Conviction Setups</option>
+            <option value="ALL" ${idState.direction === "ALL" ? "selected" : ""}>All directions</option>
             <option value="LONG" ${idState.direction === "LONG" ? "selected" : ""}>Long / Buy Setups Only</option>
             <option value="SHORT" ${idState.direction === "SHORT" ? "selected" : ""}>Short / Tactical Sell Only</option>
           </select>
@@ -266,6 +277,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <button class="btn btn-primary" onclick="runTradingIdeasGenerator()">⚡ Scan &amp; Generate 5 Setups</button>
       </div>
 
+      <p class="score-disclaimer">Scores rank deterministic technical rules—not a probability of profit. Historical data only; no order is placed.</p>
       <div class="setup-grid">
         ${ideasRes.setups.map((st) => {
           const isLong = st.direction.includes("BUY");
@@ -274,16 +286,16 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <span class="badge ${isLong ? "badge-green" : "badge-red"}">#${st.rank} • ${st.direction}</span>
-                  <b style="font-size:15px;margin-left:6px;cursor:pointer;color:#fff;text-decoration:underline;" onclick="triggerAnalystForTicker('${st.symbol}')" title="Click to analyze ${st.symbol} in Card 2">${st.display_label}</b>
+                  <b style="font-size:15px;margin-left:6px;cursor:pointer;color:var(--text-main);text-decoration:underline;" onclick="triggerAnalystForTicker('${st.symbol}')" title="Click to analyze ${st.symbol} in Card 2">${st.display_label}</b>
                   <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${st.sector})</span>
                 </div>
                 <div style="text-align:right;">
-                  <span class="badge badge-blue">Grade ${st.setup_grade} (${st.probability_score}%)</span>
+                  <span class="badge badge-blue">Score ${st.setup_score}/100</span>
                 </div>
               </div>
 
               <div class="conviction-bar-bg">
-                <div class="conviction-bar-fill" style="width:${st.probability_score}%"></div>
+                <div class="conviction-bar-fill" style="width:${st.setup_score}%"></div>
               </div>
 
               <div class="setup-price-grid">
@@ -301,21 +313,21 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
                 <span class="badge ${st.momentum_state.startsWith("Rising") ? "badge-green" : "badge-red"}" title="MACD histogram momentum">${st.momentum_state}</span>
                 <span class="badge badge-blue" title="Session volume vs 20-day average">Vol ${st.volume_ratio}× avg</span>
               </div>
-              <div style="font-size:11.4px;color:#fcd34d;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;"><b>⚠ Invalidation:</b> ${st.invalidation}</div>
+              <div style="font-size:11.4px;color:var(--warn-amber);background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;"><b>⚠ Invalidation:</b> ${st.invalidation}</div>
 
-              <div style="font-size:11.6px;color:#cbd5e1;">
-                <b style="color:var(--accent-blue);">Why It Works — Technical Factors:</b>
+              <details class="setup-details"><summary>View rationale &amp; background</summary><div style="font-size:12px;color:var(--text-main);">
+                <b style="color:var(--accent-blue);">Technical rationale</b>
                 <ul style="padding-left:16px;margin-top:3px;">
                   ${st.technical_why.map((line) => `<li>${line}</li>`).join("")}
                 </ul>
               </div>
 
-              <div style="font-size:11.6px;color:#cbd5e1;">
-                <b style="color:var(--pos-green);">Why It Works — Fundamental &amp; Liquidity Factors:</b>
+              <div style="font-size:11.6px;color:var(--text-main);">
+                <b style="color:var(--pos-green);">Background &amp; liquidity (verify independently)</b>
                 <ul style="padding-left:16px;margin-top:3px;">
-                  ${st.fundamental_why.map((line) => `<li>${line}</li>`).join("")}
+                  ${st.fundamental_why.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
                 </ul>
-              </div>
+              </div></details>
             </div>
           `;
         }).join("")}
@@ -325,6 +337,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
 }
 
 function buildAutomatedAnalystCardHtml(analystRes) {
+  if (analystRes.status === "BLOCKED" || analystRes.status === "NO_DATA") return `<section class="card notice" id="automatedAnalystCard"><h3>Analysis unavailable</h3><p>${escapeHtml(analystRes.message)}</p></section>`;
   const anState = state.analyst;
   const lat = analystRes.latest || {};
   const sig = lat.signal || {};
@@ -414,7 +427,7 @@ function buildAutomatedAnalystCardHtml(analystRes) {
                 <span>${st.step}</span>
                 <span class="badge badge-blue">${st.verdict}</span>
               </div>
-              <div style="font-size:12px;color:#cbd5e1;">${st.detail}</div>
+              <div style="font-size:12px;color:var(--text-main);">${st.detail}</div>
             </div>
           `).join("")}
         </div>
@@ -560,197 +573,28 @@ async function triggerAnalystForTicker(sym) {
 // 01. OVERVIEW DASHBOARD
 // ============================================================================
 async function renderOverview(container) {
-  const [data, filtersMeta, analystRes] = await Promise.all([
-    apiGet("/api/overview"),
-    apiGet("/api/intelligence/filters"),
-    apiGet(`/api/intelligence/automated-analyst/${encodeURIComponent(state.analyst.symbol)}?action=${encodeURIComponent(state.analyst.action)}`),
-  ]);
-
-  const sys = data.system;
-  const a91404 = data.account_91404;
-  const a91269 = data.account_91269;
-  const tech = data.technical_core36;
-  const ideasRes = data.trading_ideas_default;
-
+  const ticket = beginViewRender(container);
+  const [data, status] = await Promise.all([apiGet('/api/overview'), apiGet('/api/system/status', false)]);
+  const sys = data.system, a = data.account_91404, b = data.account_91269;
+  const cloud = status.cloud_sync;
+  const source = status.dates.sources;
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
-    <div class="grid-4">
-      <div class="kpi-box" onclick="switchView('top5')" style="cursor:pointer;">
-        <div class="kpi-label">Module A • Top 5 Volume Register</div>
-        <div class="kpi-value">${fmtInt(sys.top5.records)} rows</div>
-        <div class="kpi-sub">${sys.top5.tickers} Tickers • ${sys.top5.min_date} to ${sys.top5.max_date}</div>
-      </div>
-      <div class="kpi-box" onclick="switchView('acc91404')" style="cursor:pointer;">
-        <div class="kpi-label">Module B • Account 91404 YTD Net P&amp;L</div>
-        <div class="kpi-value ${pnlClass(a91404.ytd.net_pnl)}">${fmtNum(a91404.ytd.net_pnl)} PKR</div>
-        <div class="kpi-sub">${a91404.trading_days_count} Trading Days • ${a91404.symbols_count} Symbols</div>
-      </div>
-      <div class="kpi-box" onclick="switchView('acc91269')" style="cursor:pointer;">
-        <div class="kpi-label">Module B • Account 91269 YTD Net P&amp;L</div>
-        <div class="kpi-value ${pnlClass(a91269.ytd.net_pnl)}">${fmtNum(a91269.ytd.net_pnl)} PKR</div>
-        <div class="kpi-sub">${a91269.trading_days_count} Trading Days • ${a91269.symbols_count} Symbols</div>
-      </div>
-      <div class="kpi-box" onclick="switchView('technical')" style="cursor:pointer;">
-        <div class="kpi-label">Modules C &amp; D • Cash &amp; Futures OHLCV</div>
-        <div class="kpi-value">${fmtInt(sys.equity_ohlcv.records + sys.futures_ohlcv.records)} bars</div>
-        <div class="kpi-sub">${sys.equity_ohlcv.symbols} Cash Tickers • ${sys.futures_ohlcv.contracts} Futures Contracts</div>
-      </div>
+    <section class="workspace-intro"><div><div class="eyebrow">PSX / TRADING WORKSPACE</div><h1>A clearer view of your market.</h1><p>Review your accounts, compare futures and keep imported data in one place.</p></div><button class="btn btn-primary" onclick="switchView('import')">+ Import daily files</button></section>
+    ${!status.dates.ok ? `<section class="notice card" role="alert"><h3>Date integrity needs attention</h3><p>${escapeHtml(status.dates.message)}</p><button class="btn btn-secondary" onclick="switchView('settings')">Review dates</button></section>` : ''}
+    <div class="trust-strip"><span><b>Source</b> Imported end-of-day data</span><span><b>Cash as of</b> ${fmtDate(source.cash?.latest_date)}</span><span><b>Futures as of</b> ${fmtDate(source.futures?.latest_date)}</span><span><b>Cloud</b> ${escapeHtml(cloud.health)}</span></div>
+    <div class="section-heading"><h2>Your accounts</h2><span>YTD within imported coverage · PKR · separate ledgers</span></div>
+    <div class="grid-2 account-overview">
+      ${[[a,'91404'],[b,'91269']].map(([acc,id])=>`<section class="card account-card"><div class="account-card-top"><span class="eyebrow">ACCOUNT ${id}</span><button class="text-button" onclick="switchView('acc${id}')">Open account →</button></div><div class="metric-caption">Net P&amp;L</div><div class="account-value ${pnlClass(acc.ytd.net_pnl)}">${fmtNum(acc.ytd.net_pnl)} <small>PKR</small></div><div class="account-footer"><span>Latest trading day <b>${fmtDate(acc.latest_trading_day)}</b></span><span>${fmtInt(acc.trading_days_count)} days · ${fmtInt(acc.symbols_count)} symbols</span></div></section>`).join('')}
     </div>
-
-    ${buildTradingIdeasCardHtml(ideasRes, filtersMeta)}
-    ${buildAutomatedAnalystCardHtml(analystRes)}
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Account 91404 Performance Snapshot</div>
-            <div class="card-subtitle">Isolated Account Ledger • Latest Day: ${a91404.latest_trading_day}</div>
-          </div>
-          <button class="btn btn-secondary" onclick="switchView('acc91404')">Open Account 91404 →</button>
-        </div>
-        <table class="data-table">
-          <thead>
-            <tr><th>Period</th><th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th><th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>Latest (${a91404.latest_trading_day})</b></td>
-              <td class="num">${fmtNum(a91404.latest_day?.buy_value)}</td>
-              <td class="num">${fmtNum(a91404.latest_day?.sell_value)}</td>
-              <td class="num">${fmtNum(a91404.latest_day?.total_charges)}</td>
-              <td class="num ${pnlClass(a91404.latest_day?.net_pnl)}">${fmtNum(a91404.latest_day?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91404.latest_day?.return_on_buy)}">${fmtPct(a91404.latest_day?.return_on_buy)}</td>
-            </tr>
-            <tr>
-              <td><b>MTD</b></td>
-              <td class="num">${fmtNum(a91404.mtd?.buy_value)}</td>
-              <td class="num">${fmtNum(a91404.mtd?.sell_value)}</td>
-              <td class="num">${fmtNum(a91404.mtd?.total_charges)}</td>
-              <td class="num ${pnlClass(a91404.mtd?.net_pnl)}">${fmtNum(a91404.mtd?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91404.mtd?.return_on_buy)}">${fmtPct(a91404.mtd?.return_on_buy)}</td>
-            </tr>
-            <tr>
-              <td><b>YTD (2026)</b></td>
-              <td class="num">${fmtNum(a91404.ytd?.buy_value)}</td>
-              <td class="num">${fmtNum(a91404.ytd?.sell_value)}</td>
-              <td class="num">${fmtNum(a91404.ytd?.total_charges)}</td>
-              <td class="num ${pnlClass(a91404.ytd?.net_pnl)}">${fmtNum(a91404.ytd?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91404.ytd?.return_on_buy)}">${fmtPct(a91404.ytd?.return_on_buy)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Account 91269 Performance Snapshot</div>
-            <div class="card-subtitle">Isolated Account Ledger • Latest Day: ${a91269.latest_trading_day}</div>
-          </div>
-          <button class="btn btn-secondary" onclick="switchView('acc91269')">Open Account 91269 →</button>
-        </div>
-        <table class="data-table">
-          <thead>
-            <tr><th>Period</th><th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th><th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>Latest (${a91269.latest_trading_day})</b></td>
-              <td class="num">${fmtNum(a91269.latest_day?.buy_value)}</td>
-              <td class="num">${fmtNum(a91269.latest_day?.sell_value)}</td>
-              <td class="num">${fmtNum(a91269.latest_day?.total_charges)}</td>
-              <td class="num ${pnlClass(a91269.latest_day?.net_pnl)}">${fmtNum(a91269.latest_day?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91269.latest_day?.return_on_buy)}">${fmtPct(a91269.latest_day?.return_on_buy)}</td>
-            </tr>
-            <tr>
-              <td><b>MTD</b></td>
-              <td class="num">${fmtNum(a91269.mtd?.buy_value)}</td>
-              <td class="num">${fmtNum(a91269.mtd?.sell_value)}</td>
-              <td class="num">${fmtNum(a91269.mtd?.total_charges)}</td>
-              <td class="num ${pnlClass(a91269.mtd?.net_pnl)}">${fmtNum(a91269.mtd?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91269.mtd?.return_on_buy)}">${fmtPct(a91269.mtd?.return_on_buy)}</td>
-            </tr>
-            <tr>
-              <td><b>YTD (2026)</b></td>
-              <td class="num">${fmtNum(a91269.ytd?.buy_value)}</td>
-              <td class="num">${fmtNum(a91269.ytd?.sell_value)}</td>
-              <td class="num">${fmtNum(a91269.ytd?.total_charges)}</td>
-              <td class="num ${pnlClass(a91269.ytd?.net_pnl)}">${fmtNum(a91269.ytd?.net_pnl)}</td>
-              <td class="num ${pnlClass(a91269.ytd?.return_on_buy)}">${fmtPct(a91269.ytd?.return_on_buy)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="section-heading"><h2>Continue your analysis</h2><span>Detailed tools, without the clutter</span></div>
+    <div class="workflow-grid">
+      <section class="card workflow-card"><span class="eyebrow">01 / VOLUME</span><h3>Top 5 register</h3><p>${fmtInt(sys.top5.records)} ranked rows across ${fmtInt(sys.top5.tickers)} tickers. Latest ${fmtDate(sys.top5.max_date)}.</p><button class="btn btn-secondary" onclick="switchView('top5')">Explore volume →</button></section>
+      <section class="card workflow-card"><span class="eyebrow">02 / FUTURES</span><h3>Compare cash &amp; futures</h3><p>Same-date basis and annualized spreads. Each worksheet keeps its own filters.</p><button class="btn btn-secondary" onclick="switchView('futures')">Compare futures →</button></section>
+      <section class="card workflow-card"><span class="eyebrow">03 / TECHNICALS</span><h3>Research your next setup</h3><p>Core 36 watchlist, indicator history and rule-based scores—not win probabilities.</p><button class="btn btn-secondary" onclick="switchView('technical')">Open technicals →</button></section>
     </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Module D • 36-Ticker Technical Signal Summary</div>
-            <div class="card-subtitle">9-Factor Composite Engine (RSI, MACD, Bollinger, EMA, ADX, Pivot, SMA20, VWAP)</div>
-          </div>
-          <button class="btn btn-secondary" onclick="switchView('technical')">36-Ticker Matrix →</button>
-        </div>
-        <div class="grid-4" style="margin-bottom:12px;">
-          <div class="kpi-box"><div class="kpi-label">BUY Signals</div><div class="kpi-value pos">${tech.signal_counts["BUY"] || 0}</div></div>
-          <div class="kpi-box"><div class="kpi-label">HOLD / NEUTRAL</div><div class="kpi-value">${tech.signal_counts["HOLD / NEUTRAL"] || 0}</div></div>
-          <div class="kpi-box"><div class="kpi-label">SELL Signals</div><div class="kpi-value neg">${tech.signal_counts["SELL"] || 0}</div></div>
-          <div class="kpi-box"><div class="kpi-label">SHORT SELL</div><div class="kpi-value neg">${tech.signal_counts["SHORT SELL"] || 0}</div></div>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr><th>Ticker</th><th class="num">Close</th><th class="num">Chg %</th><th class="num">RSI(14)</th><th class="num">Pivot (P)</th><th class="num">Score</th><th>Combined Signal</th></tr>
-            </thead>
-            <tbody>
-              ${tech.top_bullish.slice(0, 5).map((t) => `
-                <tr style="cursor:pointer;" onclick="openTickerDeepDive('${t.symbol}')">
-                  <td><b>${t.symbol}</b></td>
-                  <td class="num">${fmtNum(t.close)}</td>
-                  <td class="num ${pnlClass(t.change_pct)}">${fmtPct(t.change_pct, false)}</td>
-                  <td class="num">${fmtNum(t.rsi14)}</td>
-                  <td class="num">${fmtNum(t.daily_pivots.classic.P)}</td>
-                  <td class="num pos">+${t.signal.score}/9</td>
-                  <td><span class="badge badge-green">${t.signal.combined_signal}</span></td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Module C • Futures Spread &amp; Annualized % (${fmtDate(data.futures_highlights.selected_date)})</div>
-            <div class="card-subtitle">Sorted by Annualized % Ascending (Days = 30)</div>
-          </div>
-          <button class="btn btn-secondary" onclick="switchView('futures')">Futures Analysis →</button>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr><th>Symbol</th><th>Contract</th><th class="num">Current</th><th class="num">Future</th><th class="num">Difference</th><th class="num">Diff %</th><th class="num">Annualized %</th></tr>
-            </thead>
-            <tbody>
-              ${data.futures_highlights.lowest_annualized.concat(data.futures_highlights.highest_annualized.slice(0, 3)).map((r) => `
-                <tr>
-                  <td><b>${r.symbol}</b></td>
-                  <td><span class="badge badge-blue">${r.contract}</span></td>
-                  <td class="num">${fmtNum(r.current_value)}</td>
-                  <td class="num">${fmtNum(r.future_value)}</td>
-                  <td class="num ${pnlClass(r.difference)}">${fmtNum(r.difference)}</td>
-                  <td class="num ${pnlClass(r.difference_pct)}">${fmtPct(r.difference_pct, false)}</td>
-                  <td class="num ${pnlClass(r.annualized_pct)}">${fmtPct(r.annualized_pct, false)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  `;
+    <section class="card utility-card"><div><h3>Keep your data dependable</h3><p>Integrity, reference reconciliation and cloud sync are separate checks. No blanket “100% reconciled” claim.</p></div><div class="action-row"><button class="btn btn-secondary" onclick="switchView('reconciliation')">Check data quality</button><button class="btn btn-secondary" onclick="switchView('settings')">Backups &amp; settings</button></div></section>
+    <p class="workspace-note">Historical analysis only. This workspace does not supply live quotes or execute trades. Dates: DD-MM-YYYY · Times: Asia/Karachi.</p>`;
 }
 
 // ============================================================================
@@ -759,38 +603,36 @@ async function renderOverview(container) {
 // Emergency-only "Push Snapshot" button: hidden whenever auto-sync is healthy
 // (every successful upload Commit pushes automatically). It reappears only if a
 // push actually fails, or when GitHub sync is not configured yet (LOCAL mode).
-function renderSyncButtons(cs, compact) {
-  const dl = `<a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>⬇ Download Updated latest_cloud_sync.db.gz</a>`;
-  if (!cs.enabled) {
-    return dl + `<button class="btn btn-primary" onclick="triggerCloudSyncNow()">☁ Push Snapshot to GitHub Now</button>`;
-  }
-  if (cs.health === "ACTIVE") {
-    return dl + `<div class="pos" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:8px 12px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.45);border-radius:8px;max-width:340px;">✓ Auto-Sync is working — every upload pushes to GitHub automatically. (Emergency push button is hidden.)</div>`;
-  }
-  return dl + `<button class="btn btn-primary" style="background:#dc2626;border-color:#dc2626;" onclick="triggerCloudSyncNow()">🚨 Emergency: Retry Push to GitHub Now</button>`;
+function renderSyncButtons(cs) {
+  return `<a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>Download current snapshot</a>
+    <span class="badge ${cs.health==='ACTIVE'?'badge-green':'badge-amber'}">${escapeHtml(cs.health || 'UNKNOWN')}</span>
+    ${cs.health!=='ACTIVE'?`<button class="btn btn-secondary" onclick="triggerCloudSyncNow()">Retry cloud save</button>`:''}
+    ${cs.enabled?`<button class="btn btn-secondary" onclick="reloadCloudData()">Reload cloud data</button>`:''}
+    ${cs.last_error?`<p class="neg">${escapeHtml(cs.last_error)}</p>`:''}
+    ${cs.pending_local_changes?'<p class="neg">Local changes are not confirmed in the cloud. Download this snapshot before closing.</p>':''}`;
 }
 
 async function renderImportCenter(container) {
+  const ticket = beginViewRender(container);
   const hist = await apiGet("/api/imports/history", false);
   const cs = hist.cloud_sync || {};
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="card card-hero">
       <div class="card-header">
         <div>
-          <div class="card-title">☁ Permanent Data Storage &amp; GitHub Auto-Sync Status</div>
-          <div class="card-subtitle">Status: <b class="${cs.health === "ERROR" ? "neg" : (cs.enabled ? "pos" : "warn")}">${cs.provider || "Local Mode"}</b>${cs.last_pull ? ` • Last pull: <span style="color:var(--text-muted);">${String(cs.last_pull).slice(11, 19)} UTC</span>` : ""}${cs.last_push ? ` • Last push attempt: <span style="color:var(--text-muted);">${String(cs.last_push).slice(0, 19)} UTC</span>` : ""}</div>
+          <div class="card-title">Data storage &amp; cloud sync</div>
+          <div class="card-subtitle">Status: <b class="${cs.health === "ACTIVE" ? "pos" : "warn"}">${cs.provider || "Local Mode"}</b>${cs.last_pull ? ` • Last pull: <span style="color:var(--text-muted);">${fmtDate(cs.last_pull)}</span>` : ""}${cs.last_push ? ` • Last verified cloud save: <span style="color:var(--text-muted);">${fmtDate(cs.last_push)}</span>` : ""}</div>
           ${cs.last_error ? `<div style="margin-top:6px;font-size:12px;color:var(--neg-red);background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.35);border-radius:6px;padding:8px 10px;"><b>⚠ Sync Issue:</b> ${cs.last_error}</div>` : ""}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${renderSyncButtons(cs)}
         </div>
       </div>
-      <div style="font-size:12px;color:#cbd5e1;">
-        <b>Where your uploaded data is saved:</b> Every daily file you upload and commit below is immediately written into the SQLite database (<code>app.db</code>) AND compressed into <code>latest_cloud_sync.db.gz</code>.
-        ${cs.enabled
-          ? `Because your <b>GITHUB_SYNC_TOKEN</b> is active, every commit automatically pushes <code>latest_cloud_sync.db.gz</code> straight into your GitHub repository (<b>${cs.repo}</b>), so your daily updates remain permanently saved forever across Office PC, Home PC, and Mobile Phone!`
-          : `To make Vercel save your daily uploads automatically into your GitHub repository (<b>mapkse-glitch/psx-trading-intelligence</b>) forever, add <code>GITHUB_SYNC_TOKEN</code> (your GitHub Personal Access Token with Contents Read/Write permission) in <b>Vercel → Settings → Environment Variables</b>. You can also download <code>latest_cloud_sync.db.gz</code> anytime with the button above.`}
+      <div style="font-size:12px;color:var(--text-main);">
+        <b>Where your uploaded data is saved:</b> Commit writes to the active SQLite database, then attempts a verified save to your <b>private</b> GitHub repository. Check the returned cloud-save status; a local commit is not proof of a remote save. On Vercel, local data, staged uploads and local backup archives are temporary. Download an independent snapshot after important changes. A stale worker is blocked rather than allowed to overwrite newer cloud data.
+
       </div>
     </div>
 
@@ -831,7 +673,7 @@ async function renderImportCenter(container) {
               <th>Status</th>
               <th>File Name(s)</th>
               <th>Source Label</th>
-              <th>Timestamp (UTC)</th>
+              <th>Timestamp (PKT)</th>
               <th class="num">Files</th>
               <th class="num">Rows Read</th>
               <th class="num">New Records</th>
@@ -938,7 +780,7 @@ async function uploadFilesChunked(filesArr, previewEl) {
         const key = `${plan.uid}:${i}`;
         if (missingOnly && !missingOnly[key]) continue;
         sent += 1;
-        previewEl.innerHTML = `<div class="skeleton-card">Uploading <b>${plan.file.name}</b> piece ${i + 1}/${plan.total} (${sent} sent)...<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">Large files are automatically split into safe ~3 MB pieces for Vercel — no 4.5 MB limit problem.</div></div>`;
+        previewEl.innerHTML = `<div class="skeleton-card">Uploading <b>${plan.file.name}</b> piece ${i + 1}/${plan.total} (${sent} sent)...<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">Large files are automatically split into safe ~3 MB pieces for Vercel to stay below the request size limit.</div></div>`;
         await _uploadOneChunk(plan.file, plan.uid, i, plan.total);
       }
     }
@@ -1061,14 +903,14 @@ async function commitStagedBatch(batchUuid) {
     if (committed.status === "ALREADY_COMMITTED") {
       note = `Batch already committed earlier — zero duplicates were introduced.`;
     } else if (committed.cloud_sync && committed.cloud_sync.pushed) {
-      note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! All devices will receive this data on next load.`;
+      note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! Cloud save confirmed; already-open workers must reload cloud data before editing.`;
     } else if (committed.cloud_sync && committed.cloud_sync.error) {
-      note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nYour data is saved — the red Emergency push button will appear above; retry it after fixing the token.`;
+      note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nCloud save is NOT confirmed. Local data on Vercel is temporary. Download the snapshot now and retry after fixing the issue.`;
     } else {
       note = `.\nCommitted and saved to the active database on this app instance.`;
     }
     showToast(
-      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped${note}`
+      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped${note}`, Boolean(committed.cloud_sync && !committed.cloud_sync.pushed)
     );
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
@@ -1104,6 +946,7 @@ async function discardStagedBatch(batchUuid) {
 // 03. MODULE A: TOP 5 VOLUME & RATE REGISTER
 // ============================================================================
 async function renderTop5View(container) {
+  const ticket = beginViewRender(container);
   const f = state.top5Filter;
 
   async function fetchRegisterPass() {
@@ -1131,6 +974,7 @@ async function renderTop5View(container) {
   const trendTicker = f.ticker && f.ticker !== "ALL" ? f.ticker : "ATRL";
   const trendData = await apiGet(`/api/top5/trend/${trendTicker}`, false);
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="filter-bar">
       <div class="filter-group">
@@ -1179,7 +1023,7 @@ async function renderTop5View(container) {
           <div class="card-subtitle">Date Header Format: DD-MM-YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:14px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:14px;">
         ${data.date_blocks.slice(0, 60).map((blk) => `
           <div style="background:var(--bg-card-alt);border:1px solid var(--border-color);border-radius:8px;padding:12px;">
             <div style="font-weight:700;color:var(--accent-blue);margin-bottom:8px;font-size:13px;">
@@ -1288,6 +1132,7 @@ function renderTop5SvgChart(trend) {
 // 04 & 05. MODULE B: ACCOUNT 91404 & ACCOUNT 91269 PERFORMANCE
 // ============================================================================
 async function renderAccountView(container, accountId) {
+  const ticket = beginViewRender(container);
   const selDate = state.accSelectedDate[accountId];
   const qs = selDate ? `?selected_date=${encodeURIComponent(selDate)}` : "";
   const rep = await apiGet(`/api/accounts/${accountId}${qs}`);
@@ -1295,6 +1140,11 @@ async function renderAccountView(container, accountId) {
   state.accSelectedDate[accountId] = rep.selected_date;
 
   const tDates = rep.trading_dates || rep.available_dates || [];
+  if (!tDates.length) {
+    if (!currentViewRender(container, ticket)) return;
+    container.innerHTML = `<section class="card"><h3>Account ${escapeHtml(accountId)}</h3><p>No trading records have been imported for this account yet. The other account remains separate.</p><p>Import your source files or restore a verified backup to begin.</p><button class="btn btn-primary" onclick="switchView('import')">Import account files</button></section>`;
+    return;
+  }
   const tabs = [
     ["dashboard", "Dashboard"],
     ["daily_summary", `Daily Summary (${tDates.length}d)`],
@@ -1746,7 +1596,7 @@ async function renderAccountView(container, accountId) {
       <div class="card">
         <div class="card-header"><div class="card-title">Internal Reconciliation &amp; Data Integrity Checks — Account ${accountId}</div></div>
         <div class="grid-4">
-          <div class="kpi-box"><div class="kpi-label">Reconciliation Status</div><div class="kpi-value pos">${rec.passed ? "PASSED (100%)" : "CHECK"}</div></div>
+          <div class="kpi-box"><div class="kpi-label">Reconciliation Status</div><div class="kpi-value pos">${rec.passed ? "TOTALS AGREE" : "CHECK"}</div></div>
           <div class="kpi-box"><div class="kpi-label">Daily vs Symbol Net P&amp;L Diff</div><div class="kpi-value">${rec.daily_vs_symbol_net_pnl_diff}</div></div>
           <div class="kpi-box"><div class="kpi-label">Monthly vs Daily Net P&amp;L Diff</div><div class="kpi-value">${rec.monthly_vs_daily_net_pnl_diff}</div></div>
           <div class="kpi-box"><div class="kpi-label">Open / Unmatched Net Qty Rows</div><div class="kpi-value">${rec.unmatched_count}</div></div>
@@ -1755,6 +1605,7 @@ async function renderAccountView(container, accountId) {
     `;
   }
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
       <div class="subtabs" style="margin-bottom:0;border-bottom:none;">
@@ -1788,11 +1639,16 @@ function openAccountDateDetail(accountId, tradeDate) {
 // ============================================================================
 
 async function renderFuturesView(container) {
+  const ticket = beginViewRender(container);
   const f = state.futures;
   const meta = await apiGet(`/api/futures/metadata?apply_rolling=${f.apply_rolling}`);
   f.meta = meta;
   const availDates = meta.dates || meta.retained_dates || [];
-  const latestDate = meta.latest_date || "2026-10-16";
+  const latestDate = meta.latest_date || "";
+  const earliestDate = availDates.length ? availDates[0] : latestDate;
+  for (const tab of ['monthly_comparison','month_filter','annualized_comparison','date_filter','date_summary']) {
+    if (f[tab].selected_date === null) f[tab].selected_date = latestDate;
+  }
 
   // Exact Excel sheet names from Futures_Analysis (3).xlsx — 7 sheets + one app extra policy tab
   const subtabs = [
@@ -1811,7 +1667,7 @@ async function renderFuturesView(container) {
 
   const exportBtnHtml = `
     <div style="margin-left:auto;">
-      <a class="btn btn-primary" href="/api/exports/generate/futures_xlsx?selected_date=${latestDate}&selected_contract=${f.month_filter.contract_month}&selected_symbol=${f.symbol_filter.base_symbol}&days=${f.monthly_comparison.days}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
+      <a class="btn btn-primary" href="${futuresExportUrl()}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
     </div>
   `;
 
@@ -1825,7 +1681,8 @@ async function renderFuturesView(container) {
     return `
       <div class="filter-group" title="Calendar date filter — pick ANY date of your choice (same as typing a date into this sheet's 'Selected Date:' cell in the Excel workbook). If your date is not a trading day, the app automatically shows the nearest earlier trading day available in the active 2-month window.">
         <label>Selected Date:</label>
-        <input type="date" value="${shown}" min="2025-01-01" style="font-weight:700;" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.selected_date=this.value||'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+        <span class="date-readout">${isAll ? "All dates" : fmtDate(shown)}</span>
+        <input type="date" aria-label="Selected date for this worksheet" value="${shown}" min="${earliestDate}" max="${latestDate}" style="font-weight:700;" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.selected_date=this.value||'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
       </div>
       <div class="filter-group">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;" title="The Excel sheets show the single selected date; tick this only if you want the full 2-month retained window returned instead.">
@@ -2105,6 +1962,7 @@ async function renderFuturesView(container) {
     `;
   }
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="subtabs">
       ${subtabs.map(([k, lbl]) => `
@@ -2175,6 +2033,7 @@ function formatCompactIndicatorValue(indName, valStr) {
 }
 
 async function renderTechnicalView(container) {
+  const ticket = beginViewRender(container);
   const t = state.technical;
   let bodyHtml = "";
 
@@ -2302,7 +2161,7 @@ async function renderTechnicalView(container) {
         <div class="kpi-box">
           <div class="kpi-label">Composite Signal (${sig.score > 0 ? "+" : ""}${sig.score} / 9)</div>
           <div class="kpi-value ${sig.score > 0 ? "pos" : (sig.score < 0 ? "neg" : "")}">${sig.action}</div>
-          <div class="kpi-sub">${sig.combined_signal} • Confidence: ${sig.confidence}</div>
+          <div class="kpi-sub">${sig.combined_signal} • Rule strength: ${sig.confidence}</div>
         </div>
         <div class="kpi-box">
           <div class="kpi-label">Entry / Stop-Loss / Target Reference</div>
@@ -2385,12 +2244,13 @@ async function renderTechnicalView(container) {
     `;
   }
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="subtabs">
-      <button class="subtab-btn ${t.subtab === "core36" ? "active" : ""}" onclick="state.technical.subtab='core36';renderTechnicalView(document.getElementById('viewContainer'))">Core 36-Ticker Matrix</button>
+      <button class="subtab-btn ${t.subtab === "core36" ? "active" : ""}" onclick="state.technical.subtab='core36';renderTechnicalView(document.getElementById('viewContainer'))">Core 36 watchlist</button>
       <button class="subtab-btn ${t.subtab === "ideas_and_analyst" ? "active" : ""}" onclick="state.technical.subtab='ideas_and_analyst';renderTechnicalView(document.getElementById('viewContainer'))">⚡ Trading Ideas Generator &amp; Automated Analyst</button>
       <button class="subtab-btn ${t.subtab === "deep_dive" ? "active" : ""}" onclick="state.technical.subtab='deep_dive';renderTechnicalView(document.getElementById('viewContainer'))">Ticker Deep-Dive &amp; Chart (${t.selectedSymbol})</button>
-      <button class="subtab-btn ${t.subtab === "all531" ? "active" : ""}" onclick="state.technical.subtab='all531';renderTechnicalView(document.getElementById('viewContainer'))">Full 531-Symbol Screener</button>
+      <button class="subtab-btn ${t.subtab === "all531" ? "active" : ""}" onclick="state.technical.subtab='all531';renderTechnicalView(document.getElementById('viewContainer'))">All-symbol screener</button>
     </div>
     ${bodyHtml}
   `;
@@ -2487,32 +2347,16 @@ function renderTechnicalSvgChart(series) {
 // 08. DATA QUALITY & LEGACY RECONCILIATION
 // ============================================================================
 async function renderReconciliationView(container) {
+  const ticket = beginViewRender(container);
   const data = await apiGet("/api/reconciliation");
   const leg = data.legacy_reconciliation;
   const dq = data.data_quality;
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
-    <div class="grid-4">
-      <div class="kpi-box">
-        <div class="kpi-label">Module A • Top 5 Legacy Reconciliation</div>
-        <div class="kpi-value pos">${leg.module_a_top5?.status}</div>
-        <div class="kpi-sub">Checked ${leg.module_a_top5?.checked_16_oct_rows} rows on 16-Oct-2026 • ${leg.module_a_top5?.mismatches_count} diffs</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Module B • Account 91404 &amp; 91269</div>
-        <div class="kpi-value pos">${leg.module_b_account_91404?.status} / ${leg.module_b_account_91269?.status}</div>
-        <div class="kpi-sub">91404 Diff: ${leg.module_b_account_91404?.net_pnl_abs_diff?.toExponential(2)} PKR | 91269 Diff: 0.00 PKR</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Module C • Futures Spread Match</div>
-        <div class="kpi-value pos">${leg.module_c_futures?.status}</div>
-        <div class="kpi-sub">${leg.module_c_futures?.comparisons_count_on_16_oct} contracts • KAPCO-OCTB -47.68%</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Module D • ATRL Indicator Parity</div>
-        <div class="kpi-value pos">${leg.module_d_technical_atrl?.status}</div>
-        <div class="kpi-sub">RSI 63.21 • MACD 26.54 • ADX 41.03</div>
-      </div>
+    <div class="section-heading"><div><h2>Data checks, with evidence</h2><p>Reference parity is limited to the historical workbook scope shown below. Missing references are not a pass.</p></div></div>
+    <div class="check-grid">
+      ${Object.entries(leg).map(([key,result])=>`<section class="card"><div class="eyebrow">${escapeHtml(key.replaceAll('_',' '))}</div><h3 class="${result.status==='MATCH'?'pos':result.status==='DISCREPANCY'?'neg':''}">${escapeHtml(result.status.replaceAll('_',' '))}</h3><p>${escapeHtml(result.scope || result.reason)}</p><p>${fmtInt(result.checked_rows || 0)} rows checked${result.mismatches_count!==undefined ? ` · ${fmtInt(result.mismatches_count)} differences` : ''}</p><details><summary>View comparison evidence</summary><pre class="doc-viewer">${escapeHtml(JSON.stringify(result,null,2))}</pre></details></section>`).join('')}
     </div>
 
     <div class="grid-2">
@@ -2567,109 +2411,48 @@ async function renderReconciliationView(container) {
 // 09. EXPORTS, REPORTS, DOCUMENTATION & VERIFIED SKILLS
 // ============================================================================
 async function renderExportsView(container) {
-  const [docsMeta, docContent] = await Promise.all([
-    apiGet("/api/docs"),
-    apiGet(`/api/docs/${encodeURIComponent(state.selectedDoc)}`),
-  ]);
-
-  container.innerHTML = `
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">Legacy-Compatible Excel (.xlsx) &amp; CSV Export Center</div>
-          <div class="card-subtitle">All workbooks are generated dynamically from the canonical SQLite database with full openpyxl styling, tables, and formulas</div>
-        </div>
-      </div>
-      <div class="grid-4">
-        <div class="kpi-box">
-          <div class="kpi-label">Module A Workbook</div>
-          <div style="font-weight:700;margin:6px 0;">PSX_Top5_Volume_Rate_Register.xlsx</div>
-          <div class="kpi-sub" style="margin-bottom:10px;">23 Ticker Sheets • MM/DD/YYYY Blocks • Excel Tables &amp; Volume Data Bars</div>
-          <a class="btn btn-primary" href="/api/exports/generate/top5_xlsx" download>⬇ Download .XLSX</a>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-label">Module B • Account 91404</div>
-          <div style="font-weight:700;margin:6px 0;">Trade_Summary_Account_91404.xlsx</div>
-          <div class="kpi-sub" style="margin-bottom:10px;">12 Sheets: Dashboard, Daily, MTD/QTD/YTD, Monthly, Yearly, Symbols, Trade Log, Checks</div>
-          <a class="btn btn-primary" href="/api/exports/generate/account_91404_xlsx" download>⬇ Download .XLSX</a>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-label">Module B • Account 91269</div>
-          <div style="font-weight:700;margin:6px 0;">Trade_Summary_Account_91269.xlsx</div>
-          <div class="kpi-sub" style="margin-bottom:10px;">Strictly Isolated Account 91269 Workbook (20 Trading Days, 31 Symbols)</div>
-          <a class="btn btn-primary" href="/api/exports/generate/account_91269_xlsx" download>⬇ Download .XLSX</a>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-label">Module C &amp; D Workbooks</div>
-          <div style="font-weight:700;margin:6px 0;">Futures_Analysis &amp; RSI_Pivot_Analysis</div>
-          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-            <a class="btn btn-primary" href="/api/exports/generate/futures_xlsx" download>⬇ Futures (.xlsx)</a>
-            <a class="btn btn-primary" href="/api/exports/generate/technical_xlsx" download>⬇ Technical (.xlsx)</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Engineering Documentation Suite (/docs/)</div>
-          <select onchange="state.selectedDoc=this.value;renderExportsView(document.getElementById('viewContainer'))">
-            ${docsMeta.docs.map((d) => `<option value="${d.name}" ${d.name === state.selectedDoc ? "selected" : ""}>${d.name} (${fmtInt(d.size_bytes)} B)</option>`).join("")}
-          </select>
-        </div>
-        <pre class="doc-viewer">${docContent.content.replace(/</g, "&lt;")}</pre>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Verified Local Agent Skills Catalog (/skills/catalog.json)</div>
-            <div class="card-subtitle">${docsMeta.skills.length} Open-Source SKILL.md Packages Audited &amp; Archived Locally</div>
-          </div>
-        </div>
-        <div class="table-wrap" style="max-height:600px;overflow-y:auto;">
-          <table class="data-table">
-            <thead><tr><th>Skill Name</th><th>Category</th><th>Source Repository</th><th>Security Status</th></tr></thead>
-            <tbody>
-              ${docsMeta.skills.map((s) => `
-                <tr>
-                  <td><b>${s.name}</b><br><span style="color:var(--text-muted);font-size:11px;">${s.local_path}</span></td>
-                  <td>${s.category}</td>
-                  <td><span class="badge badge-blue">${s.repo}</span></td>
-                  <td><span class="badge badge-green">${s.verification_status}</span></td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  `;
+  const ticket = beginViewRender(container);
+  const meta = await apiGet('/api/docs');
+  if (!currentViewRender(container, ticket)) return;
+  container.innerHTML = `<div class="section-heading"><div><h2>Export your work</h2><p>Generated from your current database. Accounts remain separate; futures use each worksheet’s saved filters.</p></div></div>
+    <div class="workflow-grid">${[
+      ['Top 5 volume register','Ranked rates, volumes and trades.','top5_xlsx'],
+      ['Account 91404','Isolated account workbook and audit sheets.','account_91404_xlsx'],
+      ['Account 91269','Isolated account workbook and audit sheets.','account_91269_xlsx'],
+      ['Futures analysis','Seven visible worksheets plus hidden source data.','futures_xlsx'],
+      ['Technical analysis','Indicators, pivots and ticker history.','technical_xlsx']
+    ].map(([name,desc,key])=>`<section class="card workflow-card"><h3>${name}</h3><p>${desc}</p><a class="btn btn-primary" href="${key==='futures_xlsx'?futuresExportUrl():'/api/exports/generate/'+key}" download>Download Excel</a></section>`).join('')}</div>
+    <section class="card"><details><summary>Documentation &amp; release notes</summary><div class="docs-links">${meta.docs.map(d=>`<button class="btn btn-secondary" onclick="loadReleaseDoc('${escapeHtml(d.name)}')">${escapeHtml(d.name)}</button>`).join('')}</div><pre id="releaseDoc" class="doc-viewer">Choose a document.</pre></details></section>`;
+}
+async function loadReleaseDoc(name) {
+  const doc = await apiGet('/api/docs/'+encodeURIComponent(name));
+  document.getElementById('releaseDoc').textContent = doc.content;
 }
 
 // ============================================================================
 // 10. SETTINGS, RULE VERSIONING & SQLITE BACKUP
 // ============================================================================
 async function renderSettingsView(container) {
+  const ticket = beginViewRender(container);
   const data = await apiGet("/api/settings", false);
   const s = data.settings;
   const rules = data.rule_versions || [];
   const cs = data.cloud_sync || {};
 
+  if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="card card-hero">
       <div class="card-header">
         <div>
-          <div class="card-title">☁ Zero-Cost Cloud Persistence Engine (Vercel + GitHub Auto-Sync)</div>
-          <div class="card-subtitle">Status: <b class="${cs.health === "ERROR" ? "neg" : (cs.enabled ? "pos" : "")}">${cs.provider || "Local Mode"}</b> ${cs.repo ? `• Repo: <b>${cs.repo}</b> (${cs.branch})` : ""}${cs.last_push ? ` • Last push: <span style="color:var(--text-muted);">${String(cs.last_push).slice(0, 19)}</span>` : ""}${cs.last_push_sha ? ` • SHA: <code>${String(cs.last_push_sha).slice(0, 7)}</code>` : ""}</div>
+          <div class="card-title">Cloud persistence &amp; sync</div>
+          <div class="card-subtitle">Status: <b class="${cs.health === "ACTIVE" ? "pos" : "warn"}">${cs.provider || "Local Mode"}</b> ${cs.repo ? `• Repo: <b>${cs.repo}</b> (${cs.branch})` : ""}${cs.last_push ? ` • Last push: <span style="color:var(--text-muted);">${fmtDate(cs.last_push)}</span>` : ""}${cs.last_push_sha ? ` • SHA: <code>${String(cs.last_push_sha).slice(0, 7)}</code>` : ""}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${renderSyncButtons(cs)}
         </div>
       </div>
-      <div style="font-size:12px;color:#cbd5e1;">
-        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo so your daily data is permanently saved across all devices.
+      <div style="font-size:12px;color:var(--text-main);">
+        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo after a confirmed cloud save. Local files on Vercel are temporary; keep an independent downloaded backup. The repository must be private.
       </div>
     </div>
 
@@ -2684,13 +2467,13 @@ async function renderSettingsView(container) {
         </div>
         <table class="data-table">
           <tbody>
-            <tr><td><b>Commission Slab 1 Upper Rate (PKR)</b></td><td><input type="number" step="0.01" id="set_slab1_upper" value="${s.commission_slab1_upper}" /></td></tr>
-            <tr><td><b>Commission Slab 1 Paisa / Share</b></td><td><input type="number" step="0.0001" id="set_slab1_paisa" value="${s.commission_slab1_paisa_per_share}" /></td></tr>
-            <tr><td><b>Commission Slab 2 Starting Rate (PKR)</b></td><td><input type="number" step="0.01" id="set_slab2_start" value="${s.commission_slab2_start}" /></td></tr>
-            <tr><td><b>Commission Slab 2 Rate (Decimal, 0.000325 = 0.0325%)</b></td><td><input type="number" step="0.000001" id="set_slab2_rate" value="${s.commission_slab2_rate}" /></td></tr>
-            <tr><td><b>Sindh Sales Tax (SST) Rate (Decimal, 0.13 = 13%)</b></td><td><input type="number" step="0.01" id="set_sst_rate" value="${s.sst_rate}" /></td></tr>
-            <tr><td><b>Default Futures Days to Expiry</b></td><td><input type="number" step="1" id="set_fut_days" value="${s.default_futures_days ?? s.futures_default_days ?? 30}" /></td></tr>
-            <tr><td><b>Futures Rolling Retention Window (Months)</b></td><td><input type="number" step="1" id="set_fut_months" value="${s.futures_rolling_months ?? s.futures_rolling_retention_months ?? 2}" /></td></tr>
+            <tr><td><label for="set_slab1_upper"><b>Commission Slab 1 Upper Rate (PKR)</b></label></td><td><input type="number" step="0.01" id="set_slab1_upper" value="${s.commission_slab1_upper}" /></td></tr>
+            <tr><td><label for="set_slab1_paisa"><b>Commission Slab 1 Paisa / Share</b></label></td><td><input type="number" step="0.0001" id="set_slab1_paisa" value="${s.commission_slab1_paisa_per_share}" /></td></tr>
+            <tr><td><label for="set_slab2_start"><b>Commission Slab 2 Starting Rate (PKR)</b></label></td><td><input type="number" step="0.01" id="set_slab2_start" value="${s.commission_slab2_start}" /></td></tr>
+            <tr><td><label for="set_slab2_rate"><b>Commission Slab 2 Rate (Decimal, 0.000325 = 0.0325%)</b></label></td><td><input type="number" step="0.000001" id="set_slab2_rate" value="${s.commission_slab2_rate}" /></td></tr>
+            <tr><td><label for="set_sst_rate"><b>Sindh Sales Tax (SST) Rate (Decimal, 0.13 = 13%)</b></label></td><td><input type="number" step="0.01" id="set_sst_rate" value="${s.sst_rate}" /></td></tr>
+            <tr><td><label for="set_fut_days"><b>Default Futures Days to Expiry</b></label></td><td><input type="number" step="1" id="set_fut_days" value="${s.default_futures_days ?? s.futures_default_days ?? 30}" /></td></tr>
+            <tr><td><label for="set_fut_months"><b>Futures Rolling Retention Window (Months)</b></label></td><td><input type="number" step="1" id="set_fut_months" value="${s.futures_rolling_months ?? s.futures_rolling_retention_months ?? 2}" /></td></tr>
           </tbody>
         </table>
       </div>
@@ -2699,17 +2482,18 @@ async function renderSettingsView(container) {
         <div class="card-header">
           <div>
             <div class="card-title">SQLite Online Backup &amp; Restore Manager</div>
-            <div class="card-subtitle">Database Integrity: <b class="pos">${data.db_integrity.ok ? "PRAGMA integrity_check = OK" : "FAILED"}</b> • Path: ${data.db_integrity.db_path}</div>
+            <div class="card-subtitle">Database Integrity: <b class="${data.db_integrity.ok ? "pos" : "neg"}">${data.db_integrity.ok ? "PRAGMA integrity_check = OK" : "FAILED"}</b> • Path: ${data.db_integrity.db_path}</div>
           </div>
           <button class="btn btn-success" onclick="createManualBackup()">+ Create New Backup (.zip)</button>
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Backup Archive</th><th>Created At (UTC)</th><th class="num">Size</th><th>Integrity</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Backup Archive</th><th>Created at (PKT)</th><th class="num">Size</th><th>Integrity</th><th>Actions</th></tr></thead>
             <tbody>
+              ${data.backups.length===0?'<tr><td colspan="5">No local backups yet. Create a backup and download it for independent safekeeping.</td></tr>':""}
               ${data.backups.map((b) => `
                 <tr>
-                  <td><b>${b.zip_filename}</b><br><span style="color:var(--text-muted);font-size:10.5px;">SHA256: ${(b.db_sha256 || "").slice(0, 16)}...</span></td>
+                  <td><b>${escapeHtml(b.zip_filename)}</b><br><span style="color:var(--text-muted);font-size:10.5px;">SHA256: ${(b.db_sha256 || "").slice(0, 16)}...</span></td>
                   <td>${fmtDate(b.created_at || "")}</td>
                   <td class="num">${fmtInt(b.zip_size_bytes)} B</td>
                   <td><span class="badge ${b.integrity_ok ? "badge-green" : "badge-red"}">${b.integrity_ok ? "VERIFIED" : "ERR"}</span></td>
@@ -2722,6 +2506,19 @@ async function renderSettingsView(container) {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Date Normalization &amp; Integrity Scanner</div>
+          <div class="card-subtitle">Proposes corrections for a limited class of day/month-swapped rows. Review the dry-run evidence first — nothing changes until you confirm. A clean scan does not prove every historical date is correct.</div>
+        </div>
+        <button class="btn btn-primary" onclick="scanDateNormalization()">🔎 Scan for Swapped Dates</button>
+      </div>
+      <div id="dateRepairResults" style="color:var(--text-muted);font-size:12.5px;">
+        Click <b>Scan</b> to inspect the supported canonical date tables. The scanner uses unambiguous dates as anchors to identify swap candidates and duplicate artifacts. Review the plan against source files before applying. A verified online backup and audit record are kept; changed data requires a fresh scan. Reapplying a completed plan makes no further changes.
       </div>
     </div>
 
@@ -2762,23 +2559,21 @@ async function saveSettings() {
     commission_slab2_start: Number(document.getElementById("set_slab2_start").value),
     commission_slab2_rate: Number(document.getElementById("set_slab2_rate").value),
     sst_rate: Number(document.getElementById("set_sst_rate").value),
-    default_futures_days: Number(document.getElementById("set_fut_days").value),
     futures_default_days: Number(document.getElementById("set_fut_days").value),
-    futures_rolling_months: Number(document.getElementById("set_fut_months").value),
     futures_rolling_retention_months: Number(document.getElementById("set_fut_months").value),
   };
-  await fetch("/api/settings", {
+  const saved = await checkedMutation("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates, notes: "Updated via Settings UI" }),
   });
   clearClientCache();
-  showToast("Settings saved and new rule version recorded.");
+  syncNotice(saved, "Settings saved; new rule version recorded.");
   renderSettingsView(document.getElementById("viewContainer"));
 }
 
 async function createManualBackup() {
-  await fetch("/api/backups/create", {
+  await checkedMutation("/api/backups/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: "manual_snapshot", include_raw_archive: false }),
@@ -2792,7 +2587,7 @@ async function triggerCloudSyncNow() {
   const out = await res.json();
   if (out.pushed) {
     clearClientCache();
-    showToast(`✓ Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)}) — this snapshot is now permanent on GitHub and every new device/cold-start will load it.`);
+    showToast(`✓ Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)}) — cloud save confirmed. Existing workers may need Reload cloud data; keep an independent backup.`);
   } else if (out.error) {
     showToast(`⚠ GitHub push failed: ${out.error}\n(Local snapshot saved — use 'Download Updated latest_cloud_sync.db.gz' if needed.)`, true);
   } else {
@@ -2803,6 +2598,7 @@ async function triggerCloudSyncNow() {
 }
 
 async function restoreBackup(zipFilename) {
+  if (!confirm("Restore this backup? A safety backup is created first. The restored database must then be saved to the cloud.")) return;
   const res = await fetch("/api/backups/restore", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2810,10 +2606,60 @@ async function restoreBackup(zipFilename) {
   });
   if (res.ok) {
     clearClientCache();
-    showToast(`Database restored from ${zipFilename} (pre-restore safety snapshot saved).`);
+    syncNotice(await res.json(), `Database restored from ${zipFilename}; safety backup saved.`);
     renderSettingsView(document.getElementById("viewContainer"));
   } else {
-    showToast("Backup restore failed.", true);
+    showToast((await res.json()).detail || "Backup restore failed.", true);
+  }
+}
+
+let _dateRepairPlan = null;
+
+async function scanDateNormalization() {
+  const box = document.getElementById("dateRepairResults");
+  box.innerHTML = `<span style="color:var(--text-muted);">Scanning all dated tables…</span>`;
+  try {
+    const res = await fetch("/api/admin/date-normalization/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const plan = await res.json();
+    _dateRepairPlan = plan;
+    const t = plan.totals;
+    let html = `<div style="color:var(--text-main);font-weight:600;margin-bottom:6px;">${t.candidates === 0
+      ? "✅ No repair candidates found by this scanner. This does not prove every date is correct."
+      : `⚠ Found <b>${fmtInt(t.candidates)}</b> polluted row(s): ${fmtInt(t.move)} to flip to their true date, ${fmtInt(t.duplicate_drop)} duplicate-pollution row(s) to drop, ${fmtInt(t.conflict)} conflict(s) to resolve.`}</div>`;
+    html += `<table class="data-table"><thead><tr><th>Table</th><th>Anchor window (day&gt;12 proofs)</th><th class="num">Rows</th><th class="num">Polluted</th><th class="num">Flip</th><th class="num">Drop dup</th><th class="num">Conflicts</th><th>Sample</th></tr></thead><tbody>`;
+    for (const sec of plan.tables) {
+      const sample = (sec.samples || []).slice(0, 2).map((s) => `${s.from} → ${s.to} <span style="color:var(--text-muted);">(${s.action})</span>`).join("<br>");
+      html += `<tr><td><b>${sec.table}</b></td><td>${sec.anchors ? `${fmtDate(sec.anchors.min)} → ${fmtDate(sec.anchors.max)}` : "—"}</td><td class="num">${fmtInt(sec.total_rows)}</td><td class="num">${fmtInt(sec.candidates)}</td><td class="num">${fmtInt(sec.move)}</td><td class="num">${fmtInt(sec.duplicate_drop)}</td><td class="num">${fmtInt(sec.conflict)}</td><td style="font-size:10.5px;">${sample}</td></tr>`;
+    }
+    html += `</tbody></table>`;
+    if (t.candidates > 0) {
+      html += `<div style="margin-top:10px;"><button class="btn btn-success" onclick="applyDateNormalization()">✔ Apply Repair (${fmtInt(t.candidates)} rows)</button> <span style="font-size:11.5px;color:var(--text-muted);">One transaction • DB copy kept before applying • audit-logged • idempotent (re-scan afterwards shows 0)</span></div>`;
+    }
+    box.innerHTML = html;
+  } catch (e) {
+    console.error(e);
+    box.innerHTML = `<span style="color:var(--neg-red);">Scan failed: ${e.message}</span>`;
+  }
+}
+
+async function applyDateNormalization() {
+  const t = _dateRepairPlan ? _dateRepairPlan.totals : null;
+  const n = t ? fmtInt(t.candidates) : "?";
+  if (!confirm(`Apply the date-normalization repair to ${n} polluted row(s)?\n• A copy of the database is saved first\n• Everything runs in one transaction, logged in the audit trail\n• You may re-upload the clean .xlsx yearbooks afterwards (optional) to re-verify values`)) return;
+  const box = document.getElementById("dateRepairResults");
+  box.innerHTML = `<span style="color:var(--text-muted);">Applying repair…</span>`;
+  try {
+    const res = await fetch("/api/admin/date-normalization/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true, plan_token: _dateRepairPlan?.plan_token }) });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const out = await res.json();
+    clearClientCache();
+    syncNotice(out, `Date repair applied: ${fmtInt(out.applied_count)} rows fixed (${out.idempotent_check}).`);
+    _dateRepairPlan = null;
+    await scanDateNormalization();
+  } catch (e) {
+    console.error(e);
+    box.innerHTML = `<span style="color:var(--neg-red);">Apply failed: ${e.message}</span>`;
   }
 }
 
@@ -2821,6 +2667,153 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 
-window.addEventListener("DOMContentLoaded", () => {
-  switchView("overview");
+window.addEventListener("DOMContentLoaded", bootWorkspace);
+
+// Release 1.3: authentication, accessibility, independent exports and mobile shell.
+let csrfToken = '';
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async function(input, init = {}) {
+  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+  const method = (init.method || 'GET').toUpperCase();
+  const headers = new Headers(init.headers || {});
+  if (url.origin === location.origin && url.pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(method)) headers.set('X-PSX-CSRF', csrfToken);
+  const response = await nativeFetch(input, {...init, headers});
+  if (response.status === 401 && !url.pathname.startsWith('/api/auth/')) {
+    document.getElementById('appShell').hidden = true;
+    document.getElementById('authScreen').hidden = false;
+    clearClientCache();
+  }
+  return response;
+};
+const viewTickets = new WeakMap();
+function beginViewRender(container) { const token = {}; viewTickets.set(container, token); return token; }
+function currentViewRender(container, token) { return container.isConnected && viewTickets.get(container) === token; }
+function futuresExportUrl() {
+  const keys = ['monthly_comparison','month_filter','symbol_filter','annualized_comparison','date_filter','future_symbol_summary','date_summary'];
+  const filters = {apply_rolling: state.futures.apply_rolling};
+  keys.forEach(key => filters[key] = {...state.futures[key]});
+  filters.symbol_filter.selected_date = 'ALL';
+  return '/api/exports/generate/futures_xlsx?sheet_filters='+encodeURIComponent(JSON.stringify(filters));
+}
+async function checkedMutation(url, options) {
+  const res = await fetch(url, options);
+  const data = await res.json();
+  if (!res.ok) { showToast(data.detail || 'Request failed.', true); throw new Error(data.detail || 'Request failed'); }
+  return data;
+}
+function syncNotice(result, message) {
+  const sync = result.cloud_sync;
+  if (sync?.pushed) showToast(message+' Cloud save confirmed.');
+  else if (sync) showToast(message+' NOT confirmed in cloud. Download a snapshot from Settings. '+(sync.error || sync.message || ''), true);
+  else showToast(message);
+}
+async function reloadCloudData() {
+  if (!confirm('Reload the latest cloud database? A local safety backup is kept. Unsynced local changes block reload to prevent data loss.')) return;
+  try {
+    const result = await checkedMutation('/api/cloud-sync/reload', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({confirm:true})});
+    clearClientCache();
+    showToast(result.pulled ? 'Latest cloud snapshot loaded.' : (result.reason || 'No snapshot loaded.'), !result.pulled);
+    await refreshCurrentView();
+  } catch (_) { /* checkedMutation displayed the reason */ }
+}
+function toggleMenu(force) {
+  const open = force ?? !document.body.classList.contains('menu-open');
+  document.body.classList.toggle('menu-open',open);
+  document.getElementById('menuToggle').setAttribute('aria-expanded',String(open));
+  document.querySelector('.drawer-backdrop').hidden = !open;
+  if (open) document.querySelector('.sidebar-nav button.active')?.focus();
+}
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.body.classList.contains('menu-open')) { toggleMenu(false); document.getElementById('menuToggle').focus(); }
+  if (event.key === 'Tab' && document.body.classList.contains('menu-open')) {
+    const buttons = [...document.querySelectorAll('.sidebar button')];
+    if (event.shiftKey && document.activeElement===buttons[0]) {event.preventDefault();buttons.at(-1).focus();}
+    else if (!event.shiftKey && document.activeElement===buttons.at(-1)) {event.preventDefault();buttons[0].focus();}
+  }
 });
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.getElementById('themeToggle').textContent = theme==='dark' ? 'Light mode' : 'Dark mode';
+}
+function toggleTheme() {
+  const theme = document.documentElement.dataset.theme==='dark'?'light':'dark';
+  localStorage.setItem('psx_theme',theme); setTheme(theme);
+}
+async function bootWorkspace() {
+  setTheme(localStorage.getItem('psx_theme') || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  const status = await (await nativeFetch('/api/auth/status')).json();
+  csrfToken = status.csrf || '';
+  if (!status.configured) {
+    document.getElementById('ownerPassword').disabled = true;
+    document.querySelector('#loginForm button').disabled = true;
+    document.getElementById('authMessage').textContent = 'Setup required: set PSX_ADMIN_PASSWORD (12+ characters) and PSX_SESSION_SECRET (32+ characters) in the hosting environment, then redeploy. Data stays locked until configured. See docs/DEPLOY_1_3.md.';
+    return;
+  }
+  if (!status.authenticated) return;
+  document.getElementById('authScreen').hidden = true;
+  document.getElementById('appShell').hidden = false;
+  await switchView('overview');
+  updateSystemStatus();
+}
+document.getElementById('loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button'); button.disabled = true;
+  try {
+    const res = await nativeFetch('/api/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('ownerPassword').value,remember:document.getElementById('rememberOwner').checked})});
+    const out = await res.json();
+    document.getElementById('ownerPassword').value = '';
+    if (!res.ok) throw new Error(out.detail || 'Sign-in failed.');
+    document.getElementById('authMessage').textContent = '';
+    await bootWorkspace();
+  } catch(error) {document.getElementById('authMessage').textContent = error.message;}
+  finally {button.disabled=false;}
+});
+async function signOut() {
+  await fetch('/api/auth/logout', {method:'POST'});
+  clearClientCache(); location.reload();
+}
+async function updateSystemStatus() {
+  try {
+    const result = await apiGet('/api/system/status', false);
+    const integrity = result.database_integrity.ok;
+    document.getElementById('sidebarDbStatus').textContent = integrity ? 'SQLite integrity: OK' : 'SQLite integrity: FAILED';
+    document.getElementById('sidebarLastImport').textContent = 'Cloud: '+result.cloud_sync.health+' · Reference parity checked separately';
+  } catch (_) {document.getElementById('sidebarDbStatus').textContent='Status unavailable';}
+}
+// Add accessible names to existing legacy controls; date input locale is supplemented by a fixed-format readout.
+let enhancementQueued = false;
+const observer = new MutationObserver(() => {
+  if (enhancementQueued) return;
+  enhancementQueued = true;
+  requestAnimationFrame(() => { enhanceWorkspace(); enhancementQueued=false; });
+});
+observer.observe(document.getElementById('appShell'), {childList:true,subtree:true});
+function enhanceWorkspace() {
+  const root = document.getElementById('viewContainer');
+  if (!root) return;
+  root.querySelectorAll('input,select,textarea').forEach((el,index)=> {
+    if (!el.id) el.id='control-'+index;
+    const group = el.closest('.filter-group');
+    const label = group?.querySelector('label') || el.closest('tr')?.querySelector('label');
+    if (label && !label.querySelector('input')) label.htmlFor=el.id;
+    if (!el.getAttribute('aria-label') && !document.querySelector(`label[for="${CSS.escape(el.id)}"]`) && !el.closest('label')) el.setAttribute('aria-label', el.placeholder || (el.closest('tr')?.cells[0]?.textContent.trim()) || (el.type==='file'?'Choose files':'Worksheet filter'));
+    if (el.type==='date' && !group?.querySelector('.date-readout') && !el.nextElementSibling?.classList.contains('date-readout')) {
+      const readout=document.createElement('span'); readout.className='date-readout'; readout.textContent=fmtDate(el.value); el.after(readout);
+    }
+  });
+  root.querySelectorAll('.table-wrap').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label','Scrollable data table');});
+  root.querySelectorAll('table:not(.table-wrap table)').forEach(table=>{
+    if (table.querySelector('#set_slab1_upper')) {table.classList.add('settings-table');return;}
+    const wrapper=document.createElement('div');wrapper.className='table-wrap';table.replaceWith(wrapper);wrapper.append(table);
+  });
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  let node;const edits=[];
+  while ((node=walker.nextNode())) {
+    if (node.parentElement.closest('pre,code,script,style,textarea')) continue;
+    if (/\d{4}-\d{2}-\d{2}/.test(node.nodeValue)) {
+      const text=node.nodeValue.replace(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?\b/g,fmtDate);
+      if (text!==node.nodeValue) edits.push([node,text]);
+    }
+  }
+  edits.forEach(([n,text])=>n.nodeValue=text);
+}

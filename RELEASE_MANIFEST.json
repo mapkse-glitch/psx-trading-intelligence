@@ -1,0 +1,369 @@
+{
+  "release": "1.3.0",
+  "purpose": "Source-only corrected dashboard; upload contents to existing private repository root.",
+  "preserve_existing_live_snapshot": "latest_cloud_sync.db.gz",
+  "database_included": false,
+  "credentials_included": false,
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 290,
+      "sha256": "85fd90446af608664cb96ad395eabc80bc8043fb4dad2b5ff136627a9f6dea73"
+    },
+    {
+      "path": ".vercelignore",
+      "bytes": 217,
+      "sha256": "28aa205d2fa9d6a22316c862f37b3dc56ec95856800efa084b1a0dba325e1928"
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 450,
+      "sha256": "ea329082f661b44b02e478367742b4d79da33127aa2da13a9f7035d4fc2f8724"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4776,
+      "sha256": "b942c03574f4593d0a9b93dc792dbd3c96a5896a2c49d155f9ac887d79e7d55f"
+    },
+    {
+      "path": "api/index.py",
+      "bytes": 29,
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+    },
+    {
+      "path": "docs/DEPLOY_1_3.md",
+      "bytes": 8898,
+      "sha256": "3c866393e6e8dbd988624690486dd48e44d9acd0c8d1317cab854b3f7cef6d6e"
+    },
+    {
+      "path": "docs/DESIGN_1_3.md",
+      "bytes": 2056,
+      "sha256": "8de0e667de23694e51813012d3a2278de8f8bf1bb34234a12208ec0521c08c98"
+    },
+    {
+      "path": "docs/QA_SUMMARY_1_3.json",
+      "bytes": 434,
+      "sha256": "dbddac2904819f58c6b324ad3e20d721dabef589c80a260aad6b6e2c78ae8d2d"
+    },
+    {
+      "path": "docs/RELEASE_1_3.md",
+      "bytes": 3818,
+      "sha256": "099019363d1243c0334c0236434532f4164a293a1b3c3b29944095bd0464838d"
+    },
+    {
+      "path": "docs/TESTING_1_3.md",
+      "bytes": 4979,
+      "sha256": "cc50b9817a50da232af0a5628fd3e78a678a4171bffd492c80e1eea3bf45b0ff"
+    },
+    {
+      "path": "docs/historical/ARCHITECTURE.md",
+      "bytes": 4551,
+      "sha256": "c3decc064310e8e8c85c1cf0878b26d2bb72de4c3c19b6fb540045750bd059cd"
+    },
+    {
+      "path": "docs/historical/ASSUMPTIONS_AND_DECISIONS.md",
+      "bytes": 7689,
+      "sha256": "d99663dfa9045296ad24813f5af44e3ff1c067d84235834d204ab0f7733577a5"
+    },
+    {
+      "path": "docs/historical/BACKUP_AND_RESTORE.md",
+      "bytes": 2965,
+      "sha256": "3792e2a63ffd36f917727b7ba2c8f422e139732f55e9fd7d73dccb800f8aca2f"
+    },
+    {
+      "path": "docs/historical/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
+      "bytes": 11390,
+      "sha256": "9b414557fed317ef52729dd1daf3af66ab2f402ba0e803c017f249854e087721"
+    },
+    {
+      "path": "docs/historical/DATA_DICTIONARY.md",
+      "bytes": 7090,
+      "sha256": "45ccb5c2708b7a73b22b1d83b6464a2995a0f81a66b07aa480d4b38b02483ef3"
+    },
+    {
+      "path": "docs/historical/DEPLOYMENT.md",
+      "bytes": 2077,
+      "sha256": "c750375f21b0234156f3dd4fe32f8459257c3c57bdb12699159d9af01226a71b"
+    },
+    {
+      "path": "docs/historical/FILE_INVENTORY.md",
+      "bytes": 8119,
+      "sha256": "1ce43c63577274d2359654c9f2611fb0da1e54be5a40c72139a1dfc71526001f"
+    },
+    {
+      "path": "docs/historical/FORMULAS_AND_SIGNALS.md",
+      "bytes": 9476,
+      "sha256": "dc808cbf6d5534ae2b4f7ec15cc71b1f9c4e09affee610feec1f29859ad23e7e"
+    },
+    {
+      "path": "docs/historical/KNOWN_LIMITATIONS.md",
+      "bytes": 3738,
+      "sha256": "18bf1cf5a7d75ce80697fca3bee3e0f15d8c07bd3e82318da010247e47b6388a"
+    },
+    {
+      "path": "docs/historical/MIGRATION_PLAN.md",
+      "bytes": 4938,
+      "sha256": "837c33c7286814257520c83a0390a5251348da7fdb0b08b59ed85c0bf8561880"
+    },
+    {
+      "path": "docs/historical/MIGRATION_REPORT.md",
+      "bytes": 7010,
+      "sha256": "675f2f2fdd86c4c898e9fbc55314f8ed96a3ee5edcb21088f2d56097ab89bad6"
+    },
+    {
+      "path": "docs/historical/REQUIREMENTS.md",
+      "bytes": 5329,
+      "sha256": "84834ca2d7993fefa1a915f98383def84877fd22304a0d4b25300cf9c37d2119"
+    },
+    {
+      "path": "docs/historical/TEST_REPORT.md",
+      "bytes": 5833,
+      "sha256": "4f8b71810d9a2b5cf6f19ceb838ed38c3b56f035c0007db156aaebe94f6a50b2"
+    },
+    {
+      "path": "docs/historical/USER_GUIDE.md",
+      "bytes": 5316,
+      "sha256": "3efc7953b2b8929f2a95905fb2608caca41d4baf8472072b68fdd87eed934ea2"
+    },
+    {
+      "path": "docs/historical/WORKFLOW_MAPPING.md",
+      "bytes": 6782,
+      "sha256": "a207f106817c021be0ac4241e1c2882af32860f5eaa047de20d81be042f6ec27"
+    },
+    {
+      "path": "main.py",
+      "bytes": 29,
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+    },
+    {
+      "path": "psx_app/__init__.py",
+      "bytes": 80,
+      "sha256": "1005840650a76f1dcb2d72617ad32ca50b6771cf71f54daa7da721df4dfa0f7e"
+    },
+    {
+      "path": "psx_app/config.py",
+      "bytes": 4320,
+      "sha256": "67cbc6e2e6c6918d2c0ce47a341c9670a5e28cd14ff373612cae424ee75fc937"
+    },
+    {
+      "path": "psx_app/database/__init__.py",
+      "bytes": 44,
+      "sha256": "52d8511e0f1121ec66e0c96b75a7285c3a3bbc7c91415bd9c3c24f5d6fd06917"
+    },
+    {
+      "path": "psx_app/database/repository.py",
+      "bytes": 8312,
+      "sha256": "8b42eaa07df01652771ae6ee2372cd091ce6bf1d658d37c9f97a4ddfc4abc578"
+    },
+    {
+      "path": "psx_app/database/schema.py",
+      "bytes": 10412,
+      "sha256": "73e37448918235d147b5d0760d04b580228b1bdc7d6524922492e58a63985d37"
+    },
+    {
+      "path": "psx_app/main.py",
+      "bytes": 35049,
+      "sha256": "7f6ef9a707b48139daa79d7d7c30a1962d9750b2d9a7202b8798dffa5296a06e"
+    },
+    {
+      "path": "psx_app/parsers/__init__.py",
+      "bytes": 58,
+      "sha256": "4d2bcdff8f16e29bec64c6d7b8590067e5812582c0bf9701f69a7299b478c743"
+    },
+    {
+      "path": "psx_app/parsers/detector.py",
+      "bytes": 4718,
+      "sha256": "de25bc8e1afe54904c1ea4f6ba4385cadfd586e8de31e87afa88197e7173622a"
+    },
+    {
+      "path": "psx_app/parsers/ohlcv_parser.py",
+      "bytes": 12912,
+      "sha256": "b017ad68c4eef5a15af1dc6082f2042f5072ece1a80e45c5b828ed6110c71a61"
+    },
+    {
+      "path": "psx_app/parsers/top5_parser.py",
+      "bytes": 9005,
+      "sha256": "4343d184d95215b481f6f5d02a2256a650960c10f99572857e3be05f86de3a1f"
+    },
+    {
+      "path": "psx_app/parsers/tradelog_parser.py",
+      "bytes": 20339,
+      "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17"
+    },
+    {
+      "path": "psx_app/security.py",
+      "bytes": 5849,
+      "sha256": "28adc2c7721b4a5881c22ec6f8a876278fab630c980532e2e0e2c8680b0dfde2"
+    },
+    {
+      "path": "psx_app/services/__init__.py",
+      "bytes": 97,
+      "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221"
+    },
+    {
+      "path": "psx_app/services/account_service.py",
+      "bytes": 21858,
+      "sha256": "9d7903173f0c73c22345c6e7c8ad4bac3ce642e8c6eb2ee5937be42e769c957d"
+    },
+    {
+      "path": "psx_app/services/backup_service.py",
+      "bytes": 7301,
+      "sha256": "dd38360cb641cdb9c5b19983aa8b2129f872ff1ba7ccb6b485f66aec939db8f4"
+    },
+    {
+      "path": "psx_app/services/cloud_sync_service.py",
+      "bytes": 18678,
+      "sha256": "71f5a39d5410b39f711d4da59773534486eca97ecc0e9c8e0504b61912ea690f"
+    },
+    {
+      "path": "psx_app/services/data_guard.py",
+      "bytes": 1566,
+      "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca"
+    },
+    {
+      "path": "psx_app/services/date_repair_service.py",
+      "bytes": 17337,
+      "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593"
+    },
+    {
+      "path": "psx_app/services/export_service.py",
+      "bytes": 55600,
+      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5"
+    },
+    {
+      "path": "psx_app/services/futures_service.py",
+      "bytes": 21551,
+      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2"
+    },
+    {
+      "path": "psx_app/services/import_orchestrator.py",
+      "bytes": 39940,
+      "sha256": "45e098656853667414da41842493003dc12c9a69334b0927a58a39aee0474317"
+    },
+    {
+      "path": "psx_app/services/intelligence_service.py",
+      "bytes": 31665,
+      "sha256": "0c64bf19e88a0c7766080e7ccb3dcfb0bb68164f890f0a86a5d25d9eb02b902a"
+    },
+    {
+      "path": "psx_app/services/migration_service.py",
+      "bytes": 5753,
+      "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68"
+    },
+    {
+      "path": "psx_app/services/reconciliation_service.py",
+      "bytes": 17534,
+      "sha256": "b968a0df35e6fe9f1e7f07e3c5fad1ea70c2cabab57eecfa9f65b53869f67a22"
+    },
+    {
+      "path": "psx_app/services/technical_service.py",
+      "bytes": 36256,
+      "sha256": "44fcac204e8b99ffc6ce58cdae060db12eeeff2aeafe0b3c00a7a01b9d54fa39"
+    },
+    {
+      "path": "psx_app/services/top5_service.py",
+      "bytes": 5039,
+      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec"
+    },
+    {
+      "path": "psx_app/static/app.js",
+      "bytes": 158385,
+      "sha256": "4e7efe30386d4501618b75509ec2e6ea9a23e21ec49da631dc931f6ac2500e5d"
+    },
+    {
+      "path": "psx_app/static/index.html",
+      "bytes": 5721,
+      "sha256": "00fb3887d422826a63c4a6dd8dbcac5c3e5f8d320099cd76e1dc248f3792e83f"
+    },
+    {
+      "path": "psx_app/static/styles.css",
+      "bytes": 30012,
+      "sha256": "ab4805f74870ad558fb0f50dc7113498f3b02d1779e6cbd2bd07f0a8105bea16"
+    },
+    {
+      "path": "pytest.ini",
+      "bytes": 42,
+      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada"
+    },
+    {
+      "path": "render.yaml",
+      "bytes": 602,
+      "sha256": "bcb770c9f161d78082e31cc7929a8361cde468ad2629fbb1f25385e8c5a99840"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 102,
+      "sha256": "d6867c0294bee1390adc7b798e6f87db33bb1672ba15fac4318fb5e16988bb25"
+    },
+    {
+      "path": "start_dashboard.bat",
+      "bytes": 1051,
+      "sha256": "f5db859faecf002520fee88dcad8d27e5f0854d0dfe8ece88ef082cb181ef31e"
+    },
+    {
+      "path": "start_dashboard.sh",
+      "bytes": 270,
+      "sha256": "4a4d98e606271e0b8cbbf8e59ffdbb165527c148aac0cea9d0b50804d82b04ce"
+    },
+    {
+      "path": "tests/conftest.py",
+      "bytes": 2364,
+      "sha256": "eaa5e379dcc721c7343658237ae6dbc026199a186b99351cec5f8065daaba1a3"
+    },
+    {
+      "path": "tests/test_chunked_upload.py",
+      "bytes": 3381,
+      "sha256": "47139fc284cd7760ae76c698f3bdd128b994a1cbc7ce5f64eeb819230705e02b"
+    },
+    {
+      "path": "tests/test_cloud_sync_state.py",
+      "bytes": 2293,
+      "sha256": "ab2925fed8e86b57e77bced182f49d5d4267232529789276a22a4718b924729a"
+    },
+    {
+      "path": "tests/test_date_integrity.py",
+      "bytes": 10884,
+      "sha256": "4e53b0891249cd4db3f8697a14e35f8a391ec4156b6c45fd3920a9d8f2bdc9ed"
+    },
+    {
+      "path": "tests/test_futures_date_resolution_and_intelligence.py",
+      "bytes": 3100,
+      "sha256": "82279d962492945ddc6f0aca98bc0cbe37049b9a9ac54ec2683b6d5d39ed810d"
+    },
+    {
+      "path": "tests/test_import_history_filenames.py",
+      "bytes": 3775,
+      "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa"
+    },
+    {
+      "path": "tests/test_module_a_top5.py",
+      "bytes": 3278,
+      "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d"
+    },
+    {
+      "path": "tests/test_module_b_accounts.py",
+      "bytes": 6557,
+      "sha256": "a42e840401961d1e9bbb497de97b7f5ade429b897896b93ee145d1e3990e8895"
+    },
+    {
+      "path": "tests/test_module_c_futures.py",
+      "bytes": 4288,
+      "sha256": "c4c454354592b15d91e945f66791124103ab8198df77d395385fe83cee168d71"
+    },
+    {
+      "path": "tests/test_module_d_and_system.py",
+      "bytes": 6784,
+      "sha256": "489af8c3f60c92be6d1e855c8923ac158ffdf46d1fcca01f8a357a62d73ddf27"
+    },
+    {
+      "path": "tests/test_release_safety.py",
+      "bytes": 20297,
+      "sha256": "a76577c8ecd0240d9b075744bf831f21a6a6d3e26f7da48adf212fc1f73f39f6"
+    },
+    {
+      "path": "vercel.json",
+      "bytes": 57,
+      "sha256": "9c5ef9c95efe9858c26f36fb5399a6da56bcc128fc4a3017a6c66477347f8b2f"
+    }
+  ]
+}

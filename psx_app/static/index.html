@@ -7,22 +7,35 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <a class="skip-link" href="#viewContainer">Skip to workspace</a>
+  <section id="authScreen" class="auth-screen" role="main" aria-labelledby="authTitle">
+    <form class="auth-card" id="loginForm">
+      <div class="eyebrow">PRIVATE WORKSPACE</div><h1 id="authTitle">PSX Intelligence</h1>
+      <p>Sign in to access your accounts, market data and backups.</p>
+      <label for="ownerPassword">Owner password</label>
+      <input id="ownerPassword" type="password" autocomplete="current-password" required minlength="12" />
+      <label class="remember"><input id="rememberOwner" type="checkbox" checked /> Keep me signed in</label>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+      <p id="authMessage" role="alert"></p>
+    </form>
+  </section>
+  <button class="drawer-backdrop" aria-label="Close navigation" onclick="toggleMenu(false)" hidden></button>
+  <div class="app-shell" id="appShell" hidden>
     <!-- Left Institutional Sidebar (10 Core Sections) -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
       <div class="brand-header">
         <div class="brand-logo">PSX</div>
         <div class="brand-titles">
           <h1>PSX Intelligence</h1>
-          <span>Unified Local-First Terminal v1.1</span>
+          <span>Private workspace · v1.3</span>
         </div>
       </div>
 
-      <div class="sidebar-group-label">CORE WORKFLOWS (10 MODULES)</div>
+      <div class="sidebar-group-label">WORKSPACE</div>
       <nav class="sidebar-nav" id="sidebarNav">
         <button class="nav-btn active" data-view="overview">
           <span class="nav-num">01</span>
-          <span class="nav-label">Overview &amp; AI Setup Cards</span>
+          <span class="nav-label">Overview</span>
         </button>
         <button class="nav-btn" data-view="import">
           <span class="nav-num">02</span>
@@ -65,9 +78,9 @@
       <div class="sidebar-footer">
         <div class="status-pill">
           <span class="dot"></span>
-          <span id="sidebarDbStatus">SQLite WAL • 100% Reconciled</span>
+          <span id="sidebarDbStatus">Checking database…</span>
         </div>
-        <div class="sidebar-meta" id="sidebarLastImport">Data Path: /home/user/psx_data/database/app.db</div>
+        <div class="sidebar-meta" id="sidebarLastImport">Historical imports · Not a live feed</div>
       </div>
     </aside>
 
@@ -76,21 +89,25 @@
       <!-- Top Bar -->
       <header class="topbar">
         <div class="topbar-left">
+          <button class="btn btn-secondary menu-toggle" id="menuToggle" aria-controls="sidebar" aria-expanded="false" onclick="toggleMenu()">Menu</button>
           <h2 id="viewTitle">01 • Overview &amp; Trading Intelligence</h2>
-          <span class="feed-badge" id="feedStatusBadge">HISTORICAL / EOD IMPORTED DATA — NOT LIVE FEED</span>
+          <span class="feed-badge" id="feedStatusBadge">IMPORTED / END-OF-DAY</span>
         </div>
         <div class="topbar-right">
-          <button class="btn btn-secondary" onclick="refreshCurrentView()" title="Clear client cache and reload current section">↻ Refresh</button>
-          <button class="btn btn-secondary" onclick="switchView('import')">+ Upload Files</button>
-          <button class="btn btn-primary" onclick="switchView('exports')">⬇ Excel Workbooks</button>
+          <button class="btn btn-secondary desktop-utility" id="themeToggle" onclick="toggleTheme()" aria-label="Change colour theme">Theme</button>
+          <button class="btn btn-secondary desktop-utility" onclick="signOut()">Sign out</button>
+          <button class="btn btn-secondary desktop-utility" onclick="refreshCurrentView()" title="Clear client cache and reload current section">Refresh</button>
+          <button class="btn btn-secondary" onclick="switchView('import')">Import</button>
+          <button class="btn btn-primary" onclick="switchView('exports')">Export</button>
+          <details class="mobile-utilities"><summary class="btn btn-secondary">More</summary><div><button class="btn btn-secondary" onclick="toggleTheme()">Change theme</button><button class="btn btn-secondary" onclick="refreshCurrentView()">Refresh data</button><button class="btn btn-secondary" onclick="signOut()">Sign out</button></div></details>
         </div>
       </header>
 
       <!-- Toast Notification Banner -->
-      <div id="toastBanner" class="toast-banner hidden"></div>
+      <div id="toastBanner" class="toast-banner hidden" role="status" aria-live="polite"></div>
 
       <!-- Dynamic View Container -->
-      <div id="viewContainer" class="view-container">
+      <div id="viewContainer" class="view-container" tabindex="-1">
         <div class="skeleton-card">Loading PSX Trading Intelligence Dashboard...</div>
       </div>
     </main>

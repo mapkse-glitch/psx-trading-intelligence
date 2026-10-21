@@ -5,10 +5,14 @@ services:
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: python3 -m uvicorn psx_app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
+    healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.6"
+      - key: PSX_ADMIN_PASSWORD
+        sync: false
+      - key: PSX_SESSION_SECRET
+        sync: false
       - key: GITHUB_SYNC_REPO
         sync: false
       - key: GITHUB_SYNC_TOKEN

@@ -1,3 +1,4 @@
+import os
 import openpyxl
 from pathlib import Path
 from psx_app.parsers.top5_parser import parse_top5_txt
@@ -6,7 +7,7 @@ from psx_app.services.export_service import ExportService
 
 
 def test_top5_single_txt_parsing_and_volume_ranking():
-    txt_path = Path("/home/user/drive_mirror/Input folder/ATRL.txt")
+    txt_path = Path(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"))
     content = txt_path.read_text(encoding="utf-8-sig")
     res = parse_top5_txt(content, "ATRL.txt")
 

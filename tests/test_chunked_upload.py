@@ -1,3 +1,5 @@
+from pathlib import Path
+import os
 import pytest
 from fastapi.testclient import TestClient
 from psx_app.main import app
@@ -11,7 +13,7 @@ def _chunk_payload(data: bytes, chunk_size: int = 1024
 
 def test_chunked_upload_produce_same_manifest_as_direct_stage():
     client = TestClient(app)
-    atrl_bytes = open("/home/user/drive_mirror/Input folder/ATRL.txt", "rb").read()
+    atrl_bytes = open(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"), "rb").read()
     pieces = _chunk_payload(atrl_bytes, chunk_size=64)
     uid = "testchunk0001-xx"
 
@@ -40,7 +42,7 @@ def test_chunked_upload_produce_same_manifest_as_direct_stage():
 
 def test_chunked_stage_reports_missing_chunks_and_recovers():
     client = TestClient(app)
-    atrl_bytes = open("/home/user/drive_mirror/Input folder/ATRL.txt", "rb").read()
+    atrl_bytes = open(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"), "rb").read()
     pieces = _chunk_payload(atrl_bytes, chunk_size=128)
     uid = "testchunk0002-xx"
 

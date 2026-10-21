@@ -39,9 +39,54 @@ class CloudSyncService:
 
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = Path(db_path) if db_path else DB_PATH
+        self.backups_dir = self.db_path.parent.parent / "backups"
+        self.base_file = self.db_path.with_suffix(".sync-base.json")
         self.repo = os.environ.get("GITHUB_SYNC_REPO", "mapkse-glitch/psx-trading-intelligence").strip()
         self.token = os.environ.get("GITHUB_SYNC_TOKEN", "").strip()
         self.branch = os.environ.get("GITHUB_SYNC_BRANCH", "main").strip() or "main"
+
+    def base_state(self):
+        try:
+            return json.loads(self.base_file.read_text())
+        except (OSError, ValueError):
+            return {}
+
+    def _save_base(self, **updates):
+        data = {**self.base_state(), **updates}
+        self.base_file.parent.mkdir(parents=True, exist_ok=True)
+        temp = self.base_file.with_suffix(".tmp")
+        temp.write_text(json.dumps(data))
+        os.replace(temp, self.base_file)
+
+    def _remote_head(self):
+        info = self._gh_request("GET", "")
+        if info.get("private") is not True:
+            raise RuntimeError("Cloud sync requires a private GitHub repository. Make this repository private before syncing financial data.")
+        ref = self._gh_request("GET", f"/git/ref/heads/{self.branch}")
+        head = ref["object"]["sha"]
+        commit = self._gh_request("GET", f"/git/commits/{head}")
+        tree = self._gh_request("GET", f"/git/trees/{commit['tree']['sha']}?recursive=1")
+        if tree.get("truncated"):
+            raise RuntimeError("Remote tree is truncated; cannot safely establish snapshot identity.")
+        blob = next((item.get("sha") for item in tree.get("tree", [])
+                     if item.get("path") == self.REMOTE_FILE_PATH), None)
+        return head, commit["tree"]["sha"], blob
+
+    def assert_current_base(self):
+        if not self.is_configured():
+            if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+                raise RuntimeError("Cloud persistence is not configured. Writes are blocked on ephemeral hosting. Configure GitHub sync first.")
+            return None
+        head, tree, remote_blob = self._remote_head()
+        base = self.base_state()
+        if not base.get("initialized") or base.get("repo") != self.repo or base.get("branch") != self.branch:
+            raise RuntimeError("No verified remote baseline. Restart to load the remote snapshot before editing.")
+        if base.get("blob") != remote_blob:
+            raise RuntimeError("Newer cloud data exists. This instance is stale; no write was accepted. Reload cloud data in Settings. If local changes are pending, download the snapshot for reconciliation first.")
+        return head, tree, remote_blob
+
+    def mark_pending(self):
+        self._save_base(pending=True)
 
     def is_configured(self) -> bool:
         return bool(self.repo and self.token and "/" in self.repo)
@@ -85,7 +130,7 @@ class CloudSyncService:
             pass
 
     def get_status(self) -> Dict[str, Any]:
-        local_sync_file = BACKUPS_DIR / "latest_cloud_sync.db.gz"
+        local_sync_file = self.backups_dir / "latest_cloud_sync.db.gz"
         st = self._state_read()
 
         mem_err = _LAST_SYNC_RESULT.get("error") or ""
@@ -97,19 +142,21 @@ class CloudSyncService:
         ok_at = st.get("last_push_ok", "")
         att_at = st.get("last_push_attempt", "")
         # An attempt marker inside a hydrated snapshot == that push succeeded remotely.
-        effective_ok = max(ok_at, att_at, mem_ok_at)
+        effective_ok = max(ok_at, mem_ok_at, self.base_state().get("verified_at", ""))
         latest_err_at = max(err_at, mem_err_at)
         err_active = bool(latest_err_at) and latest_err_at > effective_ok
         err_msg = mem_err if (mem_err_at and mem_err_at >= err_at) else err_txt
 
         configured = self.is_configured()
-        health = "LOCAL" if not configured else ("ERROR" if err_active else "ACTIVE")
+        health = "LOCAL" if not configured else ("PENDING" if self.base_state().get("pending") else ("ERROR" if err_active or not self.base_state().get("initialized") else "ACTIVE"))
         return {
             "enabled": configured,
+            "pending_local_changes": bool(self.base_state().get("pending")),
+            "verified_baseline": bool(self.base_state().get("initialized")),
             "provider": (
-                f"GitHub Auto-Sync Active ({self.repo})"
+                f"GitHub sync configured ({self.repo})"
                 if configured
-                else "Local / Ephemeral Mode (Add GITHUB_SYNC_TOKEN in Vercel Env Vars for Automatic GitHub Save)"
+                else "Local storage only — cloud save not configured"
             ),
             "repo": self.repo or None,
             "branch": self.branch,
@@ -131,8 +178,8 @@ class CloudSyncService:
         }
 
     def create_local_gzip_snapshot(self) -> Path:
-        BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
-        out_gz = BACKUPS_DIR / "latest_cloud_sync.db.gz"
+        self.backups_dir.mkdir(parents=True, exist_ok=True)
+        out_gz = self.backups_dir / "latest_cloud_sync.db.gz"
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_db = Path(tmpdir) / "app_snapshot.db"
             src = sqlite3.connect(str(self.db_path))
@@ -143,7 +190,9 @@ class CloudSyncService:
             src.close()
             raw_bytes = tmp_db.read_bytes()
             comp_bytes = gzip.compress(raw_bytes, compresslevel=6)
-            out_gz.write_bytes(comp_bytes)
+            temporary = out_gz.with_suffix(".tmp")
+            temporary.write_bytes(comp_bytes)
+            os.replace(temporary, out_gz)
         return out_gz
 
     def _gh_request(self, method: str, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -213,10 +262,8 @@ class CloudSyncService:
 
         try:
             b64_content = base64.b64encode(gz_path.read_bytes()).decode("ascii")
-            ref_data = self._gh_request("GET", f"/git/ref/heads/{self.branch}")
-            latest_commit_sha = ref_data["object"]["sha"]
-            commit_data = self._gh_request("GET", f"/git/commits/{latest_commit_sha}")
-            base_tree_sha = commit_data["tree"]["sha"]
+            checked = self.assert_current_base()
+            latest_commit_sha, base_tree_sha, _remote_blob = checked
 
             blob_data = self._gh_request("POST", "/git/blobs", {
                 "content": b64_content,
@@ -250,6 +297,7 @@ class CloudSyncService:
                 "size_bytes": gz_path.stat().st_size,
                 "timestamp": now_str,
             }
+            self._save_base(blob=blob_sha, pending=False, initialized=True, repo=self.repo, branch=self.branch, verified_at=attempt_iso)
             _LAST_SYNC_RESULT["last_push"] = attempt_iso
             _LAST_SYNC_RESULT.pop("error", None)
             _LAST_SYNC_RESULT.pop("error_at", None)
@@ -261,6 +309,7 @@ class CloudSyncService:
             })
             return res
         except Exception as exc:
+            self.mark_pending()
             fail_iso = datetime.now(timezone.utc).isoformat()
             _LAST_SYNC_RESULT["last_attempt"] = fail_iso
             _LAST_SYNC_RESULT["error"] = str(exc)
@@ -277,19 +326,14 @@ class CloudSyncService:
             return {"pulled": False, "reason": "GITHUB_SYNC_TOKEN not configured"}
 
         try:
-            ref_data = self._gh_request("GET", f"/git/ref/heads/{self.branch}")
-            commit_sha = ref_data["object"]["sha"]
-            commit_data = self._gh_request("GET", f"/git/commits/{commit_sha}")
-            tree_data = self._gh_request("GET", f"/git/trees/{commit_data['tree']['sha']}?recursive=1")
-
-            target_sha = None
-            for item in tree_data.get("tree", []):
-                if item.get("path") in (self.REMOTE_FILE_PATH, "psx_data/backups/latest_cloud_sync.db.gz"):
-                    target_sha = item.get("sha")
-                    break
-
+            if self.base_state().get("pending"):
+                raise RuntimeError("Unsynced local changes exist. Automatic pull is blocked. Download the local snapshot before manual reconciliation.")
+            _head, _tree, target_sha = self._remote_head()
             if not target_sha:
-                return {"pulled": False, "reason": "No remote latest_cloud_sync.db.gz found yet"}
+                # Bootstrap only if there is genuinely no canonical snapshot yet.
+                self._save_base(initialized=True, blob=None, pending=False, repo=self.repo, branch=self.branch,
+                                verified_at=datetime.now(timezone.utc).isoformat())
+                return {"pulled": False, "reason": "No remote snapshot yet; baseline verified."}
 
             blob_data = self._gh_request("GET", f"/git/blobs/{target_sha}")
             comp_bytes = base64.b64decode(blob_data["content"])
@@ -307,13 +351,28 @@ class CloudSyncService:
                 tmp_path.unlink(missing_ok=True)
                 return {"pulled": False, "reason": f"Remote DB integrity check failed: {chk}"}
 
-            for ext in ["-wal", "-shm"]:
+            # Keep a verified online backup before replacing an existing local DB.
+            if self.db_path.exists():
+                from psx_app.services.backup_service import BackupService
+                BackupService(self.db_path, self.db_path.parent.parent).create_backup(label="pre_cloud_pull")
+            # Online restore also works safely when another SQLite connection has the DB open.
+            src = sqlite3.connect(str(tmp_path))
+            dst = sqlite3.connect(str(self.db_path))
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+                src.close()
+            tmp_path.unlink(missing_ok=True)
+            self._save_base(initialized=True, blob=target_sha, pending=False, repo=self.repo, branch=self.branch,
+                            verified_at=datetime.now(timezone.utc).isoformat())
+            for ext in []:
                 p = Path(str(self.db_path) + ext)
                 if p.exists():
                     p.unlink()
-            shutil.move(str(tmp_path), str(self.db_path))
             _LAST_SYNC_RESULT["last_pull"] = datetime.now(timezone.utc).isoformat()
             return {"pulled": True, "blob_sha": target_sha, "bytes_restored": len(raw_db_bytes)}
         except Exception as exc:
             _LAST_SYNC_RESULT["error"] = str(exc)
+            _LAST_SYNC_RESULT["error_at"] = datetime.now(timezone.utc).isoformat()
             return {"pulled": False, "error": str(exc)}

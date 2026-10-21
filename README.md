@@ -1,64 +1,45 @@
-# PSX Trading Intelligence Dashboard (Local-First Consolidated Platform v1.1)
+# PSX Intelligence — corrected release 1.3.0
 
-A unified, audit-grade, local-first web application (Python FastAPI + Vanilla JS SPA + SQLite WAL + OpenPyXL) consolidating four legacy Pakistan Stock Exchange (PSX) spreadsheet workflows plus two interactive AI/Quantitative Trading Intelligence cards into a single institutional terminal.
+Private, local-first PSX analysis workspace: FastAPI, SQLite WAL, vanilla JavaScript and OpenPyXL. Imported historical/end-of-day data, not a live feed or order execution service. No external LLM subscription is required.
 
----
+## Start here — existing GitHub/Vercel deployment
 
-## Quick Answers: Storage, Browser Access & Multi-Device Sync
+1. **Download an independent backup before updating. Make the GitHub repository private.** A previously public snapshot may already have been downloaded; changing visibility cannot undo that exposure.
+2. Extract this ZIP and upload its **contents into the existing repository root**, replacing matching code files. **Do not delete, replace or overwrite your existing `latest_cloud_sync.db.gz`.** No database, raw inputs, credentials or snapshot are included in this ZIP. It is a complete source-code release, not a replacement for your live financial data.
+3. In Vercel project Settings → Environment Variables, set `PSX_ADMIN_PASSWORD` (a unique password, 12+ characters), `PSX_SESSION_SECRET` (random, 32+ characters), `GITHUB_SYNC_REPO` (`owner/repository`), `GITHUB_SYNC_BRANCH` (`main`, unless different), and `GITHUB_SYNC_TOKEN` (fine-grained token restricted to this private repository, Contents Read and Write). Redeploy. **Never commit these secrets to GitHub. Do not enable `PSX_AUTH_DISABLED` on Vercel.**
+4. Sign in. Verify Settings → database integrity and cloud state, download another snapshot, then inspect the date-normalization dry run. Apply only after reviewing its candidates. The release does **not** automatically repair your live database.
 
-- **Where is my data stored (in one line)?**
-  All canonical historical and updated data, account ledgers (`91404` & `91269`), settings, backups, and Excel workbooks are stored in **`/home/user/psx_data/database/app.db`** (with raw files in `/home/user/psx_data/data/raw/`, backups in `/home/user/psx_data/backups/`, and Excel exports in `/home/user/psx_data/exports/`).
-- **How to open over your browser:**
-  Click the **"Open in new tab" (↗)** button on the live preview window in Arena, or on your own PC double-click `start_dashboard.bat` and open **`http://127.0.0.1:8000`**.
-- **How to move/sync updated data (Office ↔ Home ↔ Phone):**
-  See [`docs/CLOUD_HOSTING_AND_SYNC_GUIDE.md`](docs/CLOUD_HOSTING_AND_SYNC_GUIDE.md) for the complete guide covering **1-Click Backup `.zip` Restore**, **Google Drive / OneDrive shared `PSX_DATA_DIR`**, **Tailscale Mobile Access**, and **100% Free URL Hosting comparisons (GitHub, Vercel, Hugging Face Spaces, Cloudflare Tunnel)**.
+**Read [the complete deployment and recovery guide](docs/DEPLOY_1_3.md) before uploading.**
 
----
+## What changed
 
-## Interactive Trading Intelligence Cards (New in v1.1)
+- Owner login, signed HttpOnly/SameSite cookies, protected finance/export/backup APIs, CSRF checks and fail-closed setup.
+- Private-repository requirement, known-base cloud snapshots, stale-worker rejection, pending/error status instead of false success, verified online backups and restore-to-cloud handling.
+- Date-repair plan fingerprint, confirmation, pre-repair verified backup, transactional repair and cache invalidation. Future-dated data blocks generated setup candidates.
+- Scoped reference reconciliation with evidence; missing references show NOT_CHECKED, not MATCH. No blanket “100% reconciled” claim.
+- Independent filters carried into each of the seven visible futures worksheets; hidden source Data sheet retained. Symbol Filter keeps all retained dates. Sortable Excel dates display DD-MM-YYYY; machine-readable CSV remains ISO.
+- Rule scores are not win probabilities. Static business background is labeled unverified; same-date volume/futures evidence uses the most liquid matching contract.
+- Cleaner overview, separate account cards, light/dark themes, mobile navigation, keyboard-friendly scrollable tables, visible focus, labeled inputs and readable contrast. All ten modules remain.
+- Safer settings validation, multi-file chunk retry, unique export response copies, no automatic backup deletion, and graceful empty-workspace exports.
 
-Available immediately on **01 • Overview & AI Setup Cards** and inside **07 • Technical Analysis & 36-Ticker**:
+## Preserved rules
 
-1. **Card 1 — Trading Ideas Generator (`GET /api/intelligence/trading-ideas`)**:
-   - *“Scan today's market and generate 5 high-probability trading setups for [insert stock/index/sector]. Include entry price, exit targets, stop-loss, and risk/reward ratio. Explain why each setup works based on technical and fundamental factors.”*
-   - Scans across **Core 36 Institutional Watchlist**, **Top 5 Volume Register Leaders**, **Deliverable Futures Universe**, **10 PSX Sectors** (Oil & Gas E&P, Refinery/OMC, Cement, Banking, Fertilizer, Power, Tech, Auto, Pharma, Telecom), or **all 531 PSX Cash Equities**.
-2. **Card 2 — Automated Technical Analyst (`GET /api/intelligence/automated-analyst/{symbol}`)**:
-   - *“Analyze [insert action/ticker] using daily and weekly charts. Break down support/resistance levels, trend lines, moving averages, and momentum indicators. Provide a step-by-step trading signal (Buy/Hold/Sell) with justification.”*
-   - Computes multi-timeframe **Daily + Weekly OHLCV charts**, **20-day Linear Regression Trend Line slope & channel**, **Classic/Fibonacci/Camarilla Daily & Weekly Pivots**, **EMA 9/21/50/200 + Weekly SMA 4/10 alignment**, and a **5-step trading signal** with justification.
+Accounts 91404 and 91269 stay separate. Existing commission/SST and trading calculation semantics are retained. Missing same-date cash prices remain N/A—no forward filling. Manual import/stage/review/commit is primary. Futures filters remain worksheet-local, not universal. Original raw files are retained locally; cloud database snapshots do not include those raw files.
 
----
+## Local launch (Python 3.12+; verified on 3.13)
 
-## Core Modules Consolidated
-
-1. **Module A — Daily Top 5 Volume & Rate Register**:
-   - Auto-detects PSX ticker `.txt` files (`\ufeff<SYMBOL> Price Summary for DD/MM/YYYY...`) and `.zip` archives.
-   - Ranks valid rows by `Volume` descending per ticker/date and stores Top 5 rows (`Rank`, `Rate`, `Volume`, `Trades`) with `MM/DD/YYYY` date headers.
-2. **Module B — Multi-Account Trading, Profit & Performance Management (`91404` & `91269`)**:
-   - Strict account isolation between **Account 91404** (`36` trading days, `57` symbols, YTD Net P&L **`193,263.61 PKR`**) and **Account 91269** (`20` trading days, `31` symbols, YTD Net P&L **`35,658.95 PKR`**).
-   - Exact PSX two-slab sell commission (`< 54.00 PKR` -> `0.0175 paisa/share`; `>= 54.00 PKR` -> `0.0325%` of sell value) and `13%` Sindh Sales Tax (SST).
-3. **Module C — Futures Comparison & Annualized Analysis**:
-   - Dynamic base/contract symbol parser (`KAPCO-OCTB` -> `KAPCO` + `OCTB`).
-   - Exact same-date cash vs futures matching (`N/A` when missing, zero carry-forward), sorted by `Annualized %` ascending, 7 interactive views + 8-sheet `.xlsx` export (`Data` hidden).
-4. **Module D — Technical Analysis & 36-Ticker Dashboard**:
-   - 36 core tickers (`MLCF` canonical, `MLF -> MLCF` alias supported) + full 531-symbol PSX universe screener.
-   - Wilder RSI(14), MACD(12,26,9), Bollinger Bands(20,2), EMA(9,21,50,200), Daily & Weekly Pivots, ADX(14), Typical Price & 20D VWAP, and 9-factor explainable signal engine.
-
----
-
-## Clean Workspace Directory Layout
-
-```text
-/home/user/
-├── psx_app/                      # FastAPI backend, parsers, services, SQLite schema & SPA frontend
-├── psx_data/                     # Active runtime storage (Database, Backups, Exports, Raw Archive)
-│   ├── database/app.db           # Canonical SQLite WAL database (100% migrated & reconciled)
-│   ├── backups/                  # Verified .zip database backups with SHA-256 manifests
-│   ├── exports/                  # Generated legacy-compatible .xlsx workbooks
-│   └── data/raw/                 # Immutable raw archive of imported files
-├── drive_mirror/                 # Untouched mirror of all 33 Google Drive files + SHA-256 manifests
-├── docs/                         # 15 engineering, reconciliation, manual & cloud hosting documents
-├── skills/                       # 16 verified local SKILL.md packages & security catalog
-├── tests/                        # 16 automated pytest unit, integration & parity tests
-├── start_dashboard.bat           # 1-click Windows launcher
-└── start_dashboard.sh            # Linux/macOS launcher
+```sh
+python -m venv .venv
+# Linux/macOS:
+. .venv/bin/activate
+# Windows PowerShell instead: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
+
+Set `PSX_ADMIN_PASSWORD` and `PSX_SESSION_SECRET` in your shell before starting. The application does not automatically read a `.env` file. Set `PSX_DATA_DIR` to a persistent local folder if desired; otherwise the local runtime is `./psx_data`. Run `bash start_dashboard.sh` or `start_dashboard.bat`, then visit `http://127.0.0.1:8000`.
+
+A loopback-only, explicit development bypass (`PSX_AUTH_DISABLED=1`) exists for isolated tests, not public access. Never use it for an Internet-facing deployment. A source-only checkout starts empty unless restored/imported or hydrated from the configured private repository; this is intentional.
+
+## Verification and limits
+
+See [testing](docs/TESTING_1_3.md), [release changes](docs/RELEASE_1_3.md) and [design rationale](docs/DESIGN_1_3.md). Historical documents are retained with a superseded notice. Local tests do not prove a live Vercel deployment or guarantee zero defects. GitHub snapshot persistence is a single-owner compromise, **not a transactional multi-writer database**. Keep independent backups and operate one import/settings/repair writer at a time.

@@ -2,6 +2,7 @@ import csv
 import io
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import openpyxl
@@ -59,6 +60,26 @@ def _auto_fit_columns(ws: Any, min_w: int = 11, max_w: int = 34) -> None:
         ws.column_dimensions[col_letter].width = max(min_w, min(max_w, max_len + 4))
 
 
+def _format_visible_dates(wb) -> None:
+    """Excel date cells stay sortable; user-facing labels use DD-MM-YYYY."""
+    pattern = re.compile(r"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)")
+    for ws in wb:
+        for row in ws:
+            for cell in row:
+                value = cell.value
+                if isinstance(value, str) and not value.startswith("="):
+                    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                        try:
+                            cell.value = datetime.strptime(value, "%Y-%m-%d")
+                            cell.number_format = "DD-MM-YYYY"
+                        except ValueError:
+                            pass
+                    elif ws.sheet_state == "visible":
+                        cell.value = pattern.sub(r"\3-\2-\1", value)
+                elif isinstance(value, datetime):
+                    cell.number_format = "DD-MM-YYYY"
+
+
 class ExportService:
     """
     Layer 8 — Legacy-Compatible Excel (.xlsx) and CSV Export Generator.
@@ -113,7 +134,7 @@ class ExportService:
 
                 for iso_date in sorted(date_map.keys()):
                     block_idx += 1
-                    dt_str = datetime.strptime(iso_date, "%Y-%m-%d").strftime("%m/%d/%Y")
+                    dt_str = datetime.strptime(iso_date, "%Y-%m-%d").strftime("%d-%m-%Y")
                     title_cell = ws.cell(curr_row, 1, f"{tkr} — Top 5 Volume Trades ({dt_str})")
                     title_cell.font = TITLE_FONT
                     curr_row += 2
@@ -172,6 +193,7 @@ class ExportService:
                 ws.column_dimensions["D"].width = 14
 
         out_path = self.exports_dir / "PSX_Top5_Volume_Rate_Register.xlsx"
+        _format_visible_dates(wb)
         wb.save(out_path)
         return out_path
 
@@ -190,7 +212,7 @@ class ExportService:
         ws_d = wb.create_sheet("Dashboard")
         ws_d["A1"] = "Trading Performance Dashboard"
         ws_d["A1"].font = TITLE_FONT
-        ws_d["A2"] = f"Account {account_id} (THM00601) • Market FUT, Reg • Currency PKR • Generated {datetime.now().strftime('%d-%b-%Y %H:%M')}"
+        ws_d["A2"] = f"Account {account_id} (THM00601) • Market FUT, Reg • Currency PKR • Generated {datetime.now(ZoneInfo('Asia/Karachi')).strftime('%d-%m-%Y %H:%M PKT')}"
         ws_d["A2"].font = SUBTITLE_FONT
         ws_d["A4"] = "Latest Trading Day:"
         ws_d["A4"].font = BOLD_FONT
@@ -669,6 +691,7 @@ class ExportService:
             _auto_fit_columns(ws_dc)
 
         out_path = self.exports_dir / f"Trade_Summary_Account_{account_id}.xlsx"
+        _format_visible_dates(wb)
         wb.save(out_path)
         return out_path
 
@@ -683,8 +706,11 @@ class ExportService:
         selected_symbol: Optional[str] = None,
         selected_future_item: Optional[str] = None,
         days: int = 30,
+        sheet_filters: Optional[Dict[str, Any]] = None,
     ) -> Path:
-        meta = self.futures_service.get_metadata(apply_rolling=True)
+        sheet_filters = sheet_filters or {}
+        apply_rolling = sheet_filters.get("apply_rolling", True)
+        meta = self.futures_service.get_metadata(apply_rolling=apply_rolling)
         sel_date = selected_date or meta["latest_date"]
         sel_contract = selected_contract or ("OCT" if "OCT" in meta["contracts"] else (meta["contracts"][0] if meta["contracts"] else "OCT"))
         sel_symbol = selected_symbol or ("OGDC" if "OGDC" in meta["base_symbols"] else (meta["base_symbols"][0] if meta["base_symbols"] else "OGDC"))
@@ -706,6 +732,8 @@ class ExportService:
             first_filter_val: Optional[str] = None,
             extra_filter_label: Optional[str] = None,
             extra_filter_val: Optional[str] = None,
+            sheet_days: int = days,
+            requested_date: Optional[str] = None,
         ) -> None:
             ws["A2"] = title_text
             ws["A2"].font = TITLE_FONT
@@ -716,7 +744,7 @@ class ExportService:
             ws["C4"].font = BOLD_FONT
             ws["E4"] = "Days:"
             ws["E4"].font = BOLD_FONT
-            ws["F4"] = int(days)
+            ws["F4"] = int(sheet_days)
             ws["F4"].fill = INPUT_FILL
             ws["F4"].font = BOLD_FONT
             if extra_filter_label:
@@ -726,6 +754,7 @@ class ExportService:
                 ws["I4"].fill = INPUT_FILL
                 ws["I4"].font = BOLD_FONT
 
+            ws["A3"] = f"Requested date: {requested_date or 'ALL'} | Resolved date in C4 (Symbol Filter uses all dates) | Rolling window: {apply_rolling}"
             for c_i, h in enumerate(comp_headers, start=1):
                 c = ws.cell(6, c_i, h)
                 c.font = WHITE_BOLD
@@ -759,23 +788,32 @@ class ExportService:
             ws.freeze_panes = "A7"
             _auto_fit_columns(ws)
 
-        # Sheets 1..5
-        sf_contract = "OCTB" if "OCTB" in meta["contracts"] else sel_contract
-        mc_data = self.futures_service.get_comparison_rows("monthly_comparison", selected_date=sel_date, days=days)["rows"]
-        mf_data = self.futures_service.get_comparison_rows("month_filter", selected_date=sel_date, contract_month=sel_contract, days=days)["rows"]
-        sf_data = self.futures_service.get_comparison_rows("symbol_filter", selected_date="ALL", contract_month=sf_contract, base_symbol=sel_symbol, days=days)["rows"]
-        ac_data = self.futures_service.get_comparison_rows("annualized_comparison", selected_date=sel_date, days=days)["rows"]
-        df_data = self.futures_service.get_comparison_rows("date_filter", selected_date=sel_date, days=days)["rows"]
-
-        populate_comparison_sheet(wb.create_sheet("Monthly Comparison"), "MONTHLY COMPARISON — FUTURES vs CURRENT", mc_data)
-        populate_comparison_sheet(wb.create_sheet("Month Filter"), "MONTH / CONTRACT FILTER", mf_data, "Selected Date:", sel_date, "Month/Contract:", sel_contract)
-        populate_comparison_sheet(wb.create_sheet("Symbol Filter"), "SYMBOL FILTER — ALL DATES FOR SELECTED CONTRACT & SYMBOL", sf_data, "Month/Contract:", sf_contract, "Symbol:", sel_symbol)
-        populate_comparison_sheet(wb.create_sheet("Annualized Comparison"), "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS", ac_data)
-        populate_comparison_sheet(wb.create_sheet("Date Filter"), "DATE FILTER — FULL DAY COMPARISON", df_data)
+        # Every worksheet has independent state; Symbol Filter never inherits a date.
+        defaults = {
+            "monthly_comparison": {"selected_date": sel_date, "days": days},
+            "month_filter": {"selected_date": sel_date, "days": days, "contract_month": sel_contract},
+            "symbol_filter": {"selected_date": "ALL", "days": days, "contract_month": selected_contract or ("OCTB" if "OCTB" in meta["contracts"] else sel_contract), "base_symbol": sel_symbol},
+            "annualized_comparison": {"selected_date": sel_date, "days": days},
+            "date_filter": {"selected_date": sel_date, "days": days},
+        }
+        for key, sheet_name in [("monthly_comparison", "Monthly Comparison"), ("month_filter", "Month Filter"),
+                                ("symbol_filter", "Symbol Filter"), ("annualized_comparison", "Annualized Comparison"),
+                                ("date_filter", "Date Filter")]:
+            opts = {**defaults[key], **sheet_filters.get(key, {})}
+            if key == "symbol_filter": opts["selected_date"] = "ALL"
+            result = self.futures_service.get_comparison_rows(key, apply_rolling=apply_rolling, **opts)
+            ws = wb.create_sheet(sheet_name)
+            symbol_sheet = key == "symbol_filter"
+            populate_comparison_sheet(ws, sheet_name.upper() + " — FUTURES vs CASH", result["rows"],
+                "Month/Contract:" if symbol_sheet else "Selected Date:",
+                opts.get("contract_month") if symbol_sheet else result.get("selected_date"),
+                "Symbol:" if symbol_sheet else ("Month/Contract:" if key == "month_filter" else None),
+                opts.get("base_symbol") if symbol_sheet else opts.get("contract_month"),
+                sheet_days=opts["days"], requested_date=opts.get("selected_date"))
 
         # Sheet 6: Future Symbol Summary
         ws_fss = wb.create_sheet("Future Symbol Summary")
-        fss_res = self.futures_service.get_future_symbol_summary(contract_symbol=sel_item)
+        fss_res = self.futures_service.get_future_symbol_summary(contract_symbol=sheet_filters.get("future_symbol_summary", {}).get("contract_symbol") or sel_item, apply_rolling=apply_rolling)
         ws_fss["A2"] = "FUTURE SYMBOL SUMMARY — ALL RETAINED DATES (2026F)"
         ws_fss["A2"].font = TITLE_FONT
         ws_fss["B4"] = "Symbol / Item:"
@@ -806,12 +844,14 @@ class ExportService:
 
         # Sheet 7: Date Summary
         ws_ds = wb.create_sheet("Date Summary")
-        ds_res = self.futures_service.get_date_summary(selected_date=sel_date)
+        ds_requested = sheet_filters.get("date_summary", {}).get("selected_date") or sel_date
+        ds_res = self.futures_service.get_date_summary(selected_date=ds_requested, apply_rolling=apply_rolling)
         ws_ds["A2"] = "DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE (2026F)"
         ws_ds["A2"].font = TITLE_FONT
         ws_ds["B4"] = "Selected Date:"
         ws_ds["B4"].font = BOLD_FONT
-        ws_ds["C4"] = sel_date
+        ws_ds["C4"] = ds_res.get("selected_date") or ds_requested
+        ws_ds["A3"] = f"Requested date: {ds_requested} | Rolling window: {apply_rolling}"
         ws_ds["C4"].fill = INPUT_FILL
         ws_ds["C4"].font = BOLD_FONT
 
@@ -865,7 +905,15 @@ class ExportService:
             for hr in h_rows:
                 ws_hidden.append(list(hr))
 
+        from datetime import datetime as _DateTime
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    if isinstance(cell.value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", cell.value):
+                        cell.value = _DateTime.strptime(cell.value, "%Y-%m-%d")
+                        cell.number_format = "DD-MM-YYYY"
         out_path = self.exports_dir / "Futures_Analysis.xlsx"
+        _format_visible_dates(wb)
         wb.save(out_path)
         return out_path
 
@@ -997,6 +1045,7 @@ class ExportService:
                 ])
 
         out_path = self.exports_dir / "PSX_RSI_Pivot_Analysis.xlsx"
+        _format_visible_dates(wb)
         wb.save(out_path)
         return out_path
 

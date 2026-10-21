@@ -156,6 +156,9 @@ class FuturesService:
             return {
                 "view": view_name,
                 "selected_date": None,
+                "rows_count": 0,
+                "contract_month": sel_contract,
+                "base_symbol": sel_symbol,
                 "days": eff_days,
                 "rows": [],
                 "metadata": meta,

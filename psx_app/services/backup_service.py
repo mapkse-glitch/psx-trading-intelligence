@@ -39,7 +39,7 @@ class BackupService:
 
     def create_backup(self, label: str = "manual", include_raw_archive: bool = False) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
-        ts = now.strftime("%Y%m%d_%H%M%S")
+        ts = now.strftime("%Y%m%d_%H%M%S_%f")
         clean_label = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in label)
         backup_name = f"psx_backup_{ts}_{clean_label}"
         work_dir = self.backups_dir / backup_name
@@ -57,6 +57,8 @@ class BackupService:
             src_conn.close()
 
         integrity = self.run_integrity_check(snapshot_db_path)
+        if not integrity["ok"]:
+            raise ValueError("Backup integrity check failed; no valid backup was created.")
         db_bytes = snapshot_db_path.read_bytes()
         db_sha256 = hashlib.sha256(db_bytes).hexdigest()
 
@@ -149,6 +151,8 @@ class BackupService:
                 dst_conn.close()
                 src_conn.close()
 
+            with sqlite3.connect(str(self.db_path)) as cache_conn:
+                cache_conn.execute("DELETE FROM indicator_cache")
             self.repo.log_audit("BACKUP_RESTORED", {"restored_from": zip_filename, "safety_backup": safety})
             return {
                 "status": "RESTORED",
@@ -161,8 +165,5 @@ class BackupService:
             shutil.rmtree(temp_extract, ignore_errors=True)
 
     def _enforce_retention(self) -> None:
-        settings = self.repo.get_settings()
-        max_keep = max(3, int(settings.get("backup_retention_count", 20)))
-        zips = sorted(self.backups_dir.glob("psx_backup_*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
-        for old_zp in zips[max_keep:]:
-            old_zp.unlink(missing_ok=True)
+        # User backups are retained until the owner explicitly removes them externally.
+        return None

@@ -39,7 +39,7 @@ class Repository:
             rule_keys = {
                 "commission_slab1_upper", "commission_slab1_paisa_per_share",
                 "commission_slab2_start", "commission_slab2_rate", "sst_rate",
-                "default_futures_days", "futures_rolling_months",
+                "default_futures_days", "futures_rolling_months", "futures_default_days", "futures_rolling_retention_months",
                 "rsi_period", "macd_fast", "macd_slow", "macd_signal",
                 "bb_period", "bb_std", "ema_periods", "adx_period",
                 "strict_indicator_sufficiency", "signal_buy_threshold",

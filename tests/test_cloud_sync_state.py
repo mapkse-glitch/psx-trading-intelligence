@@ -23,15 +23,18 @@ def test_sync_state_health_toggle_survives_cold_start(monkeypatch):
     res = svc.push_db_after_update("test-fail")
     assert res["pushed"] is False
     st = svc.get_status()
-    assert st["health"] == "ERROR"
+    assert st["health"] == "PENDING"
     assert "403" in st["last_error"]
 
     # 2. Token fixed -> push succeeds -> health flips to ACTIVE
     def ok(method, endpoint, payload=None):
+        if endpoint == "": return {"private": True}
         if endpoint.startswith("/git/ref"):
             return {"object": {"sha": "a" * 40}}
         if method == "GET" and endpoint.startswith("/git/commits/"):
             return {"tree": {"sha": "b" * 40}}
+        if method == "GET" and endpoint.startswith("/git/trees/"):
+            return {"tree": []}
         if endpoint == "/git/blobs":
             return {"sha": "c" * 40}
         if endpoint == "/git/trees":
@@ -41,6 +44,7 @@ def test_sync_state_health_toggle_survives_cold_start(monkeypatch):
         return {}
 
     monkeypatch.setattr(svc, "_gh_request", ok)
+    svc._save_base(initialized=True, blob=None, pending=True, repo=svc.repo, branch=svc.branch)
     res2 = svc.push_db_after_update("test-ok")
     assert res2["pushed"] is True
     st2 = svc.get_status()

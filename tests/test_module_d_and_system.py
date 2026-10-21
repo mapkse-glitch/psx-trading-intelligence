@@ -1,3 +1,5 @@
+from pathlib import Path
+import os
 import pytest
 from fastapi.testclient import TestClient
 from psx_app.config import CORE_36_TICKERS
@@ -132,7 +134,7 @@ def test_incremental_upload_staging_and_idempotency():
     from psx_app.database.schema import get_connection
 
     client = TestClient(app)
-    atrl_bytes = open("/home/user/drive_mirror/Input folder/ATRL.txt", "rb").read()
+    atrl_bytes = open(str(Path(os.environ["PSX_TEST_REFERENCE_DIR"]) / "Input folder" / "ATRL.txt"), "rb").read()
     res_stage = client.post(
         "/api/imports/stage",
         files=[("files", ("ATRL.txt", atrl_bytes, "text/plain"))],

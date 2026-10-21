@@ -58,6 +58,9 @@ class ReconciliationService:
                 ).fetchall()
             ]
 
+            unmatched_count = c.execute("""SELECT COUNT(*) FROM futures_ohlcv f LEFT JOIN equity_ohlcv e
+                ON e.trade_date=f.trade_date AND e.symbol=f.base_symbol WHERE e.close IS NULL""").fetchone()[0]
+            history_range = c.execute("SELECT MIN(trade_date), MAX(trade_date), COUNT(DISTINCT trade_date) FROM equity_ohlcv").fetchone()
             # Insufficient indicator history across 531 tickers
             insufficient_tickers = [
                 dict(r)
@@ -85,14 +88,15 @@ class ReconciliationService:
             "import_issues": issues,
             "source_revisions": revisions,
             "unmatched_futures_contracts": {
-                "count": len(unmatched_futures),
+                "count": unmatched_count,
+                "display_limit": 50,
                 "items": unmatched_futures[:50],
             },
             "indicator_history_checks": {
                 "tickers_under_26_bars_count": len(strict_under_26),
                 "tickers_under_26_bars": strict_under_26[:50],
                 "tickers_under_200_bars_for_ema200_count": len(under_200_ema),
-                "note": "Dataset spans 01-Jan-2026 to 16-Oct-2026 (max 196 sessions), so all tickers have < 200 sessions for strict EMA-200 sufficiency.",
+                "note": f"Cash coverage: {history_range[0] or 'no data'} to {history_range[1] or 'no data'}; {history_range[2]} distinct sessions. Strict EMA-200 requires at least 200 bars per symbol.",
             },
             "account_reconciliations": acc_reconciliations,
         }
@@ -103,7 +107,9 @@ class ReconciliationService:
         in drive_mirror/Output folder.
         """
         out_dir = self.drive_mirror / "Output folder"
-        results: Dict[str, Any] = {}
+        results: Dict[str, Any] = {key: {"status": "NOT_CHECKED", "checked_rows": 0,
+            "reason": "Historical reference workbook is not installed. No parity claim is made."}
+            for key in ("module_a_top5", "module_b_account_91404", "module_b_account_91269", "module_c_futures", "module_d_technical_atrl") }
 
         # 1. Module A: Top 5 Volume & Rate on 2026-10-16 (raw TXT vs legacy workbook)
         top5_xlsx = out_dir / "PSX_Top5_Volume_Rate_12-08-2026_to_16-10-2026 (1).xlsx"
@@ -135,7 +141,9 @@ class ReconciliationService:
                             mismatches.append({"ticker": s, "rank": rk, "legacy": leg_tuple, "new": db_tuple})
             wb.close()
             results["module_a_top5"] = {
-                "status": "MATCH" if not mismatches else "DISCREPANCY",
+                "status": ("MATCH" if not mismatches else "DISCREPANCY") if checked else "NOT_CHECKED",
+                "scope": "Historical reference rows dated 16-10-2026 only; not the entire database",
+                "checked_rows": checked,
                 "checked_16_oct_rows": checked,
                 "mismatches_count": len(mismatches),
                 "mismatches": mismatches,
@@ -157,7 +165,13 @@ class ReconciliationService:
                         break
                 wb.close()
                 rep = self.account_service.get_account_report(acc)
-                ytd = rep["ytd_summary"]
+                cutoff = "2026-10-16" if acc == "91404" else "2026-10-15"
+                with get_connection(self.db_path) as conn:
+                    fields = ["buy_value", "sell_value", "gross_pnl", "commission_amount", "sst_amount", "net_pnl"]
+                    row = conn.execute("SELECT " + ",".join("COALESCE(SUM(" + f + "),0)" for f in fields) +
+                        " FROM account_daily_symbol_summary WHERE account_id=? AND trade_date BETWEEN ? AND ?",
+                        (acc, "2026-01-01", cutoff)).fetchone()
+                    ytd = dict(zip(fields, row))
                 if leg_yr_row:
                     leg_buy_val = float(leg_yr_row[2])
                     leg_sell_val = float(leg_yr_row[5])
@@ -167,7 +181,10 @@ class ReconciliationService:
                     leg_net = float(leg_yr_row[14])
                     diff_net = abs(ytd["net_pnl"] - leg_net)
                     results[f"module_b_account_{acc}"] = {
-                        "status": "MATCH" if diff_net < 0.01 else "DISCREPANCY",
+                        "status": "MATCH" if all(abs(a-b) < 0.01 for a,b in zip(
+                            [ytd[f] for f in fields], [leg_buy_val, leg_sell_val, leg_gross, leg_comm, leg_sst, leg_net])) else "DISCREPANCY",
+                        "scope": f"Account {acc} totals 01-01-2026 through {cutoff}; 6 financial fields",
+                        "checked_rows": 1, "checked_fields": 6,
                         "legacy_ytd_buy_value": leg_buy_val,
                         "new_ytd_buy_value": ytd["buy_value"],
                         "legacy_ytd_sell_value": leg_sell_val,
@@ -187,36 +204,48 @@ class ReconciliationService:
         fut_xlsx = out_dir / "Futures_Analysis (3).xlsx"
         if fut_xlsx.exists():
             wb = openpyxl.load_workbook(fut_xlsx, read_only=True, data_only=True)
-            ws_mc = wb["Monthly Comparison"]
-            leg_first = None
-            for row in ws_mc.iter_rows(min_row=7, max_row=10, values_only=True):
-                if row and row[1]:
-                    leg_first = {
-                        "symbol": row[1],
-                        "contract": row[2],
-                        "current": float(row[3]),
-                        "future": float(row[4]),
-                        "diff": float(row[8]),
-                        "ann_pct": float(row[11]) * 100.0,
-                    }
-                    break
+            from datetime import datetime
+            comparisons, mismatches = 0, []
+            for tab, sheet in [("monthly_comparison", "Monthly Comparison"), ("month_filter", "Month Filter"),
+                               ("symbol_filter", "Symbol Filter"), ("annualized_comparison", "Annualized Comparison"), ("date_filter", "Date Filter")]:
+                if sheet not in wb.sheetnames: continue
+                ws = wb[sheet]
+                requested = ws["C4"].value
+                contract = requested if tab == "symbol_filter" else (ws["I4"].value if tab == "month_filter" else None)
+                symbol = ws["I4"].value if tab == "symbol_filter" else None
+                if tab == "symbol_filter": requested = "ALL"
+                elif isinstance(requested, datetime): requested = requested.date().isoformat()
+                elif isinstance(requested, str):
+                    try: requested = datetime.strptime(requested[:10], "%d-%m-%Y").date().isoformat()
+                    except ValueError:
+                        try: datetime.strptime(requested[:10], "%Y-%m-%d"); requested = requested[:10]
+                        except ValueError: requested = "2026-10-16"
+                else: requested = "2026-10-16"
+                comp = self.futures_service.get_comparison_rows(tab, selected_date=requested, contract_month=contract,
+                    base_symbol=symbol, days=int(ws["F4"].value or 30), apply_rolling=False)
+                new_map = {(r["trade_date"], r["symbol"], r["contract"]): r for r in comp["rows"]}
+                columns = ["current_value", "future_value", "volume", "high", "low", "difference", "difference_pct", "days", "annualized_pct"]
+                for row in ws.iter_rows(min_row=7, values_only=True):
+                    if not row or not row[1] or not row[2] or row[0] is None: continue
+                    d = row[0].date().isoformat() if isinstance(row[0], datetime) else str(row[0])[:10]
+                    if len(d)==10 and d[2] == '-':
+                        d = datetime.strptime(d, "%d-%m-%Y").date().isoformat()
+                    actual = new_map.get((d, str(row[1]), str(row[2])))
+                    comparisons += 1
+                    bad = []
+                    for idx, name in enumerate(columns, start=3):
+                        expected = row[idx]
+                        if idx in (9, 11) and isinstance(expected, (int,float)): expected *= 100
+                        value = actual.get(name) if actual else None
+                        if isinstance(expected, (int,float)) and isinstance(value, (int,float)):
+                            if abs(expected-value) > 0.001: bad.append(name)
+                        elif expected != value and not (expected in (None,"N/A") and value in (None,"N/A")):
+                            bad.append(name)
+                    if bad: mismatches.append({"sheet": sheet, "date": d, "symbol": row[1], "contract": row[2], "fields": bad})
             wb.close()
-            comp = self.futures_service.get_comparison_rows("monthly_comparison", selected_date="2026-10-16", days=30)
-            new_first = comp["rows"][0] if comp["rows"] else None
-            match_c = (
-                leg_first is not None
-                and new_first is not None
-                and leg_first["symbol"] == new_first["symbol"]
-                and leg_first["contract"] == new_first["contract"]
-                and abs(leg_first["ann_pct"] - float(new_first["annualized_pct"])) < 0.001
-            )
-            results["module_c_futures"] = {
-                "status": "MATCH" if match_c else "DISCREPANCY",
-                "selected_date": "2026-10-16",
-                "comparisons_count_on_16_oct": comp["rows_count"],
-                "legacy_lowest_annualized_row": leg_first,
-                "new_lowest_annualized_row": new_first,
-            }
+            results["module_c_futures"] = {"status": ("MATCH" if not mismatches else "DISCREPANCY") if comparisons else "NOT_CHECKED",
+                "scope": "All populated reference rows across five comparison sheets; same-date cash joins; historical fixture coverage only",
+                "checked_rows": comparisons, "checked_fields_per_row": 9, "mismatches_count": len(mismatches), "mismatches": mismatches[:100]}
 
         # 4. Module D: Technical Analysis ATRL on 2026-10-16
         rsi_xlsx = out_dir / "PSX_RSI_Pivot_Analysis (4).xlsx"
@@ -228,11 +257,17 @@ class ReconciliationService:
                 if row and row[0]:
                     last_r = row
             wb.close()
-            atrl_new = self.technical_service.get_ticker_analysis("ATRL")["latest"]
+            from datetime import datetime
+            cutoff = last_r[0].date().isoformat() if last_r and isinstance(last_r[0], datetime) else str(last_r[0])[:10] if last_r else None
+            with get_connection(self.db_path) as conn:
+                bars = [dict(r) for r in conn.execute("SELECT * FROM equity_ohlcv WHERE symbol=? AND trade_date <= ? ORDER BY trade_date", ("ATRL", cutoff))]
+            atrl_new = self.technical_service.calculate_series_for_bars("ATRL", bars)["latest"] if bars else None
             if last_r and atrl_new:
                 results["module_d_technical_atrl"] = {
-                    "status": "MATCH",
-                    "date": "2026-10-16",
+                    "status": "NOT_CHECKED",
+                    "date": cutoff,
+                    "scope": "ATRL reference close and 13 indicators at the same historical date",
+                    "checked_rows": 1,
                     "legacy": {
                         "close": float(last_r[4]),
                         "rsi14": float(last_r[6]),
@@ -266,4 +301,11 @@ class ReconciliationService:
                     },
                 }
 
+        technical = results["module_d_technical_atrl"]
+        if technical.get("legacy") and technical.get("new"):
+            bad = [key for key, value in technical["legacy"].items()
+                   if technical["new"].get(key) is None or abs(value-technical["new"][key]) > 0.011]
+            technical["mismatches"] = bad
+            technical["checked_fields"] = len(technical["legacy"])
+            technical["status"] = "DISCREPANCY" if bad else "MATCH"
         return results

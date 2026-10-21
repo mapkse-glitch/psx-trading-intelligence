@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+from psx_app.security import install_auth, MUTATION_LOCK
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,6 +26,7 @@ from psx_app.services.reconciliation_service import ReconciliationService
 from psx_app.services.technical_service import TechnicalService
 from psx_app.services.top5_service import Top5Service
 from psx_app.services.cloud_sync_service import CloudSyncService
+from psx_app.services.date_repair_service import DateRepairService
 
 # Fast in-memory cache invalidated automatically on any data commit, settings update, or backup restore
 _API_CACHE: Dict[str, Any] = {}
@@ -54,18 +55,39 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.1.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+install_auth(app)
+
+@app.middleware("http")
+async def serialize_mutations(request: Request, call_next):
+    guarded = request.method == "POST" and request.url.path in {
+        "/api/import/commit", "/api/imports/commit", "/api/settings", "/api/backups/restore",
+        "/api/admin/date-normalization/apply", "/api/cloud-sync/sync-now", "/api/cloud-sync/reload"
+    }
+    if not guarded:
+        return await call_next(request)
+    async with MUTATION_LOCK:
+        # Authentication is enforced again before any remote request to avoid unauthenticated network work.
+        from psx_app.security import session, local_bypass, same_origin
+        if not session(request):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Owner sign-in required."}, status_code=401)
+        auth = session(request)
+        import hmac
+        if not local_bypass(request) and (not same_origin(request) or not hmac.compare_digest(request.headers.get("x-psx-csrf", ""), auth["csrf"])):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Invalid CSRF token."}, status_code=403)
+        if request.url.path != "/api/cloud-sync/reload":
+            try:
+                CloudSyncService(DB_PATH).assert_current_base()
+            except Exception as exc:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": str(exc)}, status_code=409)
+        return await call_next(request)
 
 
 # ------------------------------------------------------------------
@@ -109,7 +131,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.1.0",
+        "version": "1.3.0",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -282,6 +304,7 @@ def api_stage_chunked(req: ChunkedStageRequest) -> Dict[str, Any]:
     _sweep_stale_chunks()
     payload = []
     missing_report: List[Dict[str, Any]] = []
+    completed_dirs = []
     for entry in req.uploads:
         if not _CHUNK_ID_RE.match(entry.upload_id):
             raise HTTPException(status_code=400, detail=f"Invalid upload_id '{entry.upload_id}'.")
@@ -302,21 +325,25 @@ def api_stage_chunked(req: ChunkedStageRequest) -> Dict[str, Any]:
             raise HTTPException(status_code=413, detail=f"Assembled file '{name}' exceeds {_MAX_ASSEMBLED_BYTES // (1024*1024)} MB limit.")
         assembled = b"".join((d / f"{i:06d}.part").read_bytes() for i in range(total))
         payload.append((name, assembled))
-        shutil.rmtree(d, ignore_errors=True)
+        completed_dirs.append(d)
     if missing_report:
         # 409 Conflict: client should re-upload the missing chunk indexes, then retry.
         raise HTTPException(status_code=409, detail={"message": "Some chunks are missing on this server instance. Re-upload the missing indexes and retry.", "uploads": missing_report})
     orch = ImportOrchestrator(DB_PATH, DATA_ROOT)
-    return orch.stage_uploaded_files(payload, source_label="Manual UI Upload")
+    result = orch.stage_uploaded_files(payload, source_label="Manual UI Upload")
+    for directory in completed_dirs:
+        shutil.rmtree(directory, ignore_errors=True)
+    return result
 
 
 @app.post("/api/imports/commit")
 def api_commit_imports(req: CommitBatchRequest) -> Dict[str, Any]:
     orch = ImportOrchestrator(DB_PATH, DATA_ROOT)
     try:
+        CloudSyncService(DB_PATH).mark_pending()
         res = orch.commit_staged_batch(req.batch_uuid, allow_revisions=req.allow_revisions)
         invalidate_api_cache()
-        if res.get("status") != "ALREADY_COMMITTED" and (res.get("new_records", 0) > 0 or res.get("revisions_count", 0) > 0):
+        if res.get("status") != "FAILED":
             res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update(f"Import commit {req.batch_uuid[:8]}")
         return res
     except Exception as e:
@@ -548,13 +575,54 @@ def api_reconciliation() -> Dict[str, Any]:
 # ------------------------------------------------------------------
 # 9. Exports, Documentation & Verified Skills Endpoints
 # ------------------------------------------------------------------
+def _parse_sheet_filters(value):
+    if not value:
+        return None
+    try:
+        data = json.loads(value)
+        if not isinstance(data, dict) or len(value) > 10000:
+            raise ValueError("Invalid filter map")
+        allowed = {"monthly_comparison", "month_filter", "symbol_filter", "annualized_comparison", "date_filter", "future_symbol_summary", "date_summary", "apply_rolling"}
+        if set(data) - allowed:
+            raise ValueError("Unknown sheet")
+        for key, item in data.items():
+            if key == "apply_rolling":
+                if not isinstance(item, bool): raise ValueError("Rolling option must be boolean")
+                continue
+            if not isinstance(item, dict): raise ValueError("Sheet filters must be objects")
+            for name, val in item.items():
+                if name == "days":
+                    if isinstance(val, bool) or not isinstance(val, int) or not 1 <= val <= 365: raise ValueError("Days must be 1–365")
+                elif name == "selected_date":
+                    if val and val != "ALL": datetime.strptime(val, "%Y-%m-%d")
+                elif name in ("contract_month", "base_symbol", "contract_symbol"):
+                    if val and not re.fullmatch(r"[A-Za-z0-9._-]{1,40}", val): raise ValueError("Invalid symbol")
+                else: raise ValueError("Unknown filter")
+        return data
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, detail=f"Invalid workbook filters: {exc}")
+
+
+import threading
+import functools
+_EXPORT_LOCK = threading.RLock()
+
+def serialized_export(func):
+    @functools.wraps(func)
+    def locked(*args, **kwargs):
+        with _EXPORT_LOCK:
+            return func(*args, **kwargs)
+    return locked
+
 @app.get("/api/exports/generate/{target}")
+@serialized_export
 def api_generate_export(
     target: str,
     selected_date: Optional[str] = Query(None),
     selected_contract: Optional[str] = Query(None),
     selected_symbol: Optional[str] = Query(None),
-    days: int = Query(30),
+    days: int = Query(30, ge=1, le=365),
+    sheet_filters: Optional[str] = Query(None),
 ) -> FileResponse:
     exp = ExportService(DB_PATH, DATA_ROOT)
     t = target.lower()
@@ -570,6 +638,7 @@ def api_generate_export(
             selected_contract=selected_contract,
             selected_symbol=selected_symbol,
             days=days,
+            sheet_filters=_parse_sheet_filters(sheet_filters),
         )
     elif t == "technical_xlsx":
         path = exp.export_technical_workbook()
@@ -584,7 +653,12 @@ def api_generate_export(
         if path.suffix == ".xlsx"
         else "text/csv"
     )
-    return FileResponse(path=str(path), filename=path.name, media_type=media)
+    import uuid
+    unique_path = path.with_name(f"{path.stem}_{uuid.uuid4().hex}{path.suffix}")
+    shutil.copy2(path, unique_path)
+    from starlette.background import BackgroundTask
+    return FileResponse(path=str(unique_path), filename=path.name, media_type=media,
+                        background=BackgroundTask(unique_path.unlink, missing_ok=True))
 
 
 @app.get("/api/docs")
@@ -630,7 +704,21 @@ def api_get_settings() -> Dict[str, Any]:
 
 @app.post("/api/settings")
 def api_update_settings(req: UpdateSettingsRequest) -> Dict[str, Any]:
+    import math
+    limits = {"commission_slab1_upper": (0, 1000000), "commission_slab1_paisa_per_share": (0, 100),
+              "commission_slab2_start": (0, 1000000), "commission_slab2_rate": (0, 1), "sst_rate": (0, 1),
+              "futures_default_days": (1, 365), "futures_rolling_retention_months": (1, 24)}
+    for key, value in req.updates.items():
+        if key not in limits or isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
+            raise HTTPException(422, detail=f"Unsupported or non-numeric setting: {key}")
+        low, high = limits[key]
+        if not low <= value <= high or (key.startswith("futures_") and int(value) != value):
+            raise HTTPException(422, detail=f"{key} must be between {low} and {high}; futures settings must be integers.")
     repo = Repository(DB_PATH)
+    combined = {**repo.get_settings(), **req.updates}
+    if combined["commission_slab1_upper"] >= combined["commission_slab2_start"]:
+        raise HTTPException(422, detail="Commission slab 1 upper bound must be below slab 2 start.")
+    CloudSyncService(DB_PATH).mark_pending()
     updated = repo.update_settings(req.updates, notes=req.notes)
     invalidate_api_cache()
     sync_res = CloudSyncService(DB_PATH).push_db_after_update("Settings updated")
@@ -663,8 +751,10 @@ def api_create_backup(req: CreateBackupRequest) -> Dict[str, Any]:
 def api_restore_backup(req: RestoreBackupRequest) -> Dict[str, Any]:
     b_svc = BackupService(DB_PATH, DATA_ROOT)
     try:
+        CloudSyncService(DB_PATH).mark_pending()
         res = b_svc.restore_backup(req.zip_filename)
         invalidate_api_cache()
+        res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update("Backup restored")
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -674,9 +764,71 @@ def api_restore_backup(req: RestoreBackupRequest) -> Dict[str, Any]:
 def api_download_backup(zip_filename: str) -> FileResponse:
     b_svc = BackupService(DB_PATH, DATA_ROOT)
     p = b_svc.backups_dir / Path(zip_filename).name
-    if not p.exists():
+    if not p.exists() or not p.name.startswith("psx_backup_") or p.suffix != ".zip":
         raise HTTPException(status_code=404, detail="Backup file not found.")
     return FileResponse(path=str(p), filename=p.name, media_type="application/zip")
+
+
+# ---------------------------------------------------------------------------
+# Date Normalization & Integrity (day/month swap repair)
+# ---------------------------------------------------------------------------
+@app.post("/api/admin/date-normalization/plan")
+def api_date_normalization_plan() -> Dict[str, Any]:
+    svc = DateRepairService(DB_PATH, DATA_ROOT)
+    try:
+        return svc.plan()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class DateRepairApplyRequest(BaseModel):
+    confirm: bool = False
+    plan_token: Optional[str] = None
+
+
+@app.post("/api/admin/date-normalization/apply")
+def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
+    if not req.confirm:
+        raise HTTPException(status_code=400, detail="confirm=true is required to apply the repair.")
+    if not req.plan_token:
+        raise HTTPException(400, detail="Run Scan and review the dry-run plan first; plan_token is required.")
+    svc = DateRepairService(DB_PATH, DATA_ROOT)
+    try:
+        result = svc.apply(expected_plan_token=req.plan_token)
+        CloudSyncService(DB_PATH).mark_pending()
+        invalidate_api_cache()
+        try:
+            result["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update("Date normalization repair")
+        except Exception as e:
+            result["cloud_sync"] = {"status": "SKIPPED", "message": str(e)}
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/system/status")
+def api_system_status():
+    from psx_app.services.data_guard import date_integrity
+    return {"version": "1.3.0", "dates": date_integrity(DB_PATH),
+            "cloud_sync": CloudSyncService(DB_PATH).get_status(),
+            "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
+
+class CloudReloadRequest(BaseModel):
+    confirm: bool = False
+
+@app.post("/api/cloud-sync/reload")
+def api_cloud_reload(req: CloudReloadRequest):
+    if not req.confirm:
+        raise HTTPException(400, detail="confirm=true is required. This reloads the remote snapshot.")
+    svc = CloudSyncService(DB_PATH)
+    if svc.base_state().get("pending"):
+        raise HTTPException(409, detail="Unsynced local changes exist. Download the current snapshot for manual reconciliation; reload is blocked to avoid losing them.")
+    BackupService(DB_PATH, DATA_ROOT).create_backup(label="pre_cloud_reload")
+    result = svc.pull_latest_db_on_startup()
+    invalidate_api_cache()
+    if result.get("error"):
+        raise HTTPException(503, detail=result["error"])
+    return result
 
 
 # Mount Static Frontend SPA & Explicit Root Asset Routes for Serverless (Vercel) Compatibility

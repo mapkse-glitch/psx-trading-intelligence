@@ -186,32 +186,26 @@ class IntelligenceService:
         limit: int = 5,
     ) -> Dict[str, Any]:
         """
-        Scan today's market and generate 5 high-probability trading setups for the selected
+        Scan today's market and generate 5 rule-scored trading candidates for the selected
         stock/index/sector. Includes Entry, Target 1, Target 2, Stop-Loss, Risk/Reward ratio,
         and explains why each setup works based on technical and fundamental/liquidity factors.
         """
+        from psx_app.services.data_guard import date_integrity
+        integrity = date_integrity(self.db_path)
+        if not integrity["ok"]:
+            return {"status": "BLOCKED", "message": integrity["message"], "date_integrity": integrity,
+                    "target_label": custom_query or scope_or_sector, "candidates_scanned": 0, "setups_count": 0, "setups": []}
         uni_scope = "all" if (scope_or_sector == "ALL_MARKET" or custom_query.strip()) else "core36"
         uni = self.tech_service.get_universe_summary(scope=uni_scope)
         items = uni["items"]
 
         # Enrich with Top 5 Volume Register & Futures spread context from DB
         with get_connection(self.db_path) as c:
-            latest_top5_date = c.execute("SELECT MAX(trade_date) FROM top5_volume_records").fetchone()[0]
-            top5_tickers = {
-                r["ticker"]: r["top_vol"]
-                for r in c.execute(
-                    "SELECT ticker, SUM(volume) AS top_vol FROM top5_volume_records WHERE trade_date = ? GROUP BY ticker",
-                    (latest_top5_date,),
-                ).fetchall()
-            }
-            latest_fut_date = c.execute("SELECT MAX(trade_date) FROM futures_ohlcv").fetchone()[0]
-            fut_map = {
-                r["base_symbol"]: r["close"]
-                for r in c.execute(
-                    "SELECT base_symbol, close FROM futures_ohlcv WHERE trade_date = ? ORDER BY volume DESC",
-                    (latest_fut_date,),
-                ).fetchall()
-            }
+            top5_tickers = {(r["ticker"], r["trade_date"]): r["top_vol"] for r in c.execute(
+                "SELECT ticker, trade_date, SUM(volume) AS top_vol FROM top5_volume_records GROUP BY ticker, trade_date").fetchall()}
+            fut_map = {}
+            for row in c.execute("SELECT base_symbol, trade_date, close, contract_symbol, volume FROM futures_ohlcv ORDER BY volume DESC, contract_symbol ASC"):
+                fut_map.setdefault((row["base_symbol"], row["trade_date"]), dict(row))
 
         q_clean = self.tech_service.resolve_ticker(custom_query.strip()) if custom_query.strip() else ""
         filtered: List[Dict[str, Any]] = []
@@ -226,7 +220,7 @@ class IntelligenceService:
                 if q_clean not in sym and q_clean not in sec_info["sector"].upper():
                     continue
             elif scope_or_sector == "TOP5_VOL":
-                if sym not in top5_tickers:
+                if (sym, it["latest_date"]) not in top5_tickers:
                     continue
             elif scope_or_sector == "FUTURES":
                 if not it.get("is_futures_eligible"):
@@ -307,7 +301,7 @@ class IntelligenceService:
                 dir_alignment * 8.5
                 + min(adx, 45.0) * 0.45
                 + min(vol_ratio, 3.0) * 6.0
-                + (5.0 if sym in top5_tickers else 0.0)
+                + (5.0 if (sym, it["latest_date"]) in top5_tickers else 0.0)
                 + min(rr_t2, 4.0) * 3.0
             )
             prob_pct = min(94, max(58, int(round(55 + conviction_raw * 0.42))))
@@ -343,16 +337,17 @@ class IntelligenceService:
                 f"ADX(14)={adx:.1f} (+DI={it.get('plus_di') or 0:.1f} / -DI={it.get('minus_di') or 0:.1f}) and MACD({macd_v:.2f} vs Sig {macd_s:.2f}, Hist {macd_h:+.2f}).",
             ]
 
-            liq_notes = [sec_info["fundamental"]]
-            if sym in top5_tickers:
+            liq_notes = ["Unverified static background (not a current finding): " + sec_info["fundamental"]]
+            if (sym, it["latest_date"]) in top5_tickers:
                 liq_notes.append(
-                    f"Institutional Volume Confirmation: Ranked in Module A Top 5 Volume Register ({top5_tickers[sym]:,} shares in Top 5 blocks on {latest_top5_date})."
+                    f"Same-date Top 5 register context (not proof of institutional ownership): {top5_tickers[(sym, it['latest_date'])]:,} shares across ranked blocks on {it['latest_date']}."
                 )
-            if sym in fut_map and c_price > 0:
-                f_px = fut_map[sym]
+            if (sym, it["latest_date"]) in fut_map and c_price > 0:
+                selected_future = fut_map[(sym, it["latest_date"])]
+                f_px = selected_future["close"]
                 spread_pct = (f_px - c_price) / c_price * 100.0
                 liq_notes.append(
-                    f"Deliverable Futures Context (Module C): Active futures contract trading at {f_px:.2f} PKR ({spread_pct:+.2f}% basis vs spot)."
+                    f"Same-date futures context: {selected_future['contract_symbol']} close {f_px:.2f} PKR ({spread_pct:+.2f}% basis vs cash), selected by highest reported volume on {it['latest_date']}."
                 )
             liq_notes.append(
                 f"Session volume {int(vol):,} shares ({vol_ratio:.2f}x 20-day average volume of {int(vol_avg):,})."
@@ -367,7 +362,9 @@ class IntelligenceService:
                 "setup_type": setup_type,
                 "direction": "BUY / LONG" if is_bullish else ("SHORT SELL" if it.get("is_futures_eligible") else "SELL"),
                 "setup_grade": grade,
-                "probability_score": prob_pct,
+                "setup_score": prob_pct,
+                "score_interpretation": "Deterministic rule score, not a probability of profit.",
+                "background_status": "Unverified static background; not current fundamental research.",
                 "composite_score": f"{score:+d}/9",
                 "current_price": round(c_price, 2),
                 "change_pct": round(float(it.get("change_pct") or 0.0), 2),
@@ -418,6 +415,10 @@ class IntelligenceService:
           4. Momentum & volatility indicators (Wilder RSI 14, MACD, Bollinger %B/Width, ADX +DI/-DI, VWAP)
           5. Step-by-step trading signal (Buy/Hold/Sell/Short Sell) with justification.
         """
+        from psx_app.services.data_guard import date_integrity
+        integrity = date_integrity(self.db_path)
+        if not integrity["ok"]:
+            return {"symbol": symbol, "status": "BLOCKED", "message": integrity["message"], "date_integrity": integrity}
         sym = self.tech_service.resolve_ticker(symbol)
         t_data = self.tech_service.get_ticker_analysis(sym, tail_bars=200)
         lat = t_data["latest"]
@@ -599,7 +600,7 @@ class IntelligenceService:
             "symbol": sym,
             "display_label": t_data.get("display_label", sym),
             "sector": sec_info["sector"],
-            "fundamental_summary": sec_info["fundamental"],
+            "fundamental_summary": "Unverified static background (not current research): " + sec_info["fundamental"],
             "intended_action": intended_action,
             "structure_snapshot": structure_snapshot,
             "key_levels": key_levels,

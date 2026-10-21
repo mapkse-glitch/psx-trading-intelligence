@@ -29,7 +29,7 @@ else:
     if _env_data_dir:
         DATA_ROOT = Path(_env_data_dir)
     else:
-        DATA_ROOT = BUNDLED_DATA_ROOT if BUNDLED_DATA_ROOT.exists() else BASE_DIR
+        DATA_ROOT = BUNDLED_DATA_ROOT if BUNDLED_DATA_ROOT.exists() else BUNDLED_DATA_ROOT
 
 DRIVE_MIRROR_DIR = Path(os.environ.get("PSX_DRIVE_MIRROR", str(BASE_DIR / "drive_mirror")))
 
@@ -88,8 +88,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "signal_buy_threshold": 3,
     "signal_sell_threshold": -2,
     "signal_short_threshold": -5,
-    "date_display_format": "YYYY-MM-DD",
-    "top5_export_date_format": "MM/DD/YYYY",
+    "date_display_format": "DD-MM-YYYY",
+    "top5_export_date_format": "DD-MM-YYYY",
     "backup_retention_count": 20,
     "saved_column_mappings": {},
     "rule_version": 1,
