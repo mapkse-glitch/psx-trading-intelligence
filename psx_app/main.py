@@ -10,6 +10,7 @@ from psx_app.security import install_request_safety, MUTATION_LOCK
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from psx_app.config import APP_ROOT, AUTHORIZED_ACCOUNTS, CORE_36_TICKERS, DATA_ROOT, DB_PATH, DOCS_DIR, SKILLS_DIR
@@ -42,20 +43,14 @@ async def lifespan(app_instance: FastAPI):
     init_db(DB_PATH)
     mig = MigrationService(DB_PATH, DATA_ROOT)
     mig.run_initial_migration(force=False)
-    # Pre-warm primary overview and intelligence cards for instant first load
-    try:
-        api_overview()
-        api_trading_ideas()
-        api_automated_analyst("ATRL")
-    except Exception:
-        pass
+    # Analytics load on demand; never block cold-start readiness on all tickers.
     yield
 
 
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.2",
+    version="1.3.3",
     lifespan=lifespan,
 )
 
@@ -73,7 +68,7 @@ async def serialize_mutations(request: Request, call_next):
     async with MUTATION_LOCK:
         if request.url.path != "/api/cloud-sync/reload":
             try:
-                CloudSyncService(DB_PATH).assert_current_base()
+                request.state.verified_cloud_base = await run_in_threadpool(CloudSyncService(DB_PATH).assert_current_base)
             except Exception as exc:
                 from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": str(exc)}, status_code=409)
@@ -121,15 +116,30 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.2",
+        "version": "1.3.3",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
 
+@app.get("/api/data-dates")
+def api_data_dates():
+    if "data-dates" in _API_CACHE:
+        return _API_CACHE["data-dates"]
+    tables = {"cash": "equity_ohlcv", "futures": "futures_ohlcv", "top5": "top5_volume_records", "index": "index_ohlcv"}
+    with get_connection(DB_PATH) as conn:
+        dates = {key: conn.execute(f"SELECT MAX(trade_date) FROM {table}").fetchone()[0] for key, table in tables.items()}
+        for account in AUTHORIZED_ACCOUNTS:
+            dates["acc" + account] = conn.execute("SELECT MAX(trade_date) FROM account_daily_symbol_summary WHERE account_id=?", (account,)).fetchone()[0]
+    dates["latest"] = max((d for d in dates.values() if d), default=None)
+    _API_CACHE["data-dates"] = dates
+    return dates
+
+
 @app.get("/api/overview")
-def api_overview() -> Dict[str, Any]:
-    if "overview" in _API_CACHE:
-        return _API_CACHE["overview"]
+def api_overview(brief: bool = False) -> Dict[str, Any]:
+    cache_key = "overview:brief" if brief else "overview"
+    if cache_key in _API_CACHE:
+        return _API_CACHE[cache_key]
 
     repo = Repository(DB_PATH)
     acc_svc = AccountService(DB_PATH)
@@ -141,6 +151,10 @@ def api_overview() -> Dict[str, Any]:
     sys_ov = repo.get_system_overview()
     acc_91404 = acc_svc.get_account_report("91404")["dashboard"]
     acc_91269 = acc_svc.get_account_report("91269")["dashboard"]
+    if brief:
+        res = {"system": sys_ov, "account_91404": acc_91404, "account_91269": acc_91269}
+        _API_CACHE[cache_key] = res
+        return res
     top5_latest = top5_svc.get_register(
         start_date=sys_ov["top5"]["max_date"],
         end_date=sys_ov["top5"]["max_date"],
@@ -327,14 +341,23 @@ def api_stage_chunked(req: ChunkedStageRequest) -> Dict[str, Any]:
 
 
 @app.post("/api/imports/commit")
-def api_commit_imports(req: CommitBatchRequest) -> Dict[str, Any]:
+def api_commit_imports(req: CommitBatchRequest, request: Request) -> Dict[str, Any]:
     orch = ImportOrchestrator(DB_PATH, DATA_ROOT)
     try:
-        CloudSyncService(DB_PATH).mark_pending()
+        cloud = CloudSyncService(DB_PATH)
+        with get_connection(DB_PATH) as conn:
+            batch = conn.execute("SELECT status FROM import_batches WHERE batch_uuid=?", (req.batch_uuid,)).fetchone()
+        # Persist the pending marker BEFORE any write; preserve it on partial failures.
+        if batch and batch[0] != "COMMITTED":
+            cloud.mark_pending()
         res = orch.commit_staged_batch(req.batch_uuid, allow_revisions=req.allow_revisions)
         invalidate_api_cache()
-        if res.get("status") != "FAILED":
-            res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update(f"Import commit {req.batch_uuid[:8]}")
+        cloud = CloudSyncService(DB_PATH)
+        if res.get("status") != "ALREADY_COMMITTED" or cloud.base_state().get("pending"):
+            cloud.mark_pending()
+            res["cloud_sync"] = cloud.push_db_after_update(f"Import commit {req.batch_uuid[:8]}", checked_base=getattr(request.state, "verified_cloud_base", None))
+        else:
+            res["cloud_status"] = cloud.get_status()
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -799,7 +822,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.2", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.3", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 

@@ -123,6 +123,13 @@ class ImportOrchestrator:
         total_rejected = 0
         all_issues: List[Dict[str, Any]] = list(stage_warnings)
 
+        # Detect once; load only canonical modules needed by this upload.
+        detections = {}
+        for fname, fbytes in expanded_files:
+            temp_path = staging_batch_dir / fname
+            temp_path.write_bytes(fbytes)
+            detections[fname] = detect_file_type(temp_path, fname)
+        types = {d["file_type"] for d in detections.values()}
         with get_connection(self.db_path) as c:
             existing_hashes = {
                 r["sha256_hash"]: r["filename"]
@@ -130,31 +137,29 @@ class ImportOrchestrator:
             }
             existing_top5 = {
                 (r["trade_date"], r["ticker"], r["rank"]): (r["rate"], r["volume"], r["trades"])
-                for r in c.execute("SELECT trade_date, ticker, rank, rate, volume, trades FROM top5_volume_records").fetchall()
+                for r in (c.execute("SELECT trade_date, ticker, rank, rate, volume, trades FROM top5_volume_records").fetchall() if types.intersection({'TOP5_TXT', 'LEGACY_TOP5_XLSX'}) else [])
             }
             existing_exec_keys = {
                 (r["account_id"], r["unique_trade_key"]): (r["quantity"], r["price"], r["trade_value"])
-                for r in c.execute("SELECT account_id, unique_trade_key, quantity, price, trade_value FROM trade_executions").fetchall()
+                for r in (c.execute("SELECT account_id, unique_trade_key, quantity, price, trade_value FROM trade_executions").fetchall() if types.intersection({'TRADELOG'}) else [])
             }
             existing_eq_keys = {
-                (r["trade_date"], r["symbol"]): r["close"]
-                for r in c.execute("SELECT trade_date, symbol, close FROM equity_ohlcv").fetchall()
+                (r["trade_date"], r["symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                for r in (c.execute("SELECT trade_date, symbol, volume, pr_close, high, low, open, close, avg_price FROM equity_ohlcv").fetchall() if types.intersection({'OHLCV_CASH'}) else [])
             }
             existing_fut_keys = {
-                (r["trade_date"], r["contract_symbol"]): r["close"]
-                for r in c.execute("SELECT trade_date, contract_symbol, close FROM futures_ohlcv").fetchall()
+                (r["trade_date"], r["contract_symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                for r in (c.execute("SELECT trade_date, contract_symbol, volume, pr_close, high, low, open, close, avg_price FROM futures_ohlcv").fetchall() if types.intersection({'OHLCV_FUTURES'}) else [])
             }
             existing_idx_keys = {
                 r["trade_date"]: r["close"]
-                for r in c.execute("SELECT trade_date, close FROM index_ohlcv").fetchall()
+                for r in (c.execute("SELECT trade_date, close FROM index_ohlcv").fetchall() if types.intersection({'INDEX_OHLCV'}) else [])
             }
 
         for fname, fbytes in expanded_files:
             sha256 = hashlib.sha256(fbytes).hexdigest()
             temp_path = staging_batch_dir / fname
-            temp_path.write_bytes(fbytes)
-
-            det = detect_file_type(temp_path, fname)
+            det = detections[fname]
             ftype = det["file_type"]
             hash_already_imported = sha256 in existing_hashes
 
@@ -222,8 +227,8 @@ class ImportOrchestrator:
                         k = (rec["trade_date"], rec["symbol"])
                         if k not in existing_eq_keys:
                             f_new += 1
-                            existing_eq_keys[k] = rec["close"]
-                        elif abs(existing_eq_keys[k] - rec["close"]) < 1e-6:
+                            existing_eq_keys[k] = tuple(rec[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                        elif existing_eq_keys[k] == tuple(rec[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price")):
                             f_dups += 1
                         else:
                             f_revs += 1
@@ -231,8 +236,8 @@ class ImportOrchestrator:
                         k = (rec["trade_date"], rec["contract_symbol"])
                         if k not in existing_fut_keys:
                             f_new += 1
-                            existing_fut_keys[k] = rec["close"]
-                        elif abs(existing_fut_keys[k] - rec["close"]) < 1e-6:
+                            existing_fut_keys[k] = tuple(rec[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                        elif existing_fut_keys[k] == tuple(rec[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price")):
                             f_dups += 1
                         else:
                             f_revs += 1
@@ -245,7 +250,7 @@ class ImportOrchestrator:
                             f_dups += 1
                         else:
                             f_revs += 1
-                parsed_payload = {"mode": mode, "records": res["records"]}
+                parsed_payload = {"mode": mode, "records": res["records"], "typed_date_source": res.get("typed_date_source", False)}
 
             elif ftype == "LEGACY_TOP5_XLSX":
                 res = parse_legacy_top5_workbook(temp_path)
@@ -412,6 +417,7 @@ class ImportOrchestrator:
         actual_new = 0
         actual_dups = 0
         actual_revs = 0
+        verified_date_repairs = 0
 
         try:
             conn.execute("BEGIN IMMEDIATE")
@@ -611,10 +617,15 @@ class ImportOrchestrator:
                 if "records" in payload and "mode" in payload:
                     mode = payload["mode"]
                     recs = payload["records"]
+                    if payload.get("typed_date_source") and meta["filename"].lower().endswith(".xlsx") and mode in ("CASH", "FUTURES"):
+                        from psx_app.services.verified_source_repair import quarantine_verified_swaps
+                        repaired = quarantine_verified_swaps(conn, mode, recs, batch_id, sf_id, now)
+                        verified_date_repairs += repaired
+                        equity_updated = equity_updated or (mode == "CASH" and repaired > 0)
                     if mode == "CASH":
                         existing_map = {
-                            (r["trade_date"], r["symbol"]): r["close"]
-                            for r in conn.execute("SELECT trade_date, symbol, close FROM equity_ohlcv").fetchall()
+                            (r["trade_date"], r["symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                            for r in conn.execute("SELECT * FROM equity_ohlcv").fetchall()
                         }
                         to_insert = []
                         for r in recs:
@@ -625,10 +636,12 @@ class ImportOrchestrator:
                                     r["high"], r["low"], r["open"], r["close"], r["avg_price"],
                                     r["source_filename"], sf_id, batch_id,
                                 ))
-                                existing_map[k] = r["close"]
+                                existing_map[k] = tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
                                 actual_new += 1
                                 equity_updated = True
-                            elif abs(existing_map[k] - r["close"]) < 1e-6:
+                            elif existing_map[k] == tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price")):
+                                actual_dups += 1
+                            elif not allow_revisions:
                                 actual_dups += 1
                             else:
                                 conn.execute(
@@ -658,8 +671,8 @@ class ImportOrchestrator:
                             )
                     elif mode == "FUTURES":
                         existing_fmap = {
-                            (r["trade_date"], r["contract_symbol"]): r["close"]
-                            for r in conn.execute("SELECT trade_date, contract_symbol, close FROM futures_ohlcv").fetchall()
+                            (r["trade_date"], r["contract_symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
+                            for r in conn.execute("SELECT * FROM futures_ohlcv").fetchall()
                         }
                         to_insert_f = []
                         for r in recs:
@@ -670,9 +683,11 @@ class ImportOrchestrator:
                                     r["volume"], r["pr_close"], r["high"], r["low"], r["open"], r["close"],
                                     r["avg_price"], r["change_val"], r["source_filename"], sf_id, batch_id,
                                 ))
-                                existing_fmap[k] = r["close"]
+                                existing_fmap[k] = tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
                                 actual_new += 1
-                            elif abs(existing_fmap[k] - r["close"]) < 1e-6:
+                            elif existing_fmap[k] == tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price")):
+                                actual_dups += 1
+                            elif not allow_revisions:
                                 actual_dups += 1
                             else:
                                 conn.execute(
@@ -733,6 +748,7 @@ class ImportOrchestrator:
                 "new_records": actual_new,
                 "duplicates_ignored": actual_dups,
                 "revisions_count": actual_revs,
+                "verified_date_repairs": verified_date_repairs,
                 "affected_account_dates": [f"{a}:{d}" for a, d in sorted(affected_account_dates)],
                 "reports_recalculated": [
                     "Top 5 Volume & Rate Register",
@@ -764,6 +780,7 @@ class ImportOrchestrator:
                         "new_records": actual_new,
                         "duplicates_ignored": actual_dups,
                         "revisions_count": actual_revs,
+                "verified_date_repairs": verified_date_repairs,
                     }),
                     now,
                 ),

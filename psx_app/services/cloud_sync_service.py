@@ -62,11 +62,10 @@ class CloudSyncService:
         # Read repository metadata to verify that the configured token can see
         # the repository.  Public and private repositories are both supported.
         # Visibility is a deployment/privacy choice, not a sync prerequisite.
-        self._gh_request("GET", "")
         ref = self._gh_request("GET", f"/git/ref/heads/{self.branch}")
         head = ref["object"]["sha"]
         commit = self._gh_request("GET", f"/git/commits/{head}")
-        tree = self._gh_request("GET", f"/git/trees/{commit['tree']['sha']}?recursive=1")
+        tree = self._gh_request("GET", f"/git/trees/{commit['tree']['sha']}")
         if tree.get("truncated"):
             raise RuntimeError("Remote tree is truncated; cannot safely establish snapshot identity.")
         blob = next((item.get("sha") for item in tree.get("tree", [])
@@ -190,7 +189,7 @@ class CloudSyncService:
             dst.close()
             src.close()
             raw_bytes = tmp_db.read_bytes()
-            comp_bytes = gzip.compress(raw_bytes, compresslevel=6)
+            comp_bytes = gzip.compress(raw_bytes, compresslevel=1)
             temporary = out_gz.with_suffix(".tmp")
             temporary.write_bytes(comp_bytes)
             os.replace(temporary, out_gz)
@@ -242,7 +241,7 @@ class CloudSyncService:
                 pass
             raise RuntimeError(f"GitHub API error {code}: {(body or e.reason)[:200]}") from e
 
-    def push_db_after_update(self, reason: str = "Automated update") -> Dict[str, Any]:
+    def push_db_after_update(self, reason: str = "Automated update", checked_base=None) -> Dict[str, Any]:
         configured = self.is_configured()
         attempt_iso = datetime.now(timezone.utc).isoformat()
         if configured:
@@ -263,7 +262,7 @@ class CloudSyncService:
 
         try:
             b64_content = base64.b64encode(gz_path.read_bytes()).decode("ascii")
-            checked = self.assert_current_base()
+            checked = checked_base if checked_base is not None else self.assert_current_base()
             latest_commit_sha, base_tree_sha, _remote_blob = checked
 
             blob_data = self._gh_request("POST", "/git/blobs", {

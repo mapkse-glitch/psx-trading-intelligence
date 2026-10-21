@@ -59,6 +59,8 @@ const state = {
   top5Filter: { ticker: "ATRL", start_date: "2026-10-01", end_date: null, search: "", end_date_manual: false },
   accTab: { "91404": "dashboard", "91269": "dashboard" },
   accSelectedDate: { "91404": null, "91269": null },
+  accDateManual: { "91404": false, "91269": false },
+  commitInFlight: false,
   // Separate, independent per-sheet filter state for Module C (matching Futures_Analysis.xlsx)
   futures: {
     subtab: "monthly_comparison",
@@ -176,6 +178,7 @@ async function apiGet(url, useCache = true) {
 
 function clearClientCache() {
   state.apiCache = {};
+  renderLatestBadge(state.currentView).catch(() => {});
 }
 
 async function refreshCurrentView() {
@@ -201,6 +204,7 @@ async function switchView(view) {
   container.offsetHeight;
   container.style.animation = "";
 
+  renderLatestBadge(view).catch(() => {});
   try {
     if (view === "overview") await renderOverview(container);
     else if (view === "import") await renderImportCenter(container);
@@ -574,7 +578,7 @@ async function triggerAnalystForTicker(sym) {
 // ============================================================================
 async function renderOverview(container) {
   const ticket = beginViewRender(container);
-  const [data, status] = await Promise.all([apiGet('/api/overview'), apiGet('/api/system/status', false)]);
+  const [data, status] = await Promise.all([apiGet('/api/overview?brief=true'), apiGet('/api/system/status', false)]);
   const sys = data.system, a = data.account_91404, b = data.account_91269;
   const cloud = status.cloud_sync;
   const source = status.dates.sources;
@@ -886,6 +890,11 @@ async function handleStageFiles(fileList) {
 }
 
 async function commitStagedBatch(batchUuid) {
+  if (state.commitInFlight) return;
+  state.commitInFlight = true;
+  const buttons = [...document.querySelectorAll('button')].filter(b => (b.getAttribute('onclick') || '').includes('commitStagedBatch'));
+  buttons.forEach(b => {b.disabled = true; b.dataset.originalLabel = b.textContent; b.textContent = 'Importing & verifying cloud save…';});
+  const started = performance.now();
   try {
     const res = await fetch("/api/imports/commit", {
       method: "POST",
@@ -900,21 +909,24 @@ async function commitStagedBatch(batchUuid) {
     const committed = await res.json();
     clearClientCache();
     let note;
-    if (committed.status === "ALREADY_COMMITTED") {
-      note = `Batch already committed earlier — zero duplicates were introduced.`;
-    } else if (committed.cloud_sync && committed.cloud_sync.pushed) {
+    if (committed.cloud_sync && committed.cloud_sync.pushed) {
       note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! Cloud save confirmed; already-open workers must reload cloud data before editing.`;
     } else if (committed.cloud_sync && committed.cloud_sync.error) {
       note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nCloud save is NOT confirmed. Local data on Vercel is temporary. Download the snapshot now and retry after fixing the issue.`;
+    } else if (committed.status === "ALREADY_COMMITTED") {
+      note = `Batch already committed earlier — no records were added again.`;
     } else {
       note = `.\nCommitted and saved to the active database on this app instance.`;
     }
     showToast(
-      `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped${note}`, Boolean(committed.cloud_sync && !committed.cloud_sync.pushed)
+      `${committed.status === "ALREADY_COMMITTED" ? "Import already completed" : `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped`}. ${committed.verified_date_repairs || 0} source-verified date repairs. ${note} (${((performance.now()-started)/1000).toFixed(1)}s)`, Boolean(committed.cloud_sync && !committed.cloud_sync.pushed)
     );
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
     showToast(`Commit error: ${err.message}`, true);
+  } finally {
+    state.commitInFlight = false;
+    buttons.forEach(b => {b.disabled = false; b.textContent = b.dataset.originalLabel;});
   }
 }
 
@@ -953,7 +965,7 @@ async function renderTop5View(container) {
     const qs = new URLSearchParams();
     if (f.ticker && f.ticker !== "ALL") qs.set("ticker", f.ticker);
     if (f.start_date) qs.set("start_date", f.start_date);
-    if (f.end_date) qs.set("end_date", f.end_date);
+    if (f.end_date_manual && f.end_date) qs.set("end_date", f.end_date);
     if (f.search) qs.set("search", f.search);
     return apiGet(`/api/top5/register?${qs.toString()}`, false);
   }
@@ -968,11 +980,10 @@ async function renderTop5View(container) {
   // unless the user deliberately pinned a custom end date.
   if (!f.end_date_manual && latestAvailable && f.end_date !== latestAvailable) {
     f.end_date = latestAvailable;
-    data = await fetchRegisterPass();
   }
 
   const trendTicker = f.ticker && f.ticker !== "ALL" ? f.ticker : "ATRL";
-  const trendData = await apiGet(`/api/top5/trend/${trendTicker}`, false);
+  const trendData = await apiGet(`/api/top5/trend/${trendTicker}`);
 
   if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
@@ -1133,7 +1144,7 @@ function renderTop5SvgChart(trend) {
 // ============================================================================
 async function renderAccountView(container, accountId) {
   const ticket = beginViewRender(container);
-  const selDate = state.accSelectedDate[accountId];
+  const selDate = state.accDateManual[accountId] ? state.accSelectedDate[accountId] : null;
   const qs = selDate ? `?selected_date=${encodeURIComponent(selDate)}` : "";
   const rep = await apiGet(`/api/accounts/${accountId}${qs}`);
   const activeTab = state.accTab[accountId] || "dashboard";
@@ -1618,6 +1629,7 @@ async function renderAccountView(container, accountId) {
         <a class="btn btn-secondary" href="/api/exports/generate/csv_${accountId}" download>CSV</a>
       </div>
     </div>
+    <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[tDates.length-1])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
     ${bodyHtml}
   `;
 }
@@ -1629,13 +1641,14 @@ function switchAccountSubtab(accountId, tabKey) {
 
 function openAccountDateDetail(accountId, tradeDate) {
   state.accSelectedDate[accountId] = tradeDate;
+  state.accDateManual[accountId] = true;
   state.accTab[accountId] = "daily_detail";
   renderAccountView(document.getElementById("viewContainer"), accountId);
 }
 
 // ============================================================================
 // 06. MODULE C: FUTURES COMPARISON & ANNUALIZED ANALYSIS
-// Separate per-sheet filter bars matching Futures_Analysis (3).xlsx 100%
+// Separate per-sheet filter bars matching Futures_Analysis (6).xlsx
 // ============================================================================
 
 async function renderFuturesView(container) {
@@ -1647,10 +1660,10 @@ async function renderFuturesView(container) {
   const latestDate = meta.latest_date || "";
   const earliestDate = availDates.length ? availDates[0] : latestDate;
   for (const tab of ['monthly_comparison','month_filter','annualized_comparison','date_filter','date_summary']) {
-    if (f[tab].selected_date === null) f[tab].selected_date = latestDate;
+    if (!f[tab].date_manual) f[tab].selected_date = latestDate;
   }
 
-  // Exact Excel sheet names from Futures_Analysis (3).xlsx — 7 sheets + one app extra policy tab
+  // Reference workbook: seven visible sheets; retain existing app policy tab.
   const subtabs = [
     ["monthly_comparison", "Monthly Comparison"],
     ["month_filter", "Month Filter"],
@@ -1671,22 +1684,22 @@ async function renderFuturesView(container) {
     </div>
   `;
 
-  // Calendar-type date filter — a free date input exactly like typing a value into the
-  // Excel workbook's "Selected Date:" filter cell. If the picked date is not a trading
-  // day, the server returns the nearest earlier trading day and this UI says so.
+  // Match the workbook ListDates dropdown, with explicit DD-MM-YYYY display.
   const dateCtrl = (tabKey, st) => {
     const val = st.selected_date;
     const isAll = !/^\d{4}-\d{2}-\d{2}$/.test(val || "");
     const shown = isAll ? latestDate : val;
     return `
-      <div class="filter-group" title="Calendar date filter — pick ANY date of your choice (same as typing a date into this sheet's 'Selected Date:' cell in the Excel workbook). If your date is not a trading day, the app automatically shows the nearest earlier trading day available in the active 2-month window.">
+      <div class="filter-group" title="Worksheet date filter — select an imported trading date, matching the Excel ListDates dropdown. Dates are displayed as DD-MM-YYYY; no browser-locale month/day ambiguity.">
         <label>Selected Date:</label>
         <span class="date-readout">${isAll ? "All dates" : fmtDate(shown)}</span>
-        <input type="date" aria-label="Selected date for this worksheet" value="${shown}" min="${earliestDate}" max="${latestDate}" style="font-weight:700;" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.selected_date=this.value||'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+        <select aria-label="Selected date for this worksheet" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.date_manual=true;state.futures.${tabKey}.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">${availDates.map(d=>`<option value="${d}" ${d===shown?'selected':''}>${fmtDate(d)}</option>`).join('')}</select>
+        <span class="badge ${st.date_manual ? 'badge-amber' : 'badge-green'}">${isAll ? 'All retained dates · Latest:' : (st.date_manual ? 'Pinned · Latest:' : 'Auto → Latest:')} ${fmtDate(latestDate)}</span>
+        ${st.date_manual ? `<button class="btn btn-secondary" onclick="state.futures.${tabKey}.date_manual=false;state.futures.${tabKey}.selected_date=null;renderFuturesView(document.getElementById('viewContainer'))">Reset to Latest</button>` : ''}
       </div>
       <div class="filter-group">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;" title="The Excel sheets show the single selected date; tick this only if you want the full 2-month retained window returned instead.">
-          <input type="checkbox" ${isAll ? "checked" : ""} onchange="state.futures.${tabKey}.selected_date=this.checked?'ALL':'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+          <input type="checkbox" ${isAll ? "checked" : ""} onchange="state.futures.${tabKey}.date_manual=this.checked;state.futures.${tabKey}.selected_date=this.checked?'ALL':'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
           All retained 2-month dates
         </label>
       </div>
@@ -2676,7 +2689,7 @@ function currentViewRender(container, token) { return container.isConnected && v
 function futuresExportUrl() {
   const keys = ['monthly_comparison','month_filter','symbol_filter','annualized_comparison','date_filter','future_symbol_summary','date_summary'];
   const filters = {apply_rolling: state.futures.apply_rolling};
-  keys.forEach(key => filters[key] = {...state.futures[key]});
+  keys.forEach(key => { const {date_manual, ...values} = state.futures[key]; filters[key] = values; });
   filters.symbol_filter.selected_date = 'ALL';
   return '/api/exports/generate/futures_xlsx?sheet_filters='+encodeURIComponent(JSON.stringify(filters));
 }
@@ -2773,4 +2786,14 @@ function enhanceWorkspace() {
     }
   }
   edits.forEach(([n,text])=>n.nodeValue=text);
+}
+
+async function renderLatestBadge(view) {
+  const dates = await apiGet('/api/data-dates');
+  if (state.currentView !== view) return;
+  const key = ({top5:'top5',futures:'futures',technical:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
+  let badge = document.getElementById('moduleLatestBadge');
+  if (!badge) {badge = document.createElement('span');badge.id='moduleLatestBadge';badge.className='badge badge-green';document.getElementById('viewTitle').after(badge);}
+  badge.textContent = dates[key] ? 'Auto → Latest: '+fmtDate(dates[key]) : 'No imported data';
+  badge.title = 'Latest imported date for this module (not the computer date). Each dataset retains its own coverage.';
 }

@@ -337,5 +337,6 @@ def parse_ohlcv_file(file_path: Path, mode: str = "CASH", original_filename: Opt
         "records": records,
         "dates": sorted(dates_seen),
         "symbols_count": len(symbols_seen),
+        "typed_date_source": bool(date_candidates) and all(isinstance(v, (date, datetime)) for v in date_candidates),
         "issues": issues,
     }
