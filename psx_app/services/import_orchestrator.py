@@ -406,6 +406,8 @@ class ImportOrchestrator:
         bundle = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest = bundle["manifest"]
         staged_items = bundle["items"]
+        if not manifest.get("rows_accepted"):
+            raise ValueError("No importable rows were found. These files were skipped, not imported as duplicates. Check the staged file formats and issues.")
         now = datetime.now(timezone.utc).isoformat()
 
         raw_archive_dir = self.data_root / "data" / "raw" / batch_uuid

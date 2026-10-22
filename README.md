@@ -1,4 +1,4 @@
-# PSX Intelligence 1.3.4 — complete date history and cloud freshness
+# PSX Intelligence 1.3.5 — historical workbook imports
 
 This version removes the unrequested password and sign-in system. The dashboard opens directly. No owner password, session secret, account creation or sign-out step is required. Existing PSX_ADMIN_PASSWORD / PSX_SESSION_SECRET / PSX_AUTH_DISABLED environment variables are ignored and may be removed from your hosting settings.
 
@@ -11,6 +11,14 @@ This version removes the unrequested password and sign-in system. The dashboard 
 5. Keep the existing GitHub sync configuration (`GITHUB_SYNC_REPO`, `GITHUB_SYNC_BRANCH`, `GITHUB_SYNC_TOKEN`) if you use cloud persistence. Existing public or private repositories are supported. A private repository is recommended for confidential snapshots but is not required for sync. GitHub integration credentials are separate from the removed dashboard login.
 
 Read [deployment and recovery](docs/DEPLOY_1_3.md). Password-free access means anyone who can reach the deployed site can view account data, download data and invoke data-changing actions. A private GitHub repository does **not** make the Vercel website private. Same-origin browser checks are request hygiene, not access control.
+
+## 1.3.5 — historical workbook import correction
+
+Raw OHLCV XLSX files are now detected from their columns, not the hard-coded year 2026. The attached 2016 and 2022 archives were fully imported and independently validated in an isolated database: 171,431 records, preserved original dates and safe repeat-upload deduplication. Unsupported zero-row files are visibly SKIPPED rather than described as ready to import.
+
+**After deployment, discard the old staged preview and select the original historical files again.** Existing staged manifests are not re-parsed by a code update. Do not rename old files to 2026 or alter their dates. This package does not itself add history to live data.
+
+See [historical import and validation notes](docs/RELEASE_1_3_5.md).
 
 ## 1.3.4 — complete date-history and freshness correction
 

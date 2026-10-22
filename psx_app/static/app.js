@@ -835,18 +835,22 @@ async function handleStageFiles(fileList) {
       manifest = await res.json();
     }
     state.stagedBatch = manifest;
+    const skippedFiles = manifest.files.filter(f => !f.rows_accepted);
+    const hasImportableRows = manifest.rows_accepted > 0;
 
     previewEl.innerHTML = `
       <div class="card card-hero">
         <div class="card-header">
           <div>
-            <div class="card-title" style="color:var(--accent-blue);">Staged Import Preview — Ready to Commit</div>
+            <div class="card-title" style="color:var(--accent-blue);">Staged Import Preview — ${!hasImportableRows ? 'No Importable Rows' : skippedFiles.length ? 'Review Skipped Files' : 'Ready to Commit'}</div>
             <div class="card-subtitle">Batch UUID: ${manifest.batch_uuid} • ${manifest.files_count} file(s) analyzed</div>
           </div>
-          <button class="btn btn-success" onclick="commitStagedBatch('${manifest.batch_uuid}')">
+          <button class="btn btn-success" ${hasImportableRows ? '' : 'disabled'} onclick="commitStagedBatch('${manifest.batch_uuid}')">
             ✓ Import and Update Canonical Database
           </button>
         </div>
+
+        ${skippedFiles.length ? `<div class="notice" role="alert"><b>Not imported: ${skippedFiles.map(f => escapeHtml(f.filename)).join(', ')}</b><p>These files have zero accepted rows. They are not duplicates and will not be added by clicking Import. Review the format or parser issues below.</p></div>` : ''}
 
         <div class="grid-4">
           <div class="kpi-box"><div class="kpi-label">Rows Read</div><div class="kpi-value">${fmtInt(manifest.rows_read)}</div></div>
@@ -874,7 +878,8 @@ async function handleStageFiles(fileList) {
               ${manifest.files.map((f) => `
                 <tr>
                   <td><b>${f.filename}</b></td>
-                  <td><span class="badge badge-blue">${f.file_type}</span></td>
+                  <td><span class="badge ${f.rows_accepted ? 'badge-blue' : 'badge-amber'}">${f.file_type}${f.rows_accepted ? '' : ' — SKIPPED'}</span>
+                    ${(f.issues || []).filter(i => i.issue_type === 'UNRECOGNIZED_SCHEMA' || i.severity === 'ERROR').map(i => `<div class="neg">${escapeHtml(i.message)}</div>`).join('')}</td>
                   <td>${f.module}</td>
                   <td>${(f.detected_dates || []).join(" → ") || "—"}</td>
                   <td>${(f.detected_accounts || []).join(", ") || "—"}</td>
@@ -2823,7 +2828,7 @@ async function verifyWorkspaceFreshness(force=false) {
     if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
     state.freshnessStatus = result.status;
     const notice = document.getElementById('dataFreshnessNotice');
-    const versionChanged = result.version && result.version !== '1.3.4';
+    const versionChanged = result.version && result.version !== '1.3.5';
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');

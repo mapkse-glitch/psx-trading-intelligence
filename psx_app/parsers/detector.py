@@ -4,6 +4,34 @@ from typing import Dict, Any, Optional
 import openpyxl
 
 
+def _detect_price_sheet(ws) -> Optional[str]:
+    """Recognise the active raw-price sheet by columns, never by its year."""
+    rows = list(ws.iter_rows(max_row=32, values_only=True))
+    for header_index, row in enumerate(rows[:5]):
+        names = [str(v or "").strip().upper() for v in row]
+        columns = {name: i for i, name in enumerate(names) if name}
+        if not {"DATE", "SYMBOL", "OPEN", "HIGH", "LOW", "CLOSE"}.issubset(columns):
+            continue
+        if not {"VOLUME", "VOL"}.intersection(columns):
+            continue
+        if not {"PR-CLOSE", "PR_CL", "PR_CLOSE", "PREV_CLOSE"}.intersection(columns):
+            continue
+        symbols = [str(r[columns["SYMBOL"]]).strip().upper()
+                   for r in rows[header_index + 1:]
+                   if len(r) > columns["SYMBOL"] and r[columns["SYMBOL"]] is not None]
+        if not symbols:
+            return None
+        is_contract = [bool(re.search(
+            r"[-\s](?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z0-9]*$", s
+        )) for s in symbols]
+        if all(is_contract):
+            return "OHLCV_FUTURES"
+        if not any(is_contract):
+            return "OHLCV_CASH"
+        return None  # Do not silently put a mixed cash/futures sheet in one table.
+    return None
+
+
 def detect_file_type(file_path: Path, original_filename: Optional[str] = None) -> Dict[str, Any]:
     """Inspect file header and structure to determine canonical PSX source type."""
     fname = original_filename or file_path.name
@@ -59,6 +87,7 @@ def detect_file_type(file_path: Path, original_filename: Optional[str] = None) -
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
             sheets = wb.sheetnames
+            price_type = _detect_price_sheet(wb.active)
             wb.close()
         except Exception as e:
             return {"file_type": "UNKNOWN", "filename": fname, "error": str(e)}
@@ -73,21 +102,10 @@ def detect_file_type(file_path: Path, original_filename: Optional[str] = None) -
             return {"file_type": "LEGACY_TOP5_XLSX", "module": "MODULE_A", "filename": fname, "sheets": sheets}
         if sheets == ["INDEX"] or "INDEX" in fname.upper():
             return {"file_type": "INDEX_OHLCV", "module": "MODULE_D", "filename": fname, "sheets": sheets}
-        if "2026F" in fname.upper():
-            return {"file_type": "OHLCV_FUTURES", "module": "MODULE_C", "filename": fname, "sheets": sheets}
-        if "2026" in sheets or "2026" in fname.upper():
-            # Inspect first data row to check if futures or cash
-            wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-            ws = wb.active
-            sample_sym = ""
-            for r in ws.iter_rows(min_row=2, max_row=5, values_only=True):
-                if r and len(r) > 1 and r[1]:
-                    sample_sym = str(r[1])
-                    break
-            wb.close()
-            if "-" in sample_sym:
-                return {"file_type": "OHLCV_FUTURES", "module": "MODULE_C", "filename": fname, "sheets": sheets}
-            return {"file_type": "OHLCV_CASH", "module": "MODULE_C_D", "filename": fname, "sheets": sheets}
+        if price_type:
+            return {"file_type": price_type,
+                    "module": "MODULE_C" if price_type == "OHLCV_FUTURES" else "MODULE_C_D",
+                    "filename": fname, "sheets": sheets}
 
         return {"file_type": "CUSTOM_XLSX", "module": "CUSTOM", "filename": fname, "sheets": sheets}
 
