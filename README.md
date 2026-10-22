@@ -1,4 +1,4 @@
-# PSX Intelligence 1.3.3 — faster imports and workbook-verified futures dates
+# PSX Intelligence 1.3.4 — complete date history and cloud freshness
 
 This version removes the unrequested password and sign-in system. The dashboard opens directly. No owner password, session secret, account creation or sign-out step is required. Existing PSX_ADMIN_PASSWORD / PSX_SESSION_SECRET / PSX_AUTH_DISABLED environment variables are ignored and may be removed from your hosting settings.
 
@@ -12,35 +12,19 @@ This version removes the unrequested password and sign-in system. The dashboard 
 
 Read [deployment and recovery](docs/DEPLOY_1_3.md). Password-free access means anyone who can reach the deployed site can view account data, download data and invoke data-changing actions. A private GitHub repository does **not** make the Vercel website private. Same-origin browser checks are request hygiene, not access control.
 
-## 1.3.3 — requested corrections
+## 1.3.4 — complete date-history and freshness correction
 
-- Source-verified date cleanup during re-import of typed-date OHLCV XLSX files. Original swapped rows are retained in `import_issues`; no clock-based guessing or automatic live repair on deployment.
-- Seven Section 06 views verified against `Futures_Analysis (6).xlsx`, including independent filters, all-date Symbol Filter, same-date cash/futures matching and annualized calculations.
-- Section 06 date dropdowns match the workbook's available-date list and display DD-MM-YYYY consistently, independent of browser locale.
-- Auto → Latest badges across all modules. Futures dated sheets and account daily detail follow new imports unless explicitly pinned; Reset to Latest restores automatic tracking.
-- One verified cloud preflight per import instead of two; root-only Git tree lookup, no redundant repository metadata lookup, and unchanged non-force fast-forward protection. A concurrent remote update is rejected, never overwritten.
-- No technical-analysis prewarming on cold start. The overview requests only the data it displays. Daily TXT staging no longer scans unrelated cash/futures/account histories.
-- Faster snapshot compression, duplicate-click prevention, no unnecessary re-push for an already committed/saved batch, and accurate completion messages.
-- OHLCV updates compare all seven imported measures, so a changed volume/high/low is not skipped merely because the closing price did not change.
+- Removes only workbook-proven swapped-date duplicates, including duplicates inside the valid overall date range. Every authoritative source key is protected; all seven measures must match before a missing-key duplicate is quarantined in the import transaction.
+- Clean warm server instances check the canonical cloud snapshot before API reads, using a shared 30-second metadata cache. Changed snapshots are integrity-checked, backed up locally and loaded; pending local changes are never discarded. Unchanged snapshots are not downloaded again.
+- The browser checks freshness at launch, on Refresh, when returning to the tab, and once per minute while active. A changed snapshot clears old analytics caches; manually selected historical dates stay pinned.
+- Versioned, non-cached shell/assets prevent old interface files from silently surviving a deployment. Failed cloud checks display an explicit warning rather than claiming freshness.
+- Futures trading dates and contract expiry months are explicitly distinguished. NOV/DEC contracts traded in October remain valid.
+- Keeps 08 Data Quality & Reconciliation and 10 Settings and Backup. Removes the redundant 09 navigation page; per-module downloads and the contextual header Export remain.
+- Retains 1.3.3 import-speed optimizations, all worksheet filters, account separation and existing financial calculation semantics.
 
-**For an existing database with swapped dates:** download a safety snapshot first, deploy this source-only update without replacing `latest_cloud_sync.db.gz`, then import the clean `2026_YEAR.xlsx` and `2026F.xlsx` together once. Only proven date swaps are quarantined. If unexplained future trading dates remain, review Settings → Date normalization; unverified rows are not silently removed. NOV/DEC contract codes are legitimate forward contract months and do not imply future trading dates.
+**Deployment does not itself run a date-repair mutation.** For another existing database, first back up, then import the clean typed-date `2026_YEAR.xlsx` and `2026F.xlsx` together. Only source-proven duplicate swaps are quarantined. Do not force a date label to October while keeping polluted history.
 
-See [release and recovery notes](docs/RELEASE_1_3_3.md).
-
-## 1.3.3 — requested corrections
-
-- Source-verified date cleanup during re-import of typed-date OHLCV XLSX files. Original swapped rows are retained in `import_issues`; no clock-based guessing or automatic live repair on deployment.
-- Seven Section 06 views verified against `Futures_Analysis (6).xlsx`, including independent filters, all-date Symbol Filter, same-date cash/futures matching and annualized calculations.
-- Section 06 date dropdowns match the workbook's available-date list and display DD-MM-YYYY consistently, independent of browser locale.
-- Auto → Latest badges across all modules. Futures dated sheets and account daily detail follow new imports unless explicitly pinned; Reset to Latest restores automatic tracking.
-- One verified cloud preflight per import instead of two; root-only Git tree lookup, no redundant repository metadata lookup, and unchanged non-force fast-forward protection. A concurrent remote update is rejected, never overwritten.
-- No technical-analysis prewarming on cold start. The overview requests only the data it displays. Daily TXT staging no longer scans unrelated cash/futures/account histories.
-- Faster snapshot compression, duplicate-click prevention, no unnecessary re-push for an already committed/saved batch, and accurate completion messages.
-- OHLCV updates compare all seven imported measures, so a changed volume/high/low is not skipped merely because the closing price did not change.
-
-**For an existing database with swapped dates:** download a safety snapshot first, deploy this source-only update without replacing `latest_cloud_sync.db.gz`, then import the clean `2026_YEAR.xlsx` and `2026F.xlsx` together once. Only proven date swaps are quarantined. If unexplained future trading dates remain, review Settings → Date normalization; unverified rows are not silently removed. NOV/DEC contract codes are legitimate forward contract months and do not imply future trading dates.
-
-See [release and recovery notes](docs/RELEASE_1_3_3.md).
+See [release and verification notes](docs/RELEASE_1_3_4.md).
 
 ## Retained corrections
 

@@ -1,0 +1,72 @@
+{
+  "release": "1.3.4",
+  "live_source_inspected": "1.3.3",
+  "source_deployed_by_audit": false,
+  "live_cloud_repair": {
+    "status": "APPLIED_AND_CLOUD_VERIFIED",
+    "removed_cash_duplicates": 9396,
+    "removed_futures_duplicates": 476,
+    "cash_rows_after": 97267,
+    "futures_rows_after": 6539,
+    "missing_source_keys": 0,
+    "extra_source_keys": 0,
+    "seven_measure_mismatches": 0,
+    "atrl_sessions": 199,
+    "latest_cash_futures": "2026-10-21",
+    "atrl_latest_close": 1137.56,
+    "account_tables_unchanged": true,
+    "integrity": "ok",
+    "saved_commit": "841524db604170f97e59cc62af92745cbdb67a65"
+  },
+  "workbook_parity": {
+    "retained_comparison_rows": 4248,
+    "sheets": {
+      "Monthly Comparison": 121,
+      "Month Filter": 56,
+      "Symbol Filter": 23,
+      "Annualized Comparison": 121,
+      "Date Filter": 121,
+      "Future Symbol Summary": 26,
+      "Date Summary": 121
+    },
+    "all_values_match": true
+  },
+  "browser": {
+    "live_views_inspected": 35,
+    "all_four_technical_tabs_rechecked": true,
+    "isolated_corrected_views": 33,
+    "javascript_errors": 0,
+    "manual_pins_preserved_on_cloud_refresh": true,
+    "worksheet_filter_isolation_and_reset": "PASS",
+    "phantom_November_December_trading_date_options": false
+  },
+  "tests": {
+    "full_historical_suite": "86 passed",
+    "portable_suite": "66 passed, 20 reference-dependent skips",
+    "new_regressions": 7
+  },
+  "limitations": [
+    "Local timing excludes GitHub network and hosting cold starts.",
+    "Corrected source still requires deployment.",
+    "Existing old-code browser tabs need one reload after deployment."
+  ],
+  "legacy_database_reimport": {
+    "original_polluted_snapshot_reimport": "PASS",
+    "all_9872_duplicates_quarantined": true,
+    "all_source_keys_and_seven_measures_match_repaired_cloud": true,
+    "stage_seconds": 8.024377159000096,
+    "local_commit_seconds": 1.4516977529999622
+  },
+  "isolated_timings_seconds": {
+    "stage_seconds": 7.406259200000022,
+    "commit_seconds": 0.9082867920001263,
+    "restage_seconds": 7.755652651999981,
+    "repeat_commit_seconds": 1.194781538000143,
+    "export_seconds": 0.8979824119999193
+  },
+  "test_status": {
+    "historical_fixture_suite": "86 passed",
+    "portable_suite": "66 passed, 20 reference-dependent skips",
+    "warning": "Starlette httpx TestClient deprecation only"
+  }
+}

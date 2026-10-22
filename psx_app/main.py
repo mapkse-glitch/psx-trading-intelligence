@@ -1,6 +1,7 @@
 import json
 import re
 import shutil
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,9 +29,11 @@ from psx_app.services.technical_service import TechnicalService
 from psx_app.services.top5_service import Top5Service
 from psx_app.services.cloud_sync_service import CloudSyncService
 from psx_app.services.date_repair_service import DateRepairService
+from psx_app.services.freshness_service import check_cloud_freshness
 
 # Fast in-memory cache invalidated automatically on any data commit, settings update, or backup restore
 _API_CACHE: Dict[str, Any] = {}
+_READ_FRESHNESS: Dict[str, Any] = {}
 
 
 def invalidate_api_cache() -> None:
@@ -39,10 +42,14 @@ def invalidate_api_cache() -> None:
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
-    CloudSyncService(DB_PATH).pull_latest_db_on_startup()
+    startup_pull = CloudSyncService(DB_PATH).pull_latest_db_on_startup()
     init_db(DB_PATH)
     mig = MigrationService(DB_PATH, DATA_ROOT)
     mig.run_initial_migration(force=False)
+    cloud = CloudSyncService(DB_PATH)
+    base = cloud.base_state()
+    if startup_pull.get("pulled") and base.get("initialized") and not base.get("pending"):
+        _READ_FRESHNESS.update(at=time.monotonic(), result={"status":"CURRENT", "changed":False, "snapshot_id":base.get("blob")})
     # Analytics load on demand; never block cold-start readiness on all tickers.
     yield
 
@@ -50,7 +57,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.3",
+    version="1.3.4",
     lifespan=lifespan,
 )
 
@@ -116,9 +123,40 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.3",
+        "version": "1.3.4",
         "db_integrity": b_svc.run_integrity_check(),
     }
+
+
+@app.get("/api/system/freshness")
+async def api_system_freshness(force: bool = Query(False)):
+    # One shared verification per worker/30 seconds; never a GitHub call per row or tab.
+    async with MUTATION_LOCK:
+        now = time.monotonic()
+        if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.4"}
+        result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
+        if result.get("changed"):
+            await run_in_threadpool(init_db, DB_PATH)
+            invalidate_api_cache()
+        _READ_FRESHNESS.update(at=time.monotonic(), result=result)
+        return {**result, "version": "1.3.4"}
+
+
+@app.middleware("http")
+async def verify_data_read_worker(request: Request, call_next):
+    # Requests can land on different warm instances. Verify the instance that
+    # actually serves the read, not just the one that answered the UI heartbeat.
+    path = request.url.path
+    if request.method == "GET" and path.startswith("/api/") and path not in {
+        "/api/health", "/api/system/freshness"
+    }:
+        result = await api_system_freshness(force=False)
+        response = await call_next(request)
+        response.headers["X-PSX-Freshness"] = result["status"]
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    return await call_next(request)
 
 
 @app.get("/api/data-dates")
@@ -822,7 +860,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.3", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.4", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 
@@ -851,17 +889,17 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 @app.get("/", include_in_schema=False)
 def serve_spa_index() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / "index.html"), media_type="text/html")
+    return FileResponse(str(STATIC_DIR / "index.html"), media_type="text/html", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 @app.get("/styles.css", include_in_schema=False)
 def serve_spa_css() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / "styles.css"), media_type="text/css")
+    return FileResponse(str(STATIC_DIR / "styles.css"), media_type="text/css", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 @app.get("/app.js", include_in_schema=False)
 def serve_spa_js() -> FileResponse:
-    return FileResponse(str(STATIC_DIR / "app.js"), media_type="application/javascript")
+    return FileResponse(str(STATIC_DIR / "app.js"), media_type="application/javascript", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")

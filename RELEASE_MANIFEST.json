@@ -1,12 +1,12 @@
 {
-  "release": "1.3.3",
+  "release": "1.3.4",
   "application_authentication": "none",
-  "purpose": "Source-only scoped import performance, workbook-verified date repair and per-module latest-date tracking.",
+  "purpose": "Source-only complete source-verified history repair, warm-worker and browser freshness, and scoped navigation simplification.",
   "preserve_existing_live_snapshot": "latest_cloud_sync.db.gz",
   "database_included": false,
   "credentials_included": false,
   "raw_workbooks_included": false,
-  "tests": "79 passed with historical fixtures; seven supplied worksheet views independently reconciled.",
+  "tests": "86 passed with historical fixtures; seven supplied worksheet views independently reconciled.",
   "files": [
     {
       "path": ".gitignore",
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7533,
-      "sha256": "dad8c5cab0daa24a07b7d6ae527c5e2ca63d8e38821715a62fdd9b916071b7ea"
+      "bytes": 5316,
+      "sha256": "5a71325c0b68e6cebb2634025db643caab3a518b8a150f04d794904925432ba7"
     },
     {
       "path": "api/index.py",
@@ -49,6 +49,11 @@
       "sha256": "aabd6ac398a51084cb9fdcfa46112259afce92fcc57cad680a1a13c6a507ae3f"
     },
     {
+      "path": "docs/QA_1_3_4.json",
+      "bytes": 2381,
+      "sha256": "e658fd07e9ffb9d8a60a72301c4f278914d6524dc20687d298de5d6dc0afd6b2"
+    },
+    {
       "path": "docs/QA_SUMMARY_1_3.json",
       "bytes": 643,
       "sha256": "0e65a01b0fbdca1095f45d615ce746c3b56b7b078d2a94f9759a3bf366c9e17e"
@@ -62,6 +67,11 @@
       "path": "docs/RELEASE_1_3_3.md",
       "bytes": 4535,
       "sha256": "12095e54c3d9437b62f58f6fbb5a398fe5ecc963d1be38136617e8de3cf11697"
+    },
+    {
+      "path": "docs/RELEASE_1_3_4.md",
+      "bytes": 4497,
+      "sha256": "5b91fce2a5942b3091cacaa605b7e4962ba9936685c1c0025034385b1f3760ac"
     },
     {
       "path": "docs/TESTING_1_3.md",
@@ -175,8 +185,8 @@
     },
     {
       "path": "psx_app/main.py",
-      "bytes": 35906,
-      "sha256": "7adc9aa4689802b7dd4b804939637d8d2be0b56f25221516e45e3f9b35491e97"
+      "bytes": 37956,
+      "sha256": "8dac4692ffce3d68f3479edd1f65dd927365f64030a324048b32bc8228fcf6a2"
     },
     {
       "path": "psx_app/parsers/__init__.py",
@@ -244,6 +254,11 @@
       "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5"
     },
     {
+      "path": "psx_app/services/freshness_service.py",
+      "bytes": 1809,
+      "sha256": "d5fd2c3212208853ff96240df688cb4ee425257912bad5413da953f53bb41cb0"
+    },
+    {
       "path": "psx_app/services/futures_service.py",
       "bytes": 21551,
       "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2"
@@ -280,18 +295,18 @@
     },
     {
       "path": "psx_app/services/verified_source_repair.py",
-      "bytes": 2225,
-      "sha256": "25b6300e21995f5cbf0d33f0a6ec6a2360bf3788666d98e18a50e7561266496d"
+      "bytes": 2211,
+      "sha256": "6674849c1409779900efd024cb25f8a3a806a0d2d785bc127cd2dc4261024c1c"
     },
     {
       "path": "psx_app/static/app.js",
-      "bytes": 158500,
-      "sha256": "dbb3ddc168a94f7da59d45acbacdc43bf6460f3cd13ef534baa7b358404e20c2"
+      "bytes": 162228,
+      "sha256": "6a96eec6161d67b64a0822dd5934901c5c84f1491f9b0a5b972b567ce5925b3e"
     },
     {
       "path": "psx_app/static/index.html",
-      "bytes": 4843,
-      "sha256": "ffd8ade20aea2e2baf0a3959e92366cf45ead437a7c131a44fc0fda056d2ef97"
+      "bytes": 4785,
+      "sha256": "8bacd42e83a336b16e8e86e9cca981021d62f55ea566d0b125e3c067c848b833"
     },
     {
       "path": "psx_app/static/styles.css",
@@ -382,6 +397,11 @@
       "path": "tests/test_v133_import_and_latest.py",
       "bytes": 5448,
       "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1"
+    },
+    {
+      "path": "tests/test_v134_freshness_and_history.py",
+      "bytes": 6300,
+      "sha256": "f4dc85ac8267186aabcda6efceb2f92078622a01023703107b75070e7a174535"
     },
     {
       "path": "vercel.json",

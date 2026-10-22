@@ -61,6 +61,9 @@ const state = {
   accSelectedDate: { "91404": null, "91269": null },
   accDateManual: { "91404": false, "91269": false },
   commitInFlight: false,
+  lastSnapshotId: null,
+  freshnessStatus: null,
+  freshnessInFlight: null,
   // Separate, independent per-sheet filter state for Module C (matching Futures_Analysis.xlsx)
   futures: {
     subtab: "monthly_comparison",
@@ -182,12 +185,14 @@ function clearClientCache() {
 }
 
 async function refreshCurrentView() {
+  const fresh = await verifyWorkspaceFreshness(true);
   clearClientCache();
   await switchView(state.currentView);
-  showToast("Refreshed latest data from canonical SQLite database.");
+  showToast(fresh.status === 'CURRENT' ? "Latest cloud snapshot verified; refreshed current data." : (fresh.status === 'LOCAL' ? "Refreshed local canonical data (cloud sync is not configured)." : fresh.message), !['CURRENT','LOCAL'].includes(fresh.status));
 }
 
 async function switchView(view) {
+  if (view === "exports") { exportCurrentModule(); return; }
   state.currentView = view;
   toggleMenu(false);
   document.querySelectorAll(".nav-btn").forEach((b) => {
@@ -907,6 +912,7 @@ async function commitStagedBatch(batchUuid) {
       throw new Error(detail);
     }
     const committed = await res.json();
+    state.stagedBatch = null;
     clearClientCache();
     let note;
     if (committed.cloud_sync && committed.cloud_sync.pushed) {
@@ -947,6 +953,7 @@ async function discardStagedBatch(batchUuid) {
       throw new Error(detail);
     }
     clearClientCache();
+    state.stagedBatch = null;
     showToast(`Staged batch ${batchUuid.slice(0, 8)} discarded from the audit list (no data was added). You can safely re-upload the source files.`);
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
@@ -1679,8 +1686,8 @@ async function renderFuturesView(container) {
   let contentHtml = "";
 
   const exportBtnHtml = `
-    <div style="margin-left:auto;">
-      <a class="btn btn-primary" href="${futuresExportUrl()}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
+    <div style="margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;">
+      <span class="date-readout" title="A NOV contract can trade in October. Contract expiry month is not the trading date.">Contract month ≠ trading date</span> <a class="btn btn-primary" href="${futuresExportUrl()}" download>⬇ Export 8-Sheet Futures_Analysis.xlsx</a>
     </div>
   `;
 
@@ -2368,6 +2375,7 @@ async function renderReconciliationView(container) {
   if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
     <div class="section-heading"><div><h2>Data checks, with evidence</h2><p>Reference parity is limited to the historical workbook scope shown below. Missing references are not a pass.</p></div></div>
+    <section class="card"><h3>Why keep Data Quality?</h3><p>SQLite integrity checks the database file—not whether dates or prices are correct. Date checks detect swapped-date duplicates; reconciliation compares imported records with available references.</p><button class="btn btn-secondary" onclick="switchView('settings')">Open date scan &amp; backups</button></section>
     <div class="check-grid">
       ${Object.entries(leg).map(([key,result])=>`<section class="card"><div class="eyebrow">${escapeHtml(key.replaceAll('_',' '))}</div><h3 class="${result.status==='MATCH'?'pos':result.status==='DISCREPANCY'?'neg':''}">${escapeHtml(result.status.replaceAll('_',' '))}</h3><p>${escapeHtml(result.scope || result.reason)}</p><p>${fmtInt(result.checked_rows || 0)} rows checked${result.mismatches_count!==undefined ? ` · ${fmtInt(result.mismatches_count)} differences` : ''}</p><details><summary>View comparison evidence</summary><pre class="doc-viewer">${escapeHtml(JSON.stringify(result,null,2))}</pre></details></section>`).join('')}
     </div>
@@ -2739,8 +2747,11 @@ function toggleTheme() {
 }
 async function bootWorkspace() {
   setTheme(localStorage.getItem('psx_theme') || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  await verifyWorkspaceFreshness(false);
   await switchView('overview');
   updateSystemStatus();
+  setInterval(() => { if (!document.hidden && !state.commitInFlight && !state.stagedBatch) refreshIfCloudChanged(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.commitInFlight && !state.stagedBatch) refreshIfCloudChanged(); });
 }
 async function updateSystemStatus() {
   try {
@@ -2796,4 +2807,44 @@ async function renderLatestBadge(view) {
   if (!badge) {badge = document.createElement('span');badge.id='moduleLatestBadge';badge.className='badge badge-green';document.getElementById('viewTitle').after(badge);}
   badge.textContent = dates[key] ? 'Auto → Latest: '+fmtDate(dates[key]) : 'No imported data';
   badge.title = 'Latest imported date for this module (not the computer date). Each dataset retains its own coverage.';
+}
+
+async function verifyWorkspaceFreshness(force=false) {
+  if (state.freshnessInFlight) return state.freshnessInFlight;
+  state.freshnessInFlight = (async () => {
+    let result;
+    try {
+      const response = await fetch('/api/system/freshness?force='+force, {cache:'no-store'});
+      if (!response.ok) throw new Error('HTTP '+response.status);
+      result = await response.json();
+    } catch (error) { result = {status:'UNVERIFIED',changed:false,message:'Cloud freshness could not be checked. Displayed data may be old. '+error.message}; }
+    result.browserChanged = !!result.changed || (state.lastSnapshotId !== null && result.snapshot_id && state.lastSnapshotId !== result.snapshot_id);
+    if (result.browserChanged) state.apiCache = {};
+    if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
+    state.freshnessStatus = result.status;
+    const notice = document.getElementById('dataFreshnessNotice');
+    const versionChanged = result.version && result.version !== '1.3.4';
+    if (notice) {
+      notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
+      notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');
+    }
+    return result;
+  })();
+  try { return await state.freshnessInFlight; } finally { state.freshnessInFlight = null; }
+}
+async function refreshIfCloudChanged() {
+  const result = await verifyWorkspaceFreshness(false);
+  if (result.browserChanged && !state.commitInFlight && !state.stagedBatch) {
+    clearClientCache();
+    await switchView(state.currentView);
+    updateSystemStatus();
+    showToast('A newer cloud snapshot was loaded. Dates and analysis were refreshed; historical pins were preserved.');
+  }
+}
+function exportCurrentModule() {
+  const account = state.currentView === 'acc91404' ? '91404' : state.currentView === 'acc91269' ? '91269' : null;
+  const key = account ? 'account_'+account+'_xlsx' : ({top5:'top5_xlsx',technical:'technical_xlsx'})[state.currentView];
+  if (state.currentView === 'futures') {window.location.href=futuresExportUrl();return;}
+  if (key) {window.location.href='/api/exports/generate/'+key;return;}
+  showToast('Download from the Top 5, Account, Futures or Technical module. Full database backups are in Settings and Backup.');
 }

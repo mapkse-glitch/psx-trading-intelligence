@@ -1,7 +1,7 @@
 """Conservative, reversible date cleanup certified by a newly supplied workbook.
 
 Never guess dates from the computer clock, contract month, or the latest date.
-Only quarantine an out-of-coverage row when its day/month-swapped key has
+Only quarantine a row ABSENT from the clean source when its swapped key has
 identical seven OHLCV measures in the typed-date source. The original full row
 is retained in import_issues in the same import transaction.
 """
@@ -16,11 +16,11 @@ def quarantine_verified_swaps(conn, mode, records, batch_id, source_file_id, now
         return 0
     table, key = ('equity_ohlcv', 'symbol') if mode == 'CASH' else ('futures_ohlcv', 'contract_symbol')
     verified = {(r['trade_date'], r[key]): r for r in records}
-    first = min(r['trade_date'] for r in records)
-    last = max(r['trade_date'] for r in records)
     repairs = []
-    for stored in conn.execute(f'SELECT * FROM {table} WHERE trade_date < ? OR trade_date > ?', (first, last)):
+    for stored in conn.execute(f'SELECT * FROM {table}'):
         row = dict(stored)
+        if (row['trade_date'], row[key]) in verified:
+            continue  # Never remove a legitimate key in the authoritative source.
         try:
             y, m, d = map(int, row['trade_date'].split('-'))
             flipped = date(y, d, m).isoformat()
