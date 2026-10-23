@@ -1,4 +1,6 @@
-# Start here — PSX Intelligence 1.3.6
+> Already using Turso? Follow UPGRADE_1_3_8.md. Keep your working credentials; do not re-import the snapshot.
+
+# Turso setup — PSX Intelligence 1.3.8
 
 This is a source-only update for your existing GitHub/Vercel dashboard. It connects directly to the database you already imported into Turso. It does not import the backup again, include credentials, or deploy itself.
 
@@ -48,7 +50,7 @@ The Vercel project must deploy from the repository root. Existing root main.py i
 
 ## 5. Verify before resuming normal imports
 
-1. Confirm the dashboard says v1.3.6.
+1. Confirm the dashboard says v1.3.8.
 2. Open Settings: status must say **Turso — direct remote database (reads and writes)** and ACTIVE. Sidebar must say Turso: connected. A missing/invalid credential must fail, not silently create an empty local database.
 3. Check cash/futures latest dates against your imported data. Your verified snapshot had latest trading data of 22-10-2026; a particular account or symbol may legitimately have an earlier last activity date. NOV is a futures contract month, not a November trading date.
 4. Open the imported database in Turso → Edit Data. Confirm historical cash records are visible. The imported snapshot had cash history from 2019 onward; missing 2016–2018 files still need importing through the new dashboard if you want them.
