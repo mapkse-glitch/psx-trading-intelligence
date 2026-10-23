@@ -1,427 +1,545 @@
 {
-  "release": "1.3.5",
-  "application_authentication": "none",
-  "purpose": "Source-only year-independent historical XLSX import detection and explicit skipped-file feedback.",
-  "preserve_existing_live_snapshot": "latest_cloud_sync.db.gz",
+  "release": "1.3.6",
+  "name": "Turso Direct Database",
+  "base_commit": "8c87680849cef7dbce02e9cfd7d3323eaff43321",
+  "application_authentication": "none (unchanged; restrict hosting access for private use)",
+  "production_backend": "Direct remote Turso/libSQL HTTP reads and writes; no local replica or GitHub snapshot sync",
   "database_included": false,
   "credentials_included": false,
   "raw_workbooks_included": false,
-  "tests": "95 passed with historical fixtures; both supplied historical workbooks independently reconciled in full, with idempotent backfill.",
+  "deployment_required": true,
+  "live_database_modified_by_release_tests": false,
+  "tests": "84 passed, 20 skipped; isolated local HTTP libSQL. Eight sections and eight Futures tabs browser-checked with no JS/API errors. See docs/QA_1_3_6.json.",
   "files": [
     {
+      "path": ".env.example",
+      "sha256": "7748830b8606d417b969a317c154e8bfce89677aed1974e9af2b1e437a4fee96",
+      "bytes": 328
+    },
+    {
       "path": ".gitignore",
-      "bytes": 290,
-      "sha256": "85fd90446af608664cb96ad395eabc80bc8043fb4dad2b5ff136627a9f6dea73"
+      "sha256": "5102649ebd1b36ca00304907615909abe5eed94c198aa5e78a94b1648d10eb8b",
+      "bytes": 159
     },
     {
       "path": ".vercelignore",
-      "bytes": 217,
-      "sha256": "28aa205d2fa9d6a22316c862f37b3dc56ec95856800efa084b1a0dba325e1928"
+      "sha256": "24c732bc54ce69fa2b74ff8e56693b1f1e63c76ea670c46183732f340e6caa54",
+      "bytes": 119
     },
     {
       "path": "Dockerfile",
-      "bytes": 450,
-      "sha256": "ea329082f661b44b02e478367742b4d79da33127aa2da13a9f7035d4fc2f8724"
+      "sha256": "ea329082f661b44b02e478367742b4d79da33127aa2da13a9f7035d4fc2f8724",
+      "bytes": 450
     },
     {
       "path": "README.md",
-      "bytes": 6064,
-      "sha256": "5f1f77aae134dc41a1b68f963c4936eb04ab70b2f1b5860abf6822c486fa2202"
+      "sha256": "c5bd6f9d49de4fd9303d10e1516ba4d981fe71c86aeafee6ad7acb913978be70",
+      "bytes": 1623
+    },
+    {
+      "path": "START_HERE_TURSO.md",
+      "sha256": "fc57b4c0402a9999207b42989778f5d167ebd5074b8a1e0d85a7c41d454a1068",
+      "bytes": 7347
     },
     {
       "path": "api/index.py",
-      "bytes": 29,
-      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc",
+      "bytes": 29
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "0c311a1d4e362965af5f85622aab8487e16c18dcb873eb801a275031a13d1b20",
+      "bytes": 4225
+    },
+    {
+      "path": "docs/ASSUMPTIONS_AND_DECISIONS.md",
+      "sha256": "a02ba1d9156f6644ad74569e3abe0302756db1d8bfaf5eb39c51cecdc96e430d",
+      "bytes": 7363
+    },
+    {
+      "path": "docs/BACKUP_AND_RESTORE.md",
+      "sha256": "2101ec25ff00dc20ceaafd49d1430e540692557b511630a2f1cc3683d48d34b8",
+      "bytes": 2639
+    },
+    {
+      "path": "docs/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
+      "sha256": "826e377cf5b3ce33378faa9930ac7fc35579111dfef254ad28d1cca1f966f2af",
+      "bytes": 11064
+    },
+    {
+      "path": "docs/DATA_DICTIONARY.md",
+      "sha256": "31de73db46aab6463dd9445892f966f9af0bcfe96f2b0fe033ddde5e5114537a",
+      "bytes": 6764
+    },
+    {
+      "path": "docs/DEPLOYMENT.md",
+      "sha256": "f8be679d08616bb7eb37c511d2162bc8de45cdf9e09f0ad76cbcead3cc76ba7c",
+      "bytes": 1751
     },
     {
       "path": "docs/DEPLOY_1_3.md",
-      "bytes": 4692,
-      "sha256": "f209e446e342c33540f2d6c9863a3cc1c978c1de36a105a9aad7d3d0903957f8"
+      "sha256": "f209e446e342c33540f2d6c9863a3cc1c978c1de36a105a9aad7d3d0903957f8",
+      "bytes": 4692
     },
     {
       "path": "docs/DESIGN_1_3.md",
-      "bytes": 2058,
-      "sha256": "894e3bf0019fcb7e9b9dab23017c051a087afe3967b5058fc051d9cb66a56af2"
+      "sha256": "894e3bf0019fcb7e9b9dab23017c051a087afe3967b5058fc051d9cb66a56af2",
+      "bytes": 2058
+    },
+    {
+      "path": "docs/FILE_INVENTORY.md",
+      "sha256": "a12f33eb1c1205dabe548a3098089a26159fb749b925d26a734a5b38b9c9dfd6",
+      "bytes": 7793
+    },
+    {
+      "path": "docs/FORMULAS_AND_SIGNALS.md",
+      "sha256": "d73d9517e95093bb22a654d5f57d4b627d6c1ea8f1788855fc8ffb2aefb64935",
+      "bytes": 9150
+    },
+    {
+      "path": "docs/KNOWN_LIMITATIONS.md",
+      "sha256": "201fc93a6392ad2fdabd9010ef3561dfb677d9cbe6b49941b0b4756941fe09a5",
+      "bytes": 3412
+    },
+    {
+      "path": "docs/MIGRATION_PLAN.md",
+      "sha256": "09cf00cae84971d74682a88e0c2c542f7aa6557d33c1b10dae775d6996a1ec59",
+      "bytes": 4612
+    },
+    {
+      "path": "docs/MIGRATION_REPORT.md",
+      "sha256": "115d6e5582912673c15c4df8b435715c4ca59d8bec38bb76d0439ebb4a4ce9eb",
+      "bytes": 6684
     },
     {
       "path": "docs/QA_1_3_3.json",
-      "bytes": 2996,
-      "sha256": "aabd6ac398a51084cb9fdcfa46112259afce92fcc57cad680a1a13c6a507ae3f"
+      "sha256": "aabd6ac398a51084cb9fdcfa46112259afce92fcc57cad680a1a13c6a507ae3f",
+      "bytes": 2996
     },
     {
       "path": "docs/QA_1_3_4.json",
-      "bytes": 2381,
-      "sha256": "e658fd07e9ffb9d8a60a72301c4f278914d6524dc20687d298de5d6dc0afd6b2"
+      "sha256": "e658fd07e9ffb9d8a60a72301c4f278914d6524dc20687d298de5d6dc0afd6b2",
+      "bytes": 2381
     },
     {
       "path": "docs/QA_1_3_5.json",
-      "bytes": 1340,
-      "sha256": "d87f65fb305f3690093dba3c8da434dbde83748174a0eb0323a5960695723347"
+      "sha256": "d87f65fb305f3690093dba3c8da434dbde83748174a0eb0323a5960695723347",
+      "bytes": 1340
+    },
+    {
+      "path": "docs/QA_1_3_6.json",
+      "sha256": "0f4ea6eab91de9fd2165a5ab0f5a7dca9e7e9a957c0338e9ebaeafcaebded537",
+      "bytes": 5449
     },
     {
       "path": "docs/QA_SUMMARY_1_3.json",
-      "bytes": 643,
-      "sha256": "0e65a01b0fbdca1095f45d615ce746c3b56b7b078d2a94f9759a3bf366c9e17e"
+      "sha256": "0e65a01b0fbdca1095f45d615ce746c3b56b7b078d2a94f9759a3bf366c9e17e",
+      "bytes": 643
     },
     {
       "path": "docs/RELEASE_1_3.md",
-      "bytes": 1591,
-      "sha256": "16f15744ba9cd9c15f03d1a9f52aa81624fc5b019397781066b9ea920b4f2fbe"
+      "sha256": "16f15744ba9cd9c15f03d1a9f52aa81624fc5b019397781066b9ea920b4f2fbe",
+      "bytes": 1591
     },
     {
       "path": "docs/RELEASE_1_3_3.md",
-      "bytes": 4535,
-      "sha256": "12095e54c3d9437b62f58f6fbb5a398fe5ecc963d1be38136617e8de3cf11697"
+      "sha256": "12095e54c3d9437b62f58f6fbb5a398fe5ecc963d1be38136617e8de3cf11697",
+      "bytes": 4535
     },
     {
       "path": "docs/RELEASE_1_3_4.md",
-      "bytes": 4497,
-      "sha256": "5b91fce2a5942b3091cacaa605b7e4962ba9936685c1c0025034385b1f3760ac"
+      "sha256": "5b91fce2a5942b3091cacaa605b7e4962ba9936685c1c0025034385b1f3760ac",
+      "bytes": 4497
     },
     {
       "path": "docs/RELEASE_1_3_5.md",
-      "bytes": 3576,
-      "sha256": "d947acb253b12e4a8a02e449daac81e363b8d142597f5eec84bae6eb6bbca768"
+      "sha256": "d947acb253b12e4a8a02e449daac81e363b8d142597f5eec84bae6eb6bbca768",
+      "bytes": 3576
+    },
+    {
+      "path": "docs/RELEASE_1_3_6.md",
+      "sha256": "2e554523bae4b868db0f51bbcdbe77e063e8e99a8daef9aa59bead4e8226575e",
+      "bytes": 1645
+    },
+    {
+      "path": "docs/REQUIREMENTS.md",
+      "sha256": "da7d615bd49757bd380b136818cb0ffc3a34cc0b2f9347b865d46fedcfa9a925",
+      "bytes": 5003
     },
     {
       "path": "docs/TESTING_1_3.md",
-      "bytes": 2255,
-      "sha256": "a5c81849653b8203f48404585b43e0c5221fcea2c94debd2f15d7b75ad81314a"
+      "sha256": "a5c81849653b8203f48404585b43e0c5221fcea2c94debd2f15d7b75ad81314a",
+      "bytes": 2255
+    },
+    {
+      "path": "docs/TEST_REPORT.md",
+      "sha256": "6bc34198f777bb8c6f506c400e21e2152f874cd11b3071e737f22fd06299b3df",
+      "bytes": 5507
+    },
+    {
+      "path": "docs/USER_GUIDE.md",
+      "sha256": "15d40f05ee7028b0f8b15465d88112590b11ac7d3a5fd2c76bc229e6bce98a36",
+      "bytes": 4990
+    },
+    {
+      "path": "docs/WORKFLOW_MAPPING.md",
+      "sha256": "e3240dbb308afe2914bd0a8b6224f818df9359df87df2428c6ddca3f85e58be5",
+      "bytes": 6456
     },
     {
       "path": "docs/historical/ARCHITECTURE.md",
-      "bytes": 4551,
-      "sha256": "c3decc064310e8e8c85c1cf0878b26d2bb72de4c3c19b6fb540045750bd059cd"
+      "sha256": "c3decc064310e8e8c85c1cf0878b26d2bb72de4c3c19b6fb540045750bd059cd",
+      "bytes": 4551
     },
     {
       "path": "docs/historical/ASSUMPTIONS_AND_DECISIONS.md",
-      "bytes": 7689,
-      "sha256": "d99663dfa9045296ad24813f5af44e3ff1c067d84235834d204ab0f7733577a5"
+      "sha256": "d99663dfa9045296ad24813f5af44e3ff1c067d84235834d204ab0f7733577a5",
+      "bytes": 7689
     },
     {
       "path": "docs/historical/BACKUP_AND_RESTORE.md",
-      "bytes": 2965,
-      "sha256": "3792e2a63ffd36f917727b7ba2c8f422e139732f55e9fd7d73dccb800f8aca2f"
+      "sha256": "3792e2a63ffd36f917727b7ba2c8f422e139732f55e9fd7d73dccb800f8aca2f",
+      "bytes": 2965
     },
     {
       "path": "docs/historical/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
-      "bytes": 11390,
-      "sha256": "9b414557fed317ef52729dd1daf3af66ab2f402ba0e803c017f249854e087721"
+      "sha256": "9b414557fed317ef52729dd1daf3af66ab2f402ba0e803c017f249854e087721",
+      "bytes": 11390
     },
     {
       "path": "docs/historical/DATA_DICTIONARY.md",
-      "bytes": 7090,
-      "sha256": "45ccb5c2708b7a73b22b1d83b6464a2995a0f81a66b07aa480d4b38b02483ef3"
+      "sha256": "45ccb5c2708b7a73b22b1d83b6464a2995a0f81a66b07aa480d4b38b02483ef3",
+      "bytes": 7090
     },
     {
       "path": "docs/historical/DEPLOYMENT.md",
-      "bytes": 2077,
-      "sha256": "c750375f21b0234156f3dd4fe32f8459257c3c57bdb12699159d9af01226a71b"
+      "sha256": "c750375f21b0234156f3dd4fe32f8459257c3c57bdb12699159d9af01226a71b",
+      "bytes": 2077
     },
     {
       "path": "docs/historical/FILE_INVENTORY.md",
-      "bytes": 8119,
-      "sha256": "1ce43c63577274d2359654c9f2611fb0da1e54be5a40c72139a1dfc71526001f"
+      "sha256": "1ce43c63577274d2359654c9f2611fb0da1e54be5a40c72139a1dfc71526001f",
+      "bytes": 8119
     },
     {
       "path": "docs/historical/FORMULAS_AND_SIGNALS.md",
-      "bytes": 9476,
-      "sha256": "dc808cbf6d5534ae2b4f7ec15cc71b1f9c4e09affee610feec1f29859ad23e7e"
+      "sha256": "dc808cbf6d5534ae2b4f7ec15cc71b1f9c4e09affee610feec1f29859ad23e7e",
+      "bytes": 9476
     },
     {
       "path": "docs/historical/KNOWN_LIMITATIONS.md",
-      "bytes": 3738,
-      "sha256": "18bf1cf5a7d75ce80697fca3bee3e0f15d8c07bd3e82318da010247e47b6388a"
+      "sha256": "18bf1cf5a7d75ce80697fca3bee3e0f15d8c07bd3e82318da010247e47b6388a",
+      "bytes": 3738
     },
     {
       "path": "docs/historical/MIGRATION_PLAN.md",
-      "bytes": 4938,
-      "sha256": "837c33c7286814257520c83a0390a5251348da7fdb0b08b59ed85c0bf8561880"
+      "sha256": "837c33c7286814257520c83a0390a5251348da7fdb0b08b59ed85c0bf8561880",
+      "bytes": 4938
     },
     {
       "path": "docs/historical/MIGRATION_REPORT.md",
-      "bytes": 7010,
-      "sha256": "675f2f2fdd86c4c898e9fbc55314f8ed96a3ee5edcb21088f2d56097ab89bad6"
+      "sha256": "675f2f2fdd86c4c898e9fbc55314f8ed96a3ee5edcb21088f2d56097ab89bad6",
+      "bytes": 7010
     },
     {
       "path": "docs/historical/REQUIREMENTS.md",
-      "bytes": 5329,
-      "sha256": "84834ca2d7993fefa1a915f98383def84877fd22304a0d4b25300cf9c37d2119"
+      "sha256": "84834ca2d7993fefa1a915f98383def84877fd22304a0d4b25300cf9c37d2119",
+      "bytes": 5329
     },
     {
       "path": "docs/historical/TEST_REPORT.md",
-      "bytes": 5833,
-      "sha256": "4f8b71810d9a2b5cf6f19ceb838ed38c3b56f035c0007db156aaebe94f6a50b2"
+      "sha256": "4f8b71810d9a2b5cf6f19ceb838ed38c3b56f035c0007db156aaebe94f6a50b2",
+      "bytes": 5833
     },
     {
       "path": "docs/historical/USER_GUIDE.md",
-      "bytes": 5316,
-      "sha256": "3efc7953b2b8929f2a95905fb2608caca41d4baf8472072b68fdd87eed934ea2"
+      "sha256": "3efc7953b2b8929f2a95905fb2608caca41d4baf8472072b68fdd87eed934ea2",
+      "bytes": 5316
     },
     {
       "path": "docs/historical/WORKFLOW_MAPPING.md",
-      "bytes": 6782,
-      "sha256": "a207f106817c021be0ac4241e1c2882af32860f5eaa047de20d81be042f6ec27"
+      "sha256": "a207f106817c021be0ac4241e1c2882af32860f5eaa047de20d81be042f6ec27",
+      "bytes": 6782
     },
     {
       "path": "main.py",
-      "bytes": 29,
-      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc",
+      "bytes": 29
     },
     {
       "path": "psx_app/__init__.py",
-      "bytes": 80,
-      "sha256": "1005840650a76f1dcb2d72617ad32ca50b6771cf71f54daa7da721df4dfa0f7e"
+      "sha256": "1005840650a76f1dcb2d72617ad32ca50b6771cf71f54daa7da721df4dfa0f7e",
+      "bytes": 80
     },
     {
       "path": "psx_app/config.py",
-      "bytes": 4320,
-      "sha256": "67cbc6e2e6c6918d2c0ce47a341c9670a5e28cd14ff373612cae424ee75fc937"
+      "sha256": "71d91001c215c7808673ffee05aec8ec3ad07ab8f32111b5dd02e9b395c216c4",
+      "bytes": 4401
     },
     {
       "path": "psx_app/database/__init__.py",
-      "bytes": 44,
-      "sha256": "52d8511e0f1121ec66e0c96b75a7285c3a3bbc7c91415bd9c3c24f5d6fd06917"
+      "sha256": "52d8511e0f1121ec66e0c96b75a7285c3a3bbc7c91415bd9c3c24f5d6fd06917",
+      "bytes": 44
     },
     {
       "path": "psx_app/database/repository.py",
-      "bytes": 8312,
-      "sha256": "8b42eaa07df01652771ae6ee2372cd091ce6bf1d658d37c9f97a4ddfc4abc578"
+      "sha256": "8b42eaa07df01652771ae6ee2372cd091ce6bf1d658d37c9f97a4ddfc4abc578",
+      "bytes": 8312
     },
     {
       "path": "psx_app/database/schema.py",
-      "bytes": 10412,
-      "sha256": "73e37448918235d147b5d0760d04b580228b1bdc7d6524922492e58a63985d37"
+      "sha256": "2fae737c20a7df143d1658b45941af6ca50b335beca6159358d068fc43fc1de9",
+      "bytes": 10665
+    },
+    {
+      "path": "psx_app/database/selected_rows.py",
+      "sha256": "bb7c4879a82271149115e5764269dccded4f9faaefe303f190993be8f1718766",
+      "bytes": 667
+    },
+    {
+      "path": "psx_app/database/turso.py",
+      "sha256": "3b9e2750aefe6dfbf0a883f3ae17a483f5f23f5da268ec8d52efcf4d7ad201d4",
+      "bytes": 6862
     },
     {
       "path": "psx_app/main.py",
-      "bytes": 37956,
-      "sha256": "61376d01883b1f2aa8b4bbc55153b9ed83030828b0e93044cdce89d65a313380"
+      "sha256": "53c162557e2630afad762c657de49949806f70b79cf6047ab0b07abd98d18db5",
+      "bytes": 41826
     },
     {
       "path": "psx_app/parsers/__init__.py",
-      "bytes": 58,
-      "sha256": "4d2bcdff8f16e29bec64c6d7b8590067e5812582c0bf9701f69a7299b478c743"
+      "sha256": "4d2bcdff8f16e29bec64c6d7b8590067e5812582c0bf9701f69a7299b478c743",
+      "bytes": 58
     },
     {
       "path": "psx_app/parsers/detector.py",
-      "bytes": 5403,
-      "sha256": "c4599b04a08421569169c814fc93504cd3da9d758fed4e6d3e577b015d60db24"
+      "sha256": "c4599b04a08421569169c814fc93504cd3da9d758fed4e6d3e577b015d60db24",
+      "bytes": 5403
     },
     {
       "path": "psx_app/parsers/ohlcv_parser.py",
-      "bytes": 13030,
-      "sha256": "4fa4ffa31bc9cf580d2b03dc5f79f30c523d76877f86c6e58b43b49d013125c5"
+      "sha256": "4fa4ffa31bc9cf580d2b03dc5f79f30c523d76877f86c6e58b43b49d013125c5",
+      "bytes": 13030
     },
     {
       "path": "psx_app/parsers/top5_parser.py",
-      "bytes": 9005,
-      "sha256": "4343d184d95215b481f6f5d02a2256a650960c10f99572857e3be05f86de3a1f"
+      "sha256": "4343d184d95215b481f6f5d02a2256a650960c10f99572857e3be05f86de3a1f",
+      "bytes": 9005
     },
     {
       "path": "psx_app/parsers/tradelog_parser.py",
-      "bytes": 20339,
-      "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17"
+      "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17",
+      "bytes": 20339
     },
     {
       "path": "psx_app/security.py",
-      "bytes": 1527,
-      "sha256": "a663e0db1e168f6fd416d4e855b522d21c497bb513e61470c9507b5fb759f04a"
+      "sha256": "a663e0db1e168f6fd416d4e855b522d21c497bb513e61470c9507b5fb759f04a",
+      "bytes": 1527
     },
     {
       "path": "psx_app/services/__init__.py",
-      "bytes": 97,
-      "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221"
+      "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221",
+      "bytes": 97
     },
     {
       "path": "psx_app/services/account_service.py",
-      "bytes": 21858,
-      "sha256": "9d7903173f0c73c22345c6e7c8ad4bac3ce642e8c6eb2ee5937be42e769c957d"
+      "sha256": "d7e812b8e3ed148c03975643d5da3733386420720e04601fdbfe3553e475ab63",
+      "bytes": 22083
     },
     {
       "path": "psx_app/services/backup_service.py",
-      "bytes": 7301,
-      "sha256": "dd38360cb641cdb9c5b19983aa8b2129f872ff1ba7ccb6b485f66aec939db8f4"
+      "sha256": "dba80d6a1c4510471def39d629c2b00f0156a3957ab386f5628dec445d553919",
+      "bytes": 8277
     },
     {
       "path": "psx_app/services/cloud_sync_service.py",
-      "bytes": 18737,
-      "sha256": "970d2c530d9006cc1ca4c7d77d3b34dc9281e2180b00d55e89e346fe2dc6577f"
+      "sha256": "3d07ce5e4311b82da0f44aa22217469b47b829cf68ba6274fb50301698b26e2f",
+      "bytes": 20886
     },
     {
       "path": "psx_app/services/data_guard.py",
-      "bytes": 1566,
-      "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca"
+      "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca",
+      "bytes": 1566
     },
     {
       "path": "psx_app/services/date_repair_service.py",
-      "bytes": 17337,
-      "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593"
+      "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593",
+      "bytes": 17337
     },
     {
       "path": "psx_app/services/export_service.py",
-      "bytes": 55600,
-      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5"
+      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5",
+      "bytes": 55600
     },
     {
       "path": "psx_app/services/freshness_service.py",
-      "bytes": 1809,
-      "sha256": "d5fd2c3212208853ff96240df688cb4ee425257912bad5413da953f53bb41cb0"
+      "sha256": "7ec595f9faed4d6f2f0e7bb8c49cfcc0ed4f58c562fa46c7680035684c80e63d",
+      "bytes": 1966
     },
     {
       "path": "psx_app/services/futures_service.py",
-      "bytes": 21551,
-      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2"
+      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2",
+      "bytes": 21551
     },
     {
       "path": "psx_app/services/import_orchestrator.py",
-      "bytes": 42600,
-      "sha256": "e9b1ea1964b9f5cfa258dd2e75a7c81545bc0cfd35b6b89cea8a93ea131c5e8e"
+      "sha256": "311bdeebafc88b859168936cce52ec6e4caa0ccbf32f1fcef18346222e2330c7",
+      "bytes": 44622
     },
     {
       "path": "psx_app/services/intelligence_service.py",
-      "bytes": 31665,
-      "sha256": "0c64bf19e88a0c7766080e7ccb3dcfb0bb68164f890f0a86a5d25d9eb02b902a"
+      "sha256": "0c64bf19e88a0c7766080e7ccb3dcfb0bb68164f890f0a86a5d25d9eb02b902a",
+      "bytes": 31665
     },
     {
       "path": "psx_app/services/migration_service.py",
-      "bytes": 5753,
-      "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68"
+      "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68",
+      "bytes": 5753
     },
     {
       "path": "psx_app/services/reconciliation_service.py",
-      "bytes": 17534,
-      "sha256": "b968a0df35e6fe9f1e7f07e3c5fad1ea70c2cabab57eecfa9f65b53869f67a22"
+      "sha256": "b968a0df35e6fe9f1e7f07e3c5fad1ea70c2cabab57eecfa9f65b53869f67a22",
+      "bytes": 17534
+    },
+    {
+      "path": "psx_app/services/remote_staging.py",
+      "sha256": "f60f69fe74312ef561c142fbd7da0f9bb53e4c2e4b3235eaa200ed4371d90306",
+      "bytes": 2621
     },
     {
       "path": "psx_app/services/technical_service.py",
-      "bytes": 36256,
-      "sha256": "44fcac204e8b99ffc6ce58cdae060db12eeeff2aeafe0b3c00a7a01b9d54fa39"
+      "sha256": "61cf529efdf64d45699dbbcd8dc8a33df625571b6f5093ff3be04bd36c922bf4",
+      "bytes": 36768
     },
     {
       "path": "psx_app/services/top5_service.py",
-      "bytes": 5039,
-      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec"
+      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec",
+      "bytes": 5039
     },
     {
       "path": "psx_app/services/verified_source_repair.py",
-      "bytes": 2211,
-      "sha256": "6674849c1409779900efd024cb25f8a3a806a0d2d785bc127cd2dc4261024c1c"
+      "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75",
+      "bytes": 2507
     },
     {
       "path": "psx_app/static/app.js",
-      "bytes": 163070,
-      "sha256": "cc9bf2778b6aecf45010436eab9cc3e537739a452f6f6b5674dfed4fe75f212d"
+      "sha256": "2427d61ef265a95780286cd6871dac97a37b42c23c179a4aa948f0498fdf6e0d",
+      "bytes": 165324
     },
     {
       "path": "psx_app/static/index.html",
-      "bytes": 4785,
-      "sha256": "c22e24f50cb053fc653787a91e700d6a1d61416e46bdaaf6642549d0e9acf7ac"
+      "sha256": "a984f5e44ce9a7f1a32b9ed3dbb63422b56a772c45f4c6cc7041813498b91975",
+      "bytes": 4785
     },
     {
       "path": "psx_app/static/styles.css",
-      "bytes": 29203,
-      "sha256": "1df51b500d3b3f58d1216490444009cfd5670ab055bc05d79eb1eb333534d1eb"
+      "sha256": "1df51b500d3b3f58d1216490444009cfd5670ab055bc05d79eb1eb333534d1eb",
+      "bytes": 29203
     },
     {
       "path": "pytest.ini",
-      "bytes": 42,
-      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada"
+      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
+      "bytes": 42
     },
     {
       "path": "render.yaml",
-      "bytes": 498,
-      "sha256": "dee0e4ad0e3e0262b71f24a689a8765d10e1dce4b761dfc8246d00e54a57348f"
+      "sha256": "dee0e4ad0e3e0262b71f24a689a8765d10e1dce4b761dfc8246d00e54a57348f",
+      "bytes": 498
     },
     {
       "path": "requirements.txt",
-      "bytes": 102,
-      "sha256": "d6867c0294bee1390adc7b798e6f87db33bb1672ba15fac4318fb5e16988bb25"
+      "sha256": "8ac27bb416b2f62ffff783388db61a78d65b77838f499aab0e9cec337925b43d",
+      "bytes": 118
     },
     {
       "path": "start_dashboard.bat",
-      "bytes": 1051,
-      "sha256": "f5db859faecf002520fee88dcad8d27e5f0854d0dfe8ece88ef082cb181ef31e"
+      "sha256": "f5db859faecf002520fee88dcad8d27e5f0854d0dfe8ece88ef082cb181ef31e",
+      "bytes": 1051
     },
     {
       "path": "start_dashboard.sh",
-      "bytes": 270,
-      "sha256": "4a4d98e606271e0b8cbbf8e59ffdbb165527c148aac0cea9d0b50804d82b04ce"
+      "sha256": "4a4d98e606271e0b8cbbf8e59ffdbb165527c148aac0cea9d0b50804d82b04ce",
+      "bytes": 270
     },
     {
       "path": "tests/conftest.py",
-      "bytes": 2326,
-      "sha256": "1fab896b360a9105d717600361dea025fa437f440f1077a64b11c868b8c6b23c"
+      "sha256": "120667ad90742a81905d24efd2e1338fea424e31c88fc54ceb33901404bb7d4c",
+      "bytes": 2456
     },
     {
       "path": "tests/test_chunked_upload.py",
-      "bytes": 3381,
-      "sha256": "47139fc284cd7760ae76c698f3bdd128b994a1cbc7ce5f64eeb819230705e02b"
+      "sha256": "47139fc284cd7760ae76c698f3bdd128b994a1cbc7ce5f64eeb819230705e02b",
+      "bytes": 3381
     },
     {
       "path": "tests/test_cloud_sync_state.py",
-      "bytes": 2293,
-      "sha256": "ab2925fed8e86b57e77bced182f49d5d4267232529789276a22a4718b924729a"
+      "sha256": "ab2925fed8e86b57e77bced182f49d5d4267232529789276a22a4718b924729a",
+      "bytes": 2293
     },
     {
       "path": "tests/test_date_integrity.py",
-      "bytes": 10884,
-      "sha256": "4e53b0891249cd4db3f8697a14e35f8a391ec4156b6c45fd3920a9d8f2bdc9ed"
+      "sha256": "4e53b0891249cd4db3f8697a14e35f8a391ec4156b6c45fd3920a9d8f2bdc9ed",
+      "bytes": 10884
     },
     {
       "path": "tests/test_futures_date_resolution_and_intelligence.py",
-      "bytes": 3100,
-      "sha256": "82279d962492945ddc6f0aca98bc0cbe37049b9a9ac54ec2683b6d5d39ed810d"
+      "sha256": "82279d962492945ddc6f0aca98bc0cbe37049b9a9ac54ec2683b6d5d39ed810d",
+      "bytes": 3100
     },
     {
       "path": "tests/test_historical_price_workbooks.py",
-      "bytes": 2925,
-      "sha256": "6329d4f6212400d3e71a13513108fdfc1f2487c6454d3ec921ecad68a20fef35"
+      "sha256": "6329d4f6212400d3e71a13513108fdfc1f2487c6454d3ec921ecad68a20fef35",
+      "bytes": 2925
     },
     {
       "path": "tests/test_import_history_filenames.py",
-      "bytes": 3775,
-      "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa"
+      "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa",
+      "bytes": 3775
     },
     {
       "path": "tests/test_module_a_top5.py",
-      "bytes": 3278,
-      "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d"
+      "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d",
+      "bytes": 3278
     },
     {
       "path": "tests/test_module_b_accounts.py",
-      "bytes": 6557,
-      "sha256": "a42e840401961d1e9bbb497de97b7f5ade429b897896b93ee145d1e3990e8895"
+      "sha256": "a42e840401961d1e9bbb497de97b7f5ade429b897896b93ee145d1e3990e8895",
+      "bytes": 6557
     },
     {
       "path": "tests/test_module_c_futures.py",
-      "bytes": 4288,
-      "sha256": "c4c454354592b15d91e945f66791124103ab8198df77d395385fe83cee168d71"
+      "sha256": "c4c454354592b15d91e945f66791124103ab8198df77d395385fe83cee168d71",
+      "bytes": 4288
     },
     {
       "path": "tests/test_module_d_and_system.py",
-      "bytes": 6784,
-      "sha256": "489af8c3f60c92be6d1e855c8923ac158ffdf46d1fcca01f8a357a62d73ddf27"
+      "sha256": "489af8c3f60c92be6d1e855c8923ac158ffdf46d1fcca01f8a357a62d73ddf27",
+      "bytes": 6784
     },
     {
       "path": "tests/test_release_safety.py",
-      "bytes": 18660,
-      "sha256": "748c32d554ce08c3ed31d9aa5aafcd52dca2463fa1bfe362e2d1ec2e902eb8fd"
+      "sha256": "f866debeb799a54c91b50cf7b89ea37c54e160b31383f12882639646a9e1ac74",
+      "bytes": 18806
+    },
+    {
+      "path": "tests/test_turso_remote.py",
+      "sha256": "71eccbcfca850505b7cf60e083d1971648f7dfcd9ae5deb9cc28b35464e854c6",
+      "bytes": 12116
     },
     {
       "path": "tests/test_v133_import_and_latest.py",
-      "bytes": 5448,
-      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1"
+      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1",
+      "bytes": 5448
     },
     {
       "path": "tests/test_v134_freshness_and_history.py",
-      "bytes": 6300,
-      "sha256": "f869127d3a779a0d3d164dec40ae1783d0f9d7710c0e20671632537173dea3fc"
+      "sha256": "f772fb3fb37945358d4688bab77b6c604e074b8868db2db2cec540a87a4d6a87",
+      "bytes": 6300
     },
     {
       "path": "vercel.json",
-      "bytes": 57,
-      "sha256": "9c5ef9c95efe9858c26f36fb5399a6da56bcc128fc4a3017a6c66477347f8b2f"
+      "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf",
+      "bytes": 158
     }
   ]
 }
