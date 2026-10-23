@@ -42,6 +42,11 @@ def invalidate_api_cache() -> None:
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
+    from psx_app.database.turso import enabled
+    if enabled():
+        init_db(DB_PATH)
+        yield
+        return
     startup_pull = CloudSyncService(DB_PATH).pull_latest_db_on_startup()
     init_db(DB_PATH)
     mig = MigrationService(DB_PATH, DATA_ROOT)
@@ -56,8 +61,8 @@ async def lifespan(app_instance: FastAPI):
 
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
-    description="Unified Local-First Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.5",
+    description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
+    version="1.3.6",
     lifespan=lifespan,
 )
 
@@ -123,7 +128,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.5",
+        "version": "1.3.6",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -134,13 +139,17 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.5"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.6"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
+        if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
+            result["changed"] = True
         if result.get("changed"):
-            await run_in_threadpool(init_db, DB_PATH)
+            from psx_app.database.turso import enabled
+            if not enabled():
+                await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.5"}
+        return {**result, "version": "1.3.6"}
 
 
 @app.middleware("http")
@@ -331,6 +340,11 @@ async def api_upload_chunk(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Empty chunk body.")
     if len(body) > _MAX_CHUNK_BYTES:
         raise HTTPException(status_code=413, detail=f"Chunk exceeds {_MAX_CHUNK_BYTES} bytes; the browser should slice smaller.")
+    from psx_app.database.turso import enabled
+    if enabled():
+        from psx_app.services.remote_staging import put
+        await run_in_threadpool(put, f'chunk:{upload_id}:{idx}', body)
+        return {"stored": True, "idx": idx, "total": total, "name": name, "storage": "turso"}
     d = _chunk_dir(upload_id)
     d.mkdir(parents=True, exist_ok=True)
     (d / f"{idx:06d}.part").write_bytes(body)
@@ -343,6 +357,38 @@ async def api_upload_chunk(request: Request) -> Dict[str, Any]:
 def api_stage_chunked(req: ChunkedStageRequest) -> Dict[str, Any]:
     if not req.uploads:
         raise HTTPException(status_code=400, detail="No uploads provided.")
+    from psx_app.database.turso import enabled
+    if enabled():
+        from psx_app.services.remote_staging import get, delete, sweep
+        sweep()
+        payload, scopes = [], []
+        aggregate_size = 0
+        for entry in req.uploads:
+            if not _CHUNK_ID_RE.match(entry.upload_id) or not 1 <= entry.total_chunks <= 2000:
+                raise HTTPException(400, "Invalid upload coordinates.")
+            name = Path(entry.name).name
+            if not name:
+                raise HTTPException(400, "Missing file name.")
+            parts, missing = [], []
+            for idx in range(entry.total_chunks):
+                scope = f'chunk:{entry.upload_id}:{idx}'
+                try:
+                    data = get(scope)
+                except FileNotFoundError:
+                    missing.append(idx)
+                    continue
+                aggregate_size += len(data)
+                if aggregate_size > 150 * 1024 * 1024:
+                    raise HTTPException(413, "Upload batch exceeds the 150 MB processing limit; split it.")
+                parts.append(data)
+                scopes.append(scope)
+            if missing:
+                raise HTTPException(409, detail={"message": "Some upload chunks are missing; retry them.", "uploads": [{"name": name, "upload_id": entry.upload_id, "missing": missing[:50]}]})
+            payload.append((name, b''.join(parts)))
+        result = ImportOrchestrator(DB_PATH, DATA_ROOT).stage_uploaded_files(payload, source_label="Manual UI Upload")
+        for scope in scopes:
+            delete(scope)
+        return result
     _sweep_stale_chunks()
     payload = []
     missing_report: List[Dict[str, Any]] = []
@@ -416,6 +462,9 @@ def api_discard_staged_batch(req: CommitBatchRequest) -> Dict[str, Any]:
         if row["status"] == "COMMITTED":
             raise HTTPException(status_code=400, detail="Committed batches cannot be discarded (canonical data is protected).")
         now = datetime.now(timezone.utc).isoformat()
+        from psx_app.database.turso import enabled
+        if enabled():
+            c.execute('DELETE FROM psx_blob_parts WHERE scope=?', ('stage:' + req.batch_uuid,))
         c.execute("UPDATE import_batches SET status = 'DISCARDED' WHERE batch_uuid = ?", (req.batch_uuid,))
         c.execute(
             "INSERT INTO audit_events (event_type, actor, details_json, created_at) VALUES ('BATCH_DISCARDED', 'local_user', ?, ?)",
@@ -444,9 +493,12 @@ def api_imports_history() -> Dict[str, Any]:
                 filenames = []
             item["filenames"] = filenames
             buuid = item.get("batch_uuid") or ""
-            item["staged_resumable"] = bool(
-                item.get("status") == "STAGED" and (staging_dir / buuid / "manifest.json").exists()
-            )
+            from psx_app.database.turso import enabled
+            if enabled():
+                present = c.execute('SELECT 1 FROM psx_blob_parts WHERE scope=? LIMIT 1', ('stage:' + buuid,)).fetchone()
+                item['staged_resumable'] = item.get('status') in ('STAGED', 'FAILED') and bool(present)
+            else:
+                item["staged_resumable"] = bool(item.get("status") == "STAGED" and (staging_dir / buuid / "manifest.json").exists())
             if item.get("status") == "DISCARDED":
                 continue
             enriched.append(item)
@@ -787,12 +839,18 @@ def api_cloud_sync_now() -> Dict[str, Any]:
 
 @app.get("/api/cloud-sync/download-snapshot")
 def api_download_cloud_snapshot() -> FileResponse:
+    from psx_app.database.turso import enabled
+    if enabled():
+        raise HTTPException(409, "Download an independent SQLite backup from the Turso dashboard; full-database serverless snapshots are disabled.")
     gz_path = CloudSyncService(DB_PATH).create_local_gzip_snapshot()
     return FileResponse(path=str(gz_path), filename="latest_cloud_sync.db.gz", media_type="application/gzip")
 
 
 @app.post("/api/backups/create")
 def api_create_backup(req: CreateBackupRequest) -> Dict[str, Any]:
+    from psx_app.database.turso import enabled
+    if enabled():
+        raise HTTPException(409, "Use Turso dashboard Download SQLite File. No full database copy is made on Vercel.")
     b_svc = BackupService(DB_PATH, DATA_ROOT)
     created = b_svc.create_backup(label=req.label, include_raw_archive=req.include_raw_archive)
     return {"created": created, "backups": b_svc.list_backups()}
@@ -825,6 +883,9 @@ def api_download_backup(zip_filename: str) -> FileResponse:
 # ---------------------------------------------------------------------------
 @app.post("/api/admin/date-normalization/plan")
 def api_date_normalization_plan() -> Dict[str, Any]:
+    from psx_app.database.turso import enabled
+    if enabled():
+        raise HTTPException(409, "Full-history heuristic maintenance scans are disabled in remote mode. Download an independent backup for offline maintenance.")
     svc = DateRepairService(DB_PATH, DATA_ROOT)
     try:
         return svc.plan()
@@ -843,6 +904,9 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="confirm=true is required to apply the repair.")
     if not req.plan_token:
         raise HTTPException(400, detail="Run Scan and review the dry-run plan first; plan_token is required.")
+    from psx_app.database.turso import enabled
+    if enabled():
+        raise HTTPException(409, "Bulk heuristic date repair requires an independent backup and maintenance workflow; it is disabled in remote mode. Source-verified import date protection remains enabled.")
     svc = DateRepairService(DB_PATH, DATA_ROOT)
     try:
         result = svc.apply(expected_plan_token=req.plan_token)
@@ -860,7 +924,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.5", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.6", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 
@@ -874,6 +938,11 @@ def api_cloud_reload(req: CloudReloadRequest):
     svc = CloudSyncService(DB_PATH)
     if svc.base_state().get("pending"):
         raise HTTPException(409, detail="Unsynced local changes exist. Download the current snapshot for manual reconciliation; reload is blocked to avoid losing them.")
+    from psx_app.database.turso import enabled
+    if enabled():
+        invalidate_api_cache()
+        _READ_FRESHNESS.clear()
+        return {"pulled": False, "backend": "turso", "reason": "Views refreshed; reads come directly from Turso."}
     BackupService(DB_PATH, DATA_ROOT).create_backup(label="pre_cloud_reload")
     result = svc.pull_latest_db_on_startup()
     invalidate_api_cache()

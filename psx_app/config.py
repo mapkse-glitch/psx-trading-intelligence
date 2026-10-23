@@ -109,6 +109,10 @@ def ensure_directories(root: Path = DATA_ROOT) -> None:
     ]:
         sub.mkdir(parents=True, exist_ok=True)
 
+    from psx_app.database.turso import enabled
+    if enabled():
+        return
+
     target_db = root / "database" / "app.db"
     if not target_db.exists() or target_db.stat().st_size < 65536:
         for cand_gz in [

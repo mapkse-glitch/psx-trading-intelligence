@@ -793,6 +793,8 @@ class TechnicalService:
         now = datetime.now(timezone.utc).isoformat()
 
         with get_connection(self.db_path) as c:
+            from psx_app.database.turso import enabled
+            cache_revision = c.execute("SELECT value FROM psx_runtime WHERE key='revision'").fetchone()[0] if enabled() else None
             if scope == "core36":
                 target_syms = list(CORE_36_TICKERS)
             else:
@@ -847,6 +849,12 @@ class TechnicalService:
                             continue
                     summaries.append(item)
 
+            if new_cache_entries and enabled():
+                c.execute('BEGIN IMMEDIATE')
+                if c.execute("SELECT value FROM psx_runtime WHERE key='revision'").fetchone()[0] != cache_revision:
+                    new_cache_entries = []
+                if not new_cache_entries:
+                    c.rollback()
             if new_cache_entries:
                 c.executemany(
                     """

@@ -17,7 +17,15 @@ def quarantine_verified_swaps(conn, mode, records, batch_id, source_file_id, now
     table, key = ('equity_ohlcv', 'symbol') if mode == 'CASH' else ('futures_ohlcv', 'contract_symbol')
     verified = {(r['trade_date'], r[key]): r for r in records}
     repairs = []
-    for stored in conn.execute(f'SELECT * FROM {table}'):
+    from psx_app.database.selected_rows import date_rows
+    candidate_dates = set()
+    for r in records:
+        try:
+            y, m, d = map(int, r['trade_date'].split('-'))
+            candidate_dates.add(date(y, d, m).isoformat())
+        except (ValueError, TypeError):
+            pass
+    for stored in date_rows(conn, table, candidate_dates):
         row = dict(stored)
         if (row['trade_date'], row[key]) in verified:
             continue  # Never remove a legitimate key in the authoritative source.

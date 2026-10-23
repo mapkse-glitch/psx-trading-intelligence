@@ -49,6 +49,8 @@ class ImportOrchestrator:
         detects file types, parses records in memory, compares against existing database
         for duplicates/revisions, saves a staged payload, and returns a rich Import Preview.
         """
+        if sum(len(raw) for _, raw in files_payload) > MAX_UPLOAD_BYTES:
+            raise ValueError('Upload batch exceeds the 150 MB processing limit; split it into smaller batches.')
         batch_uuid = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
         expanded_files: List[Tuple[str, bytes]] = []
@@ -143,19 +145,14 @@ class ImportOrchestrator:
                 (r["account_id"], r["unique_trade_key"]): (r["quantity"], r["price"], r["trade_value"])
                 for r in (c.execute("SELECT account_id, unique_trade_key, quantity, price, trade_value FROM trade_executions").fetchall() if types.intersection({'TRADELOG'}) else [])
             }
-            existing_eq_keys = {
-                (r["trade_date"], r["symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
-                for r in (c.execute("SELECT trade_date, symbol, volume, pr_close, high, low, open, close, avg_price FROM equity_ohlcv").fetchall() if types.intersection({'OHLCV_CASH'}) else [])
-            }
-            existing_fut_keys = {
-                (r["trade_date"], r["contract_symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
-                for r in (c.execute("SELECT trade_date, contract_symbol, volume, pr_close, high, low, open, close, avg_price FROM futures_ohlcv").fetchall() if types.intersection({'OHLCV_FUTURES'}) else [])
-            }
+            existing_eq_keys = {}
+            existing_fut_keys = {}
             existing_idx_keys = {
                 r["trade_date"]: r["close"]
                 for r in (c.execute("SELECT trade_date, close FROM index_ohlcv").fetchall() if types.intersection({'INDEX_OHLCV'}) else [])
             }
 
+        loaded_dates = {"CASH": set(), "FUTURES": set()}
         for fname, fbytes in expanded_files:
             sha256 = hashlib.sha256(fbytes).hexdigest()
             temp_path = staging_batch_dir / fname
@@ -217,6 +214,15 @@ class ImportOrchestrator:
             elif ftype in ("OHLCV_CASH", "OHLCV_FUTURES", "INDEX_OHLCV"):
                 mode = "CASH" if ftype == "OHLCV_CASH" else ("FUTURES" if ftype == "OHLCV_FUTURES" else "INDEX")
                 res = parse_ohlcv_file(temp_path, mode=mode, original_filename=fname)
+                if mode in loaded_dates:
+                    from psx_app.database.selected_rows import date_rows
+                    dates = {r['trade_date'] for r in res['records']} - loaded_dates[mode]
+                    table, key = ('equity_ohlcv', 'symbol') if mode == 'CASH' else ('futures_ohlcv', 'contract_symbol')
+                    with get_connection(self.db_path) as lookup:
+                        rows = date_rows(lookup, table, dates)
+                        target = existing_eq_keys if mode == 'CASH' else existing_fut_keys
+                        target.update({(r['trade_date'], r[key]): tuple(r[col] for col in ('volume','pr_close','high','low','open','close','avg_price')) for r in rows})
+                    loaded_dates[mode].update(dates)
                 f_rows_read = res["rows_read"]
                 f_accepted = len(res["records"])
                 f_rejected = max(0, f_rows_read - f_accepted)
@@ -365,8 +371,15 @@ class ImportOrchestrator:
                     len(all_issues), json.dumps(manifest),
                 ),
             )
+            from psx_app.database.turso import enabled
+            if enabled():
+                from psx_app.services.remote_staging import put, pack
+                put('stage:' + batch_uuid, pack({'manifest': manifest, 'items': staged_items}), conn=c)
             c.commit()
 
+        from psx_app.database.turso import enabled
+        if enabled():
+            shutil.rmtree(staging_batch_dir, ignore_errors=True)
         return manifest
 
     def commit_staged_batch(self, batch_uuid: str, allow_revisions: bool = True) -> Dict[str, Any]:
@@ -397,13 +410,18 @@ class ImportOrchestrator:
 
         staging_batch_dir = self.data_root / "data" / "staging" / batch_uuid
         manifest_path = staging_batch_dir / "manifest.json"
-        if not manifest_path.exists():
+        from psx_app.database.turso import enabled
+        if enabled():
+            from psx_app.services.remote_staging import get, unpack
+            bundle = unpack(get('stage:' + batch_uuid))
+        elif not manifest_path.exists():
             raise FileNotFoundError(
                 f"Staged batch '{batch_uuid[:8]}...' files not found on this server instance (temporary staging is cleared on cold restarts). "
                 "Please Discard this staged entry in the Import and Update Center and re-upload the original file(s)."
             )
 
-        bundle = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not enabled():
+            bundle = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest = bundle["manifest"]
         staged_items = bundle["items"]
         if not manifest.get("rows_accepted"):
@@ -411,8 +429,10 @@ class ImportOrchestrator:
         now = datetime.now(timezone.utc).isoformat()
 
         raw_archive_dir = self.data_root / "data" / "raw" / batch_uuid
-        raw_archive_dir.mkdir(parents=True, exist_ok=True)
+        if not enabled():
+            raw_archive_dir.mkdir(parents=True, exist_ok=True)
 
+        commit_settings = self.repo.get_settings()
         conn = get_connection(self.db_path)
         affected_account_dates = set()
         equity_updated = False
@@ -434,11 +454,20 @@ class ImportOrchestrator:
                 conn.rollback()
                 return {**manifest, "status": "ALREADY_COMMITTED", "batch_id": batch_id}
 
+            from collections import OrderedDict
+            queued = OrderedDict()
+            def queue_write(sql, values):
+                queued.setdefault(sql, []).append(values)
+            needs_top5 = any('top5' in i.get('payload', {}) for i in staged_items)
+            needs_exec = any('executions' in i.get('payload', {}) for i in staged_items)
+            top5_existing = {(r['trade_date'],r['ticker'],r['rank']): dict(r) for r in conn.execute('SELECT trade_date,ticker,rank,rate,volume,trades FROM top5_volume_records')} if needs_top5 else {}
+            exec_existing = {(r['account_id'],r['unique_trade_key']): dict(r) for r in conn.execute('SELECT account_id,unique_trade_key,quantity,price,trade_value FROM trade_executions')} if needs_exec else {}
+
             for item in staged_items:
                 meta = item["meta"]
                 t_path = Path(item["temp_path"])
                 arch_path = raw_archive_dir / f"{meta['sha256'][:12]}_{meta['filename']}"
-                if t_path.exists():
+                if not enabled() and t_path.exists():
                     shutil.copy2(t_path, arch_path)
 
                 d_min = meta["detected_dates"][0] if meta["detected_dates"] else None
@@ -454,13 +483,13 @@ class ImportOrchestrator:
                     """,
                     (
                         meta["filename"], meta["file_type"], meta["sha256"],
-                        meta["size_bytes"], str(arch_path), d_min, d_max, now,
+                        meta["size_bytes"], ("turso:metadata-only/" + meta["filename"] if enabled() else str(arch_path)), d_min, d_max, now,
                     ),
                 )
                 sf_id = cur_sf.lastrowid
 
                 for iss in meta.get("issues", []):
-                    conn.execute(
+                    queue_write(
                         """
                         INSERT INTO import_issues (
                             batch_id, source_file_id, module, severity, issue_type,
@@ -481,15 +510,9 @@ class ImportOrchestrator:
                 # 1. Top 5 records
                 if "top5" in payload:
                     for rec in payload["top5"]:
-                        ex = conn.execute(
-                            """
-                            SELECT rate, volume, trades FROM top5_volume_records
-                            WHERE trade_date = ? AND ticker = ? AND rank = ?
-                            """,
-                            (rec["trade_date"], rec["ticker"], rec["rank"]),
-                        ).fetchone()
+                        ex = top5_existing.get((rec["trade_date"], rec["ticker"], rec["rank"]))
                         if ex is None:
-                            conn.execute(
+                            queue_write(
                                 """
                                 INSERT INTO top5_volume_records (
                                     trade_date, ticker, rank, rate, volume, trades,
@@ -505,11 +528,12 @@ class ImportOrchestrator:
                                 ),
                             )
                             actual_new += 1
+                            top5_existing[(rec["trade_date"], rec["ticker"], rec["rank"])] = {k: rec[k] for k in ("rate", "volume", "trades")}
                         elif (ex["rate"], ex["volume"], ex["trades"]) == (rec["rate"], rec["volume"], rec["trades"]):
                             actual_dups += 1
                         else:
                             if allow_revisions:
-                                conn.execute(
+                                queue_write(
                                     """
                                     INSERT INTO source_revisions (
                                         batch_id, table_name, business_key, old_value_json, new_value_json, reason, recorded_at
@@ -543,15 +567,9 @@ class ImportOrchestrator:
                 # 2. Trade executions
                 if "executions" in payload:
                     for ex_rec in payload["executions"]:
-                        ex = conn.execute(
-                            """
-                            SELECT quantity, price, trade_value FROM trade_executions
-                            WHERE account_id = ? AND unique_trade_key = ?
-                            """,
-                            (ex_rec["account_id"], ex_rec["unique_trade_key"]),
-                        ).fetchone()
+                        ex = exec_existing.get((ex_rec["account_id"], ex_rec["unique_trade_key"]))
                         if ex is None:
-                            conn.execute(
+                            queue_write(
                                 """
                                 INSERT INTO trade_executions (
                                     account_id, trade_date, trade_time, terminal_id, market_type,
@@ -574,6 +592,7 @@ class ImportOrchestrator:
                                 ),
                             )
                             actual_new += 1
+                            exec_existing[(ex_rec["account_id"], ex_rec["unique_trade_key"])] = {k: ex_rec[k] for k in ("quantity", "price", "trade_value")}
                             affected_account_dates.add((ex_rec["account_id"], ex_rec["trade_date"]))
                         else:
                             actual_dups += 1
@@ -627,7 +646,7 @@ class ImportOrchestrator:
                     if mode == "CASH":
                         existing_map = {
                             (r["trade_date"], r["symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
-                            for r in conn.execute("SELECT * FROM equity_ohlcv").fetchall()
+                            for r in __import__("psx_app.database.selected_rows", fromlist=["date_rows"]).date_rows(conn, "equity_ohlcv", [r["trade_date"] for r in recs])
                         }
                         to_insert = []
                         for r in recs:
@@ -674,7 +693,7 @@ class ImportOrchestrator:
                     elif mode == "FUTURES":
                         existing_fmap = {
                             (r["trade_date"], r["contract_symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
-                            for r in conn.execute("SELECT * FROM futures_ohlcv").fetchall()
+                            for r in __import__("psx_app.database.selected_rows", fromlist=["date_rows"]).date_rows(conn, "futures_ohlcv", [r["trade_date"] for r in recs])
                         }
                         to_insert_f = []
                         for r in recs:
@@ -740,6 +759,9 @@ class ImportOrchestrator:
                             else:
                                 actual_dups += 1
 
+            for sql, values in queued.items():
+                conn.executemany(sql, values)
+
             if equity_updated:
                 conn.execute("DELETE FROM indicator_cache")
 
@@ -787,11 +809,15 @@ class ImportOrchestrator:
                     now,
                 ),
             )
+            for acc_id, t_date in sorted(affected_account_dates):
+                self.account_service.recalculate_account_date_from_executions(acc_id, t_date, batch_id=batch_id, connection=conn, settings=commit_settings)
+            if enabled():
+                conn.execute('DELETE FROM psx_blob_parts WHERE scope=?', ('stage:' + batch_uuid,))
             conn.commit()
         except Exception as e:
             conn.rollback()
             conn.execute(
-                "UPDATE import_batches SET status = 'FAILED' WHERE batch_uuid = ?",
+                "UPDATE import_batches SET status = 'FAILED' WHERE batch_uuid = ? AND status != 'COMMITTED'",
                 (batch_uuid,),
             )
             conn.commit()
@@ -800,8 +826,6 @@ class ImportOrchestrator:
             conn.close()
 
         # Recalculate affected account dates from raw executions
-        for acc_id, t_date in sorted(affected_account_dates):
-            self.account_service.recalculate_account_date_from_executions(acc_id, t_date, batch_id=batch_id)
 
         # Clean up staging directory after successful commit
         shutil.rmtree(staging_batch_dir, ignore_errors=True)

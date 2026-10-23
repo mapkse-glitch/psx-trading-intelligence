@@ -18,7 +18,7 @@ from psx_app.config import DB_PATH, BACKUPS_DIR
 _LAST_SYNC_RESULT: Dict[str, Any] = {}
 
 
-class CloudSyncService:
+class LegacyCloudSyncService:
     """
     Zero-Cost Cloud Persistence Sync Engine for Vercel Free Hosting.
     When GITHUB_SYNC_REPO ('mapkse-glitch/psx-trading-intelligence') and GITHUB_SYNC_TOKEN
@@ -376,3 +376,47 @@ class CloudSyncService:
             _LAST_SYNC_RESULT["error"] = str(exc)
             _LAST_SYNC_RESULT["error_at"] = datetime.now(timezone.utc).isoformat()
             return {"pulled": False, "error": str(exc)}
+
+
+class TursoCloudService:
+    def __init__(self, db_path=None):
+        self.db_path = db_path
+    def is_configured(self):
+        from psx_app.database.turso import credentials
+        credentials()
+        return True
+    def base_state(self):
+        return {'initialized': True, 'pending': False}
+    def mark_pending(self):
+        pass  # Writes are remote transactions, never pending local snapshots.
+    def assert_current_base(self):
+        from psx_app.database.turso import revision
+        return revision()
+    def get_status(self):
+        from psx_app.database.turso import revision
+        try:
+            rev = revision()
+            health, error = 'ACTIVE', None
+        except Exception:
+            rev, health, error = None, 'ERROR', 'Turso connection could not be verified.'
+        return {'backend': 'turso', 'enabled': True, 'health': health,
+                'provider': 'Turso — direct remote database (reads and writes)',
+                'pending_local_changes': False, 'verified_baseline': health == 'ACTIVE',
+                'snapshot_id': rev, 'last_error': error, 'local_snapshot_exists': False,
+                'repo': None, 'branch': None, 'last_push': None, 'last_pull': None}
+    def push_db_after_update(self, reason='Update', checked_base=None):
+        from psx_app.database.turso import revision
+        return {'backend': 'turso', 'saved': True, 'pushed': False,
+                'snapshot_id': revision(), 'message': 'Transaction committed directly to Turso; no GitHub snapshot push is required.'}
+    def pull_latest_db_on_startup(self):
+        return {'backend': 'turso', 'pulled': False, 'reason': 'Direct remote reads; no snapshot download.'}
+    def create_local_gzip_snapshot(self):
+        raise ValueError('Use Turso dashboard Download SQLite File or the documented CLI export on your computer. Serverless full-database snapshots are disabled.')
+
+
+class CloudSyncService(LegacyCloudSyncService):
+    def __new__(cls, db_path=None):
+        from psx_app.database.turso import enabled
+        if enabled():
+            return TursoCloudService(db_path)
+        return super().__new__(cls)

@@ -25,6 +25,11 @@ class BackupService:
         self.repo = Repository(self.db_path)
 
     def run_integrity_check(self, target_db: Optional[Path] = None) -> Dict[str, Any]:
+        from psx_app.database.turso import enabled
+        if enabled() and target_db is None:
+            with get_connection(self.db_path) as c:
+                c.execute("SELECT 1").fetchone()
+            return {"ok": True, "messages": ["Turso connection verified; this is not a full integrity scan."], "db_path": "Turso remote database", "check_type": "connectivity"}
         db_file = target_db or self.db_path
         if not db_file.exists():
             return {"ok": False, "result": "DATABASE_FILE_NOT_FOUND"}
@@ -38,6 +43,9 @@ class BackupService:
             conn.close()
 
     def create_backup(self, label: str = "manual", include_raw_archive: bool = False) -> Dict[str, Any]:
+        from psx_app.database.turso import enabled
+        if enabled():
+            raise ValueError("Use Turso dashboard Download SQLite File for an independent backup. Full-database serverless backup creation is disabled to avoid temporary-disk exhaustion.")
         now = datetime.now(timezone.utc)
         ts = now.strftime("%Y%m%d_%H%M%S_%f")
         clean_label = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in label)
@@ -97,6 +105,9 @@ class BackupService:
         return result
 
     def list_backups(self) -> List[Dict[str, Any]]:
+        from psx_app.database.turso import enabled
+        if enabled():
+            return []
         items: List[Dict[str, Any]] = []
         for zp in sorted(self.backups_dir.glob("psx_backup_*.zip"), reverse=True):
             try:
@@ -118,6 +129,9 @@ class BackupService:
         return items
 
     def restore_backup(self, zip_filename: str, create_safety_backup: bool = True) -> Dict[str, Any]:
+        from psx_app.database.turso import enabled
+        if enabled():
+            raise ValueError("Restore into a NEW Turso database, verify it, then switch the private connection settings. In-place serverless SQLite restores are disabled.")
         zp = self.backups_dir / Path(zip_filename).name
         if not zp.exists():
             raise FileNotFoundError(f"Backup archive '{zip_filename}' not found.")

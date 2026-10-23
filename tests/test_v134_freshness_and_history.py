@@ -74,7 +74,7 @@ def test_shell_and_assets_revalidate_and_download_page_removed():
     with TestClient(app) as client:
         for path in ['/','/app.js','/styles.css']:
             response=client.get(path);assert response.status_code==200;assert 'no-store' in response.headers['cache-control']
-        html=client.get('/').text;assert 'v=1.3.5' in html;assert 'data-view="exports"' not in html;assert 'data-view="reconciliation"' in html;assert 'data-view="settings"' in html
+        html=client.get('/').text;assert 'v=1.3.6' in html;assert 'data-view="exports"' not in html;assert 'data-view="reconciliation"' in html;assert 'data-view="settings"' in html
         fresh=client.get('/api/system/freshness?force=true');assert fresh.status_code==200;assert fresh.json()['status']=='LOCAL'
 
 

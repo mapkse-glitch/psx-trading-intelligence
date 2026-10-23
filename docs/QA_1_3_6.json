@@ -1,0 +1,180 @@
+{
+  "release": "1.3.6",
+  "test_environment": "Isolated local HTTP libSQL servers and local Chromium preview; no live Turso writes or Vercel deployment performed",
+  "suite": {
+    "passed": 84,
+    "skipped": 20,
+    "warnings": 1,
+    "warning": "Starlette TestClient httpx deprecation",
+    "skips": "Existing opt-in legacy/private fixture tests"
+  },
+  "javascript_syntax": "node --check passed",
+  "browser": {
+    "errors": [],
+    "failures": [],
+    "results": [
+      {
+        "view": "import",
+        "text": "Loading workspace\u2026"
+      },
+      {
+        "view": "top5",
+        "text": "Ticker:\nALL 23 TICKERS\nATRL\nBOP\nCPHL\nDGKC\nFCCL\nGAL\nGHNI\nLUCK\nMLCF\nNBP\nNCPL\nNML\nNPL\nNRL\nOGDC\nPIOC\nPPL\nPRL\nPSO\nPTC\nSEARL\nTHCCL\nTRG\nFrom Date:\n01-10-2026\nTo Date:\n22-10-2026\nAuto \u2192 Latest: 22-10-2026\nSea"
+      },
+      {
+        "view": "acc91404",
+        "text": "Dashboard\nDaily Summary (40d)\nDaily Detail (22-10-2026)\nMTD / QTD / YTD\nMonthly & Yearly Summary\nSymbol Performance (62)\nTrade Log (446)\nData Checks & Audit\n\u2b07 Export Account 91404 (.xlsx)\nCSV\nAuto \u2192 L"
+      },
+      {
+        "view": "acc91269",
+        "text": "Dashboard\nDaily Summary (21d)\nDaily Detail (19-10-2026)\nMTD / QTD / YTD\nMonthly & Yearly Summary\nSymbol Performance (31)\nTrade Log (4)\nData Checks & Audit\n\u2b07 Export Account 91269 (.xlsx)\nCSV\nAuto \u2192 Lat"
+      },
+      {
+        "view": "futures",
+        "text": "Monthly Comparison\nMonth Filter\nSymbol Filter\nAnnualized Comparison\nDate Filter\nFuture Symbol Summary\nDate Summary\n2-Month Rolling Retention\nSelected Date:\n22-10-2026\n01-09-2026\n02-09-2026\n03-09-2026\n"
+      },
+      {
+        "view": "technical",
+        "text": "Core 36 watchlist\n\u26a1 Trading Ideas Generator & Automated Analyst\nTicker Deep-Dive & Chart (ATRL)\nAll-symbol screener\nSearch Ticker:\n36 / 36\nSignal Filter:\nALL SIGNALS (36)\nBUY\nHOLD / NEUTRAL\nSELL\nSHORT"
+      },
+      {
+        "view": "reconciliation",
+        "text": "Data checks, with evidence\n\nReference parity is limited to the historical workbook scope shown below. Missing references are not a pass.\n\nWhy keep Data Quality?\n\nSQLite integrity checks the database f"
+      },
+      {
+        "view": "settings",
+        "text": "Cloud persistence & sync\nStatus: Turso \u2014 direct remote database (reads and writes)\nACTIVE\nRefresh database views\nTurso & backups\nDirect Turso persistence is enabled. Private connection credentials sta"
+      }
+    ]
+  },
+  "full_snapshot_smoke": {
+    "remote_transport": "real libSQL HTTP on disposable loopback server",
+    "live_turso_accessed": false,
+    "endpoints": {
+      "/api/health": {
+        "status": 200,
+        "seconds": 0.022
+      },
+      "/api/overview": {
+        "status": 200,
+        "seconds": 7.119
+      },
+      "/api/data-dates": {
+        "status": 200,
+        "seconds": 0.033
+      },
+      "/api/imports/history": {
+        "status": 200,
+        "seconds": 0.444
+      },
+      "/api/accounts/91404": {
+        "status": 200,
+        "seconds": 0.188
+      },
+      "/api/accounts/91269": {
+        "status": 200,
+        "seconds": 0.075
+      },
+      "/api/futures/metadata": {
+        "status": 200,
+        "seconds": 0.047
+      },
+      "/api/futures/comparison": {
+        "status": 200,
+        "seconds": 0.055
+      },
+      "/api/futures/date-summary": {
+        "status": 200,
+        "seconds": 0.063
+      },
+      "/api/futures/symbol-summary": {
+        "status": 200,
+        "seconds": 0.072
+      },
+      "/api/futures/rolling-window-preview": {
+        "status": 200,
+        "seconds": 0.029
+      },
+      "/api/settings": {
+        "status": 200,
+        "seconds": 0.042
+      },
+      "/api/reconciliation": {
+        "status": 200,
+        "seconds": 0.635
+      },
+      "/api/technical/ticker/ATRL": {
+        "status": 200,
+        "seconds": 0.19
+      },
+      "/api/technical/universe?scope=core36": {
+        "status": 200,
+        "seconds": 0.053
+      }
+    },
+    "imports": [
+      {
+        "file": "2016.xlsx",
+        "accepted": 87393,
+        "new": 87393,
+        "seconds": 28.861
+      }
+    ],
+    "dates_before": {
+      "cash": "2026-10-22",
+      "futures": "2026-10-22",
+      "top5": "2026-10-22",
+      "index": "2026-10-22",
+      "acc91404": "2026-10-22",
+      "acc91269": "2026-10-19",
+      "latest": "2026-10-22"
+    },
+    "cash_after": [
+      819199,
+      "2016-01-01",
+      "2026-10-22"
+    ],
+    "accounts_after": [
+      324
+    ]
+  },
+  "important": "Local timings are not production performance guarantees. The 2016 test import affected only a disposable snapshot copy, not the live database.",
+  "futures_tab_checks": {
+    "errors": [],
+    "failed_api_requests": [],
+    "tabs": [
+      {
+        "view": "futures",
+        "tab": "Monthly Comparison"
+      },
+      {
+        "view": "futures",
+        "tab": "Month Filter"
+      },
+      {
+        "view": "futures",
+        "tab": "Symbol Filter"
+      },
+      {
+        "view": "futures",
+        "tab": "Annualized Comparison"
+      },
+      {
+        "view": "futures",
+        "tab": "Date Filter"
+      },
+      {
+        "view": "futures",
+        "tab": "Future Symbol Summary"
+      },
+      {
+        "view": "futures",
+        "tab": "Date Summary"
+      },
+      {
+        "view": "futures",
+        "tab": "2-Month Rolling Retention"
+      }
+    ]
+  }
+}

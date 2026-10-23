@@ -96,7 +96,7 @@ const VIEW_TITLES = {
   technical: "07 • Technical Analysis, Setup Generator & 36-Ticker",
   reconciliation: "08 • Data Quality & Legacy Reconciliation",
   exports: "09 • Exports & reports",
-  settings: "10 • Settings, Rule Versioning & SQLite Backup",
+  settings: "10 • Settings, Rule Versioning & Database Backup",
 };
 
 function fmtNum(v, decimals = 2) {
@@ -613,6 +613,7 @@ async function renderOverview(container) {
 // (every successful upload Commit pushes automatically). It reappears only if a
 // push actually fails, or when GitHub sync is not configured yet (LOCAL mode).
 function renderSyncButtons(cs) {
+  if (cs.backend === 'turso') return `<span class="badge ${cs.health==='ACTIVE'?'badge-green':'badge-red'}">${escapeHtml(cs.health)}</span><button class="btn btn-secondary" onclick="reloadCloudData()">Refresh database views</button><a class="btn btn-secondary" href="https://app.turso.tech" target="_blank" rel="noopener noreferrer">Turso &amp; backups</a>${cs.last_error?`<p class="neg">${escapeHtml(cs.last_error)}</p>`:''}`;
   return `<a class="btn btn-secondary" href="/api/cloud-sync/download-snapshot" download>Download current snapshot</a>
     <span class="badge ${cs.health==='ACTIVE'?'badge-green':'badge-amber'}">${escapeHtml(cs.health || 'UNKNOWN')}</span>
     ${cs.health!=='ACTIVE'?`<button class="btn btn-secondary" onclick="triggerCloudSyncNow()">Retry cloud save</button>`:''}
@@ -640,7 +641,7 @@ async function renderImportCenter(container) {
         </div>
       </div>
       <div style="font-size:12px;color:var(--text-main);">
-        <b>Where your uploaded data is saved:</b> Commit writes to the active SQLite database, then attempts a verified save to your configured GitHub repository. Check the returned cloud-save status; a local commit is not proof of a remote save. On Vercel, local data, staged uploads and local backup archives are temporary. Download an independent snapshot after important changes. A stale worker is blocked rather than allowed to overwrite newer cloud data.
+        <b>Where your uploaded data is saved:</b> ${cs.backend==='turso' ? 'Prices, account records, settings and audit records are committed directly to Turso. Upload pieces and parsed staging are stored temporarily in Turso so another Vercel worker can finish the import. Successful commit removes parsed staging; incomplete uploads expire after 24 hours and are swept during subsequent staging. Original source files are not permanently archived by this dashboard—keep your originals and independent backups. No full database is downloaded to Vercel or pushed to GitHub.' : 'Local SQLite mode: use an independent backup and verify the configured persistence provider.'}
 
       </div>
     </div>
@@ -920,7 +921,9 @@ async function commitStagedBatch(batchUuid) {
     state.stagedBatch = null;
     clearClientCache();
     let note;
-    if (committed.cloud_sync && committed.cloud_sync.pushed) {
+    if (committed.cloud_sync?.backend === 'turso' && committed.cloud_sync.saved) {
+      note = 'Saved directly to Turso. No GitHub snapshot upload is needed.';
+    } else if (committed.cloud_sync && committed.cloud_sync.pushed) {
       note = ` & auto-pushed to GitHub (${committed.cloud_sync.commit_sha.slice(0, 7)})! Cloud save confirmed; already-open workers must reload cloud data before editing.`;
     } else if (committed.cloud_sync && committed.cloud_sync.error) {
       note = `.\n⚠ GitHub push FAILED: ${committed.cloud_sync.error}\nCloud save is NOT confirmed. Local data on Vercel is temporary. Download the snapshot now and retry after fixing the issue.`;
@@ -930,7 +933,7 @@ async function commitStagedBatch(batchUuid) {
       note = `.\nCommitted and saved to the active database on this app instance.`;
     }
     showToast(
-      `${committed.status === "ALREADY_COMMITTED" ? "Import already completed" : `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped`}. ${committed.verified_date_repairs || 0} source-verified date repairs. ${note} (${((performance.now()-started)/1000).toFixed(1)}s)`, Boolean(committed.cloud_sync && !committed.cloud_sync.pushed)
+      `${committed.status === "ALREADY_COMMITTED" ? "Import already completed" : `Import & Update Complete: ${committed.new_records} new records added, ${committed.duplicates_ignored} duplicates safely skipped`}. ${committed.verified_date_repairs || 0} source-verified date repairs. ${note} (${((performance.now()-started)/1000).toFixed(1)}s)`, Boolean(committed.cloud_sync && !committed.cloud_sync.pushed && !committed.cloud_sync.saved)
     );
     await renderImportCenter(document.getElementById("viewContainer"));
   } catch (err) {
@@ -2478,7 +2481,7 @@ async function renderSettingsView(container) {
         </div>
       </div>
       <div style="font-size:12px;color:var(--text-main);">
-        When deployed on <b>Vercel</b> (<code>https://psx-trading-intelligence.vercel.app</code>), add <code>GITHUB_SYNC_REPO=mapkse-glitch/psx-trading-intelligence</code> and <code>GITHUB_SYNC_TOKEN=github_pat_...</code> in <b>Vercel → Settings → Environment Variables</b>. Every file import automatically compresses <code>app.db</code> (~5.7 MB) into <code>latest_cloud_sync.db.gz</code> and commits it to your GitHub repo after a confirmed cloud save. Local files on Vercel are temporary; keep an independent downloaded backup. Public and private repositories are supported; private is recommended when the snapshot contains confidential data.
+        ${cs.backend==='turso' ? 'Direct Turso persistence is enabled. Private connection credentials stay on the server. A successful import or settings response confirms a remote database commit—not a GitHub snapshot upload. For independent backups, open your database in Turso and select Download SQLite File. Keep original uploads separately.' : 'Local SQLite development mode. Serverless deployments require Turso connection settings.'}
       </div>
     </div>
 
@@ -2507,16 +2510,17 @@ async function renderSettingsView(container) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">SQLite Online Backup &amp; Restore Manager</div>
-            <div class="card-subtitle">Database Integrity: <b class="${data.db_integrity.ok ? "pos" : "neg"}">${data.db_integrity.ok ? "PRAGMA integrity_check = OK" : "FAILED"}</b> • Path: ${data.db_integrity.db_path}</div>
+            <div class="card-title">Database Backup &amp; Restore</div>
+            <div class="card-subtitle">${cs.backend==='turso' ? 'Database connection' : 'Database integrity'}: <b class="${data.db_integrity.ok ? "pos" : "neg"}">${data.db_integrity.ok ? (cs.backend==='turso' ? "Connected (not a full integrity audit)" : "PRAGMA integrity_check = OK") : "FAILED"}</b> • Path: ${data.db_integrity.db_path}</div>
           </div>
-          <button class="btn btn-success" onclick="createManualBackup()">+ Create New Backup (.zip)</button>
+          ${cs.backend==='turso' ? '<a class="btn btn-success" href="https://app.turso.tech" target="_blank" rel="noopener noreferrer">Open Turso to download SQLite backup</a>' : '<button class="btn btn-success" onclick="createManualBackup()">+ Create New Backup (.zip)</button>'}
         </div>
-        <div class="table-wrap">
+        ${cs.backend==='turso' ? '<p style="white-space:normal;line-height:1.7;">Backups are downloaded outside Vercel. Use Turso → your database → Download SQLite File. To restore, import into a new database, verify it, then switch server credentials. Do not overwrite the active database.</p>' : ''}
+        <div class="table-wrap" ${cs.backend==='turso' ? 'style="display:none"' : ''}>
           <table class="data-table">
             <thead><tr><th>Backup Archive</th><th>Created at (PKT)</th><th class="num">Size</th><th>Integrity</th><th>Actions</th></tr></thead>
             <tbody>
-              ${data.backups.length===0?'<tr><td colspan="5">No local backups yet. Create a backup and download it for independent safekeeping.</td></tr>':""}
+              ${data.backups.length===0?`<tr><td colspan="5">${cs.backend==='turso' ? 'Backups are downloaded outside Vercel. Use Turso → your database → Download SQLite File. To restore, import into a new database, verify it, then switch server credentials. This avoids overwriting the active database.' : 'No local backups yet. Create and download an independent backup.'}</td></tr>`:''}
               ${data.backups.map((b) => `
                 <tr>
                   <td><b>${escapeHtml(b.zip_filename)}</b><br><span style="color:var(--text-muted);font-size:10.5px;">SHA256: ${(b.db_sha256 || "").slice(0, 16)}...</span></td>
@@ -2541,10 +2545,10 @@ async function renderSettingsView(container) {
           <div class="card-title">Date Normalization &amp; Integrity Scanner</div>
           <div class="card-subtitle">Proposes corrections for a limited class of day/month-swapped rows. Review the dry-run evidence first — nothing changes until you confirm. A clean scan does not prove every historical date is correct.</div>
         </div>
-        <button class="btn btn-primary" onclick="scanDateNormalization()">🔎 Scan for Swapped Dates</button>
+        <button class="btn btn-primary" onclick="scanDateNormalization()" ${cs.backend==='turso'?'disabled title="Full-history maintenance scans are disabled on serverless Turso mode"':''}>🔎 Scan for Swapped Dates</button>
       </div>
       <div id="dateRepairResults" style="color:var(--text-muted);font-size:12.5px;">
-        Click <b>Scan</b> to inspect the supported canonical date tables. The scanner uses unambiguous dates as anchors to identify swap candidates and duplicate artifacts. Review the plan against source files before applying. A verified online backup and audit record are kept; changed data requires a fresh scan. Reapplying a completed plan makes no further changes.
+        ${cs.backend==='turso' ? 'Bulk heuristic scans/repairs are disabled in remote mode. Source-verified XLSX import date protection remains active. Download an independent backup before offline maintenance.' : 'Click Scan to inspect the supported canonical date tables.'} The scanner uses unambiguous dates as anchors to identify swap candidates and duplicate artifacts. Review the plan against source files before applying. A verified online backup and audit record are kept; changed data requires a fresh scan. Reapplying a completed plan makes no further changes.
       </div>
     </div>
 
@@ -2611,7 +2615,10 @@ async function createManualBackup() {
 async function triggerCloudSyncNow() {
   const res = await fetch("/api/cloud-sync/sync-now", { method: "POST" });
   const out = await res.json();
-  if (out.pushed) {
+  if (out.backend === "turso" && out.saved) {
+    clearClientCache();
+    showToast("Turso connection verified. Changes are committed directly to the remote database.");
+  } else if (out.pushed) {
     clearClientCache();
     showToast(`✓ Synced latest_cloud_sync.db.gz (${fmtInt(out.size_bytes)} B) to GitHub (Commit ${out.commit_sha.slice(0, 7)}) — cloud save confirmed. Existing workers may need Reload cloud data; keep an independent backup.`);
   } else if (out.error) {
@@ -2714,16 +2721,17 @@ async function checkedMutation(url, options) {
 }
 function syncNotice(result, message) {
   const sync = result.cloud_sync;
-  if (sync?.pushed) showToast(message+' Cloud save confirmed.');
+  if (sync?.saved && sync?.backend==='turso') showToast(message+' Saved directly to Turso.');
+  else if (sync?.pushed) showToast(message+' Cloud save confirmed.');
   else if (sync) showToast(message+' NOT confirmed in cloud. Download a snapshot from Settings. '+(sync.error || sync.message || ''), true);
   else showToast(message);
 }
 async function reloadCloudData() {
-  if (!confirm('Reload the latest cloud database? A local safety backup is kept. Unsynced local changes block reload to prevent data loss.')) return;
+  if (!confirm('Refresh database views? In Turso mode this clears view caches without copying or replacing the database.')) return;
   try {
     const result = await checkedMutation('/api/cloud-sync/reload', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({confirm:true})});
     clearClientCache();
-    showToast(result.pulled ? 'Latest cloud snapshot loaded.' : (result.reason || 'No snapshot loaded.'), !result.pulled);
+    showToast(result.backend==='turso' ? 'Turso views refreshed.' : (result.pulled ? 'Latest cloud snapshot loaded.' : (result.reason || 'No snapshot loaded.')), result.backend!=='turso' && !result.pulled);
     await refreshCurrentView();
   } catch (_) { /* checkedMutation displayed the reason */ }
 }
@@ -2762,7 +2770,7 @@ async function updateSystemStatus() {
   try {
     const result = await apiGet('/api/system/status', false);
     const integrity = result.database_integrity.ok;
-    document.getElementById('sidebarDbStatus').textContent = integrity ? 'SQLite integrity: OK' : 'SQLite integrity: FAILED';
+    document.getElementById('sidebarDbStatus').textContent = result.cloud_sync.backend === 'turso' ? (integrity ? 'Turso: connected' : 'Turso: unavailable') : (integrity ? 'SQLite integrity: OK' : 'SQLite integrity: FAILED');
     document.getElementById('sidebarLastImport').textContent = 'Cloud: '+result.cloud_sync.health+' · Reference parity checked separately';
   } catch (_) {document.getElementById('sidebarDbStatus').textContent='Status unavailable';}
 }
@@ -2828,7 +2836,7 @@ async function verifyWorkspaceFreshness(force=false) {
     if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
     state.freshnessStatus = result.status;
     const notice = document.getElementById('dataFreshnessNotice');
-    const versionChanged = result.version && result.version !== '1.3.5';
+    const versionChanged = result.version && result.version !== '1.3.6';
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');
@@ -2843,7 +2851,7 @@ async function refreshIfCloudChanged() {
     clearClientCache();
     await switchView(state.currentView);
     updateSystemStatus();
-    showToast('A newer cloud snapshot was loaded. Dates and analysis were refreshed; historical pins were preserved.');
+    showToast('Cloud data changed. Dates and analysis were refreshed; historical pins were preserved.');
   }
 }
 function exportCurrentModule() {

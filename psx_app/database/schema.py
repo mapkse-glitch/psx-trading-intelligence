@@ -267,6 +267,10 @@ CREATE TABLE IF NOT EXISTS calculation_rules (
 
 
 def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
+    from psx_app.database.turso import enabled, connect, ensure_ready
+    if enabled():
+        ensure_ready()
+        return connect()
     target = Path(db_path) if db_path else DB_PATH
     ensure_directories(target.parent.parent)
     conn = sqlite3.connect(str(target), timeout=30.0, check_same_thread=False)
@@ -277,6 +281,10 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Optional[Path] = None) -> None:
+    from psx_app.database.turso import enabled, ensure_ready
+    if enabled():
+        ensure_ready()
+        return
     target = Path(db_path) if db_path else DB_PATH
     ensure_directories(target.parent.parent)
     # Auto-hydrate from latest_cloud_sync.db.gz if target DB does not exist yet

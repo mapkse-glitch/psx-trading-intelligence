@@ -333,7 +333,10 @@ def test_password_free_serverless_read_access(monkeypatch):
     monkeypatch.setenv('VERCEL','1')
     monkeypatch.delenv('PSX_ADMIN_PASSWORD',raising=False)
     monkeypatch.delenv('PSX_SESSION_SECRET',raising=False)
-    assert TestClient(app).get('/api/settings').status_code==200
+    # A missing remote backend must fail closed, not create an ephemeral DB.
+    from psx_app.database.turso import enabled
+    with pytest.raises(RuntimeError, match='Local SQLite fallback'):
+        enabled()
 
 
 def test_password_free_mutations_and_cross_origin_hygiene():

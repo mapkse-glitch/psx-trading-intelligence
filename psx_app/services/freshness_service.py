@@ -3,6 +3,9 @@ from psx_app.services.cloud_sync_service import CloudSyncService
 
 
 def check_cloud_freshness(db_path, cloud=None):
+    from psx_app.database.turso import enabled, revision
+    if enabled():
+        return {"status": "CURRENT", "changed": False, "snapshot_id": revision()}
     cloud = cloud or CloudSyncService(db_path)
     if not cloud.is_configured():
         return {'status': 'LOCAL', 'changed': False, 'snapshot_id': None}

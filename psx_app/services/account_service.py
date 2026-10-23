@@ -22,15 +22,18 @@ class AccountService:
         account_id: str,
         trade_date: str,
         batch_id: Optional[int] = None,
+        connection=None,
+        settings=None,
     ) -> List[Dict[str, Any]]:
         """
         Recalculate symbol-level summary rows for (account_id, trade_date) from raw trade_executions.
         """
-        settings = self.repo.get_settings()
+        settings = settings if settings is not None else self.repo.get_settings()
         slab2_start = float(settings.get("commission_slab2_start", 54.0))
         now = datetime.now(timezone.utc).isoformat()
 
-        with get_connection(self.db_path) as c:
+        from contextlib import nullcontext
+        with (nullcontext(connection) if connection is not None else get_connection(self.db_path)) as c:
             execs = [
                 dict(r)
                 for r in c.execute(
@@ -145,7 +148,8 @@ class AccountService:
                     "net_pnl": net_pnl,
                     "return_on_buy": rob,
                 })
-            c.commit()
+            if connection is None:
+                c.commit()
         return results
 
     @staticmethod
