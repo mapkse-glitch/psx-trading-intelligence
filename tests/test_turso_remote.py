@@ -228,3 +228,26 @@ def test_remote_freshness_invalidates_cached_dates(remote):
         result = client.get('/api/system/freshness?force=true')
         assert result.status_code == 200 and result.json()['changed']
         assert client.get('/api/data-dates').json()['cash'] == '2025-10-22'
+
+
+def test_remote_v139_reference_forecast_learning_tables_and_revision(remote):
+    from psx_app.database.schema import get_connection
+    from psx_app.database.turso import revision
+    from psx_app.services.sector_reference import SectorReference
+    from psx_app.services.forecast_ledger import ForecastLedger
+    from psx_app.services.learning_research import train_symbol
+    import math
+    with get_connection() as c:
+        c.executemany('INSERT INTO equity_ohlcv(symbol,trade_date,open,high,low,close,pr_close,volume) VALUES (?,?,?,?,?,?,?,?)',[
+            ('ATRL',(datetime(2024,1,1)+timedelta(days=i)).date().isoformat(),100+i*.04,102+i*.04,99+i*.04,100+i*.04,99.96+i*.04,10000) for i in range(340)])
+    before=revision()
+    ledger=ForecastLedger();ledger.record('ATRL');ledger.record('ATRL')
+    assert len(ledger.list()['items'])==2
+    assert ledger.reconcile()['evaluated']==2
+    model=train_symbol('ATRL');assert model['status']=='RESEARCH_ONLY'
+    # Forecast/research metadata must not invalidate the canonical price revision on each view.
+    assert revision()==before
+    raw=io.BytesIO();wb=openpyxl.Workbook();ws=wb.active;ws.title='COMP_LIST';ws.append(['SYMBOL','COMPANY NAME','SECTOR']);ws.append(['ATRL','Attock Refinery','REFINERY']);wb.save(raw)
+    service=SectorReference();p=service.preview(raw.getvalue());assert revision()==before
+    service.commit(p['token']);assert revision()!=before
+    assert service.directory()['ATRL']['sector']=='REFINERY'

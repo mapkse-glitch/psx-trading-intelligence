@@ -1,33 +1,27 @@
 {
-  "release": "1.3.8",
-  "name": "Dashboard Table Alignment and Newest-First Dates \u2014 Turso",
-  "previous_release": "1.3.7",
-  "technical_engine": "1.3.7 unchanged",
-  "repository_base_commit": "0b1edec7e6ed958e21e85a84c14f65ac50b39ff6",
-  "application_authentication": "none (unchanged; protect hosting access for private use)",
-  "production_backend": "Direct remote Turso/libSQL reads and writes; existing private server variables retained",
+  "release": "1.3.9",
+  "name": "Accountable Technical Analysis, Forecast Ledger & Market Explorer \u2014 Turso",
+  "previous_release": "1.3.8",
+  "technical_engine": "1.3.9",
+  "repository_base_commit": "7d5720d4567d57f5fcf1027ed0d594c77cea5718",
   "database_included": false,
   "credentials_included": false,
-  "raw_workbooks_included": false,
   "deployment_required": true,
-  "database_migration_required": false,
-  "live_database_modified_by_release_tests": false,
-  "tests": "113 passed, 20 skipped, 1 deprecation warning. 40 local browser states, 73 table instances, no JS/API errors; additional pin/reset, mobile scrolling and synthetic backup/rule history checks. See docs/QA_1_3_8.json.",
+  "database_migration_required": "Automatic additive tables only; no canonical data reset.",
+  "live_database_modified": false,
+  "research_model": "Chronological research baseline; uncalibrated; no automatic production promotion. Optional external refresh disabled until configured.",
+  "tests": "122 passed, 20 skipped, 1 deprecation warning; real local libSQL integration and local browser interactions verified.",
+  "instructions": "UPGRADE_1_3_9.md",
   "files": [
     {
-      "path": ".env.example",
-      "sha256": "79a7cad84037d66c4e4bcdca2194cd74656108682bbc548cd1d83f9aa4caaf83",
-      "bytes": 156
+      "path": ".github/workflows/research-refresh.yml",
+      "sha256": "e21b862a471d115af9380bfa10092adceacfe42de4afe8ba7e3c2349b6fed676",
+      "bytes": 1372
     },
     {
       "path": ".gitignore",
-      "sha256": "cd9aa7b8a6053f9fe4f309295eb8a6efa70428ecd90d440cead1052b873adbab",
+      "sha256": "86c10658f797f029ef87158a6cf20b574ec6807126389e464acf7aef475dbd01",
       "bytes": 132
-    },
-    {
-      "path": ".vercelignore",
-      "sha256": "24c732bc54ce69fa2b74ff8e56693b1f1e63c76ea670c46183732f340e6caa54",
-      "bytes": 119
     },
     {
       "path": "Dockerfile",
@@ -36,8 +30,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "2e140a03918913d5969307a95eaa9f4a33f3a89dba0b86544ab103541e944f62",
-      "bytes": 2606
+      "sha256": "e9a355eedaf65ea0f84ed0963f6e52a7befdf3855f9295d5a17745b6d420d1e8",
+      "bytes": 3061
     },
     {
       "path": "START_HERE_TURSO.md",
@@ -53,6 +47,11 @@
       "path": "UPGRADE_1_3_8.md",
       "sha256": "4d737d9b6014458ffc6e55d7938985337930968f03c3777d655791dcec36192d",
       "bytes": 4233
+    },
+    {
+      "path": "UPGRADE_1_3_9.md",
+      "sha256": "6b6c5c7c7eb56271dda9d3fc9a8dec9c20c2f244ce978217e7eb851446e05cd2",
+      "bytes": 8967
     },
     {
       "path": "api/index.py",
@@ -125,6 +124,21 @@
       "bytes": 6684
     },
     {
+      "path": "docs/QA_1_3_3.json",
+      "sha256": "aabd6ac398a51084cb9fdcfa46112259afce92fcc57cad680a1a13c6a507ae3f",
+      "bytes": 2996
+    },
+    {
+      "path": "docs/QA_1_3_4.json",
+      "sha256": "e658fd07e9ffb9d8a60a72301c4f278914d6524dc20687d298de5d6dc0afd6b2",
+      "bytes": 2381
+    },
+    {
+      "path": "docs/QA_1_3_5.json",
+      "sha256": "d87f65fb305f3690093dba3c8da434dbde83748174a0eb0323a5960695723347",
+      "bytes": 1340
+    },
+    {
       "path": "docs/QA_1_3_6.json",
       "sha256": "0f4ea6eab91de9fd2165a5ab0f5a7dca9e7e9a957c0338e9ebaeafcaebded537",
       "bytes": 5449
@@ -138,6 +152,11 @@
       "path": "docs/QA_1_3_8.json",
       "sha256": "06c33a0febcec8e2742cf3ac466e2ae35500ce9216204bd8c47da2510b48e7ab",
       "bytes": 34659
+    },
+    {
+      "path": "docs/QA_1_3_9.json",
+      "sha256": "8a8a8d6ecf80c668d9534de0cad888888c9e52c09abccc2ee4f32e30bf89c3e7",
+      "bytes": 1966
     },
     {
       "path": "docs/QA_SUMMARY_1_3.json",
@@ -210,6 +229,81 @@
       "bytes": 6456
     },
     {
+      "path": "docs/historical/ARCHITECTURE.md",
+      "sha256": "c3decc064310e8e8c85c1cf0878b26d2bb72de4c3c19b6fb540045750bd059cd",
+      "bytes": 4551
+    },
+    {
+      "path": "docs/historical/ASSUMPTIONS_AND_DECISIONS.md",
+      "sha256": "d99663dfa9045296ad24813f5af44e3ff1c067d84235834d204ab0f7733577a5",
+      "bytes": 7689
+    },
+    {
+      "path": "docs/historical/BACKUP_AND_RESTORE.md",
+      "sha256": "3792e2a63ffd36f917727b7ba2c8f422e139732f55e9fd7d73dccb800f8aca2f",
+      "bytes": 2965
+    },
+    {
+      "path": "docs/historical/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
+      "sha256": "9b414557fed317ef52729dd1daf3af66ab2f402ba0e803c017f249854e087721",
+      "bytes": 11390
+    },
+    {
+      "path": "docs/historical/DATA_DICTIONARY.md",
+      "sha256": "45ccb5c2708b7a73b22b1d83b6464a2995a0f81a66b07aa480d4b38b02483ef3",
+      "bytes": 7090
+    },
+    {
+      "path": "docs/historical/DEPLOYMENT.md",
+      "sha256": "c750375f21b0234156f3dd4fe32f8459257c3c57bdb12699159d9af01226a71b",
+      "bytes": 2077
+    },
+    {
+      "path": "docs/historical/FILE_INVENTORY.md",
+      "sha256": "1ce43c63577274d2359654c9f2611fb0da1e54be5a40c72139a1dfc71526001f",
+      "bytes": 8119
+    },
+    {
+      "path": "docs/historical/FORMULAS_AND_SIGNALS.md",
+      "sha256": "dc808cbf6d5534ae2b4f7ec15cc71b1f9c4e09affee610feec1f29859ad23e7e",
+      "bytes": 9476
+    },
+    {
+      "path": "docs/historical/KNOWN_LIMITATIONS.md",
+      "sha256": "18bf1cf5a7d75ce80697fca3bee3e0f15d8c07bd3e82318da010247e47b6388a",
+      "bytes": 3738
+    },
+    {
+      "path": "docs/historical/MIGRATION_PLAN.md",
+      "sha256": "837c33c7286814257520c83a0390a5251348da7fdb0b08b59ed85c0bf8561880",
+      "bytes": 4938
+    },
+    {
+      "path": "docs/historical/MIGRATION_REPORT.md",
+      "sha256": "675f2f2fdd86c4c898e9fbc55314f8ed96a3ee5edcb21088f2d56097ab89bad6",
+      "bytes": 7010
+    },
+    {
+      "path": "docs/historical/REQUIREMENTS.md",
+      "sha256": "84834ca2d7993fefa1a915f98383def84877fd22304a0d4b25300cf9c37d2119",
+      "bytes": 5329
+    },
+    {
+      "path": "docs/historical/TEST_REPORT.md",
+      "sha256": "4f8b71810d9a2b5cf6f19ceb838ed38c3b56f035c0007db156aaebe94f6a50b2",
+      "bytes": 5833
+    },
+    {
+      "path": "docs/historical/USER_GUIDE.md",
+      "sha256": "3efc7953b2b8929f2a95905fb2608caca41d4baf8472072b68fdd87eed934ea2",
+      "bytes": 5316
+    },
+    {
+      "path": "docs/historical/WORKFLOW_MAPPING.md",
+      "sha256": "a207f106817c021be0ac4241e1c2882af32860f5eaa047de20d81be042f6ec27",
+      "bytes": 6782
+    },
+    {
       "path": "main.py",
       "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc",
       "bytes": 29
@@ -236,8 +330,8 @@
     },
     {
       "path": "psx_app/database/schema.py",
-      "sha256": "2fae737c20a7df143d1658b45941af6ca50b335beca6159358d068fc43fc1de9",
-      "bytes": 10665
+      "sha256": "1b168d0c38dbf2d48f77be1004a020dded02918200eab80f0d9dfe62dc4cd3d8",
+      "bytes": 11647
     },
     {
       "path": "psx_app/database/selected_rows.py",
@@ -246,13 +340,13 @@
     },
     {
       "path": "psx_app/database/turso.py",
-      "sha256": "3b9e2750aefe6dfbf0a883f3ae17a483f5f23f5da268ec8d52efcf4d7ad201d4",
-      "bytes": 6862
+      "sha256": "6a43bf2ad95de6dc2404beba41c14b281526e286d461654b55b1cae1b846c140",
+      "bytes": 7347
     },
     {
       "path": "psx_app/main.py",
-      "sha256": "b55ef9c0aa197a5e93b0e0f23fce2fe583a761414e9e5469f7f4ccf34608f258",
-      "bytes": 42792
+      "sha256": "87a5b9b38c93e8667b97a5ed6184afb9e352cce9fb56174429a555281d9a84c2",
+      "bytes": 43643
     },
     {
       "path": "psx_app/parsers/__init__.py",
@@ -278,6 +372,11 @@
       "path": "psx_app/parsers/tradelog_parser.py",
       "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17",
       "bytes": 20339
+    },
+    {
+      "path": "psx_app/reference/sectors.json",
+      "sha256": "05969baffedca5fd5919fcaa8aaf74348c051e3b1d0c2ac0ac1ec5a27fc04f1e",
+      "bytes": 85384
     },
     {
       "path": "psx_app/security.py",
@@ -320,6 +419,11 @@
       "bytes": 55600
     },
     {
+      "path": "psx_app/services/forecast_ledger.py",
+      "sha256": "1eb28cb07399e83f2c2b31dc4a6c6e049fcbd910e8a9992137380c59011fa1ec",
+      "bytes": 10059
+    },
+    {
       "path": "psx_app/services/freshness_service.py",
       "sha256": "7ec595f9faed4d6f2f0e7bb8c49cfcc0ed4f58c562fa46c7680035684c80e63d",
       "bytes": 1966
@@ -341,8 +445,18 @@
     },
     {
       "path": "psx_app/services/intelligence_service.py",
-      "sha256": "40ef28fe7e39ce9abef2a70e0222ae277d1a16939a656480d3c87ac56826cf65",
-      "bytes": 32148
+      "sha256": "1445b2971cd1903ab458e66204a3ed73ea251e26a18cfa952f26471daf6e4843",
+      "bytes": 25885
+    },
+    {
+      "path": "psx_app/services/learning_research.py",
+      "sha256": "040489a9ac136ad0aac27fd002a2ac26b56a777f2c1bbe489b03ecde74e5c242",
+      "bytes": 4365
+    },
+    {
+      "path": "psx_app/services/market_explorer.py",
+      "sha256": "50e3662c393462c9e2db7a03ffd22b986be18f0c91a438662c2e4d5ea0118a79",
+      "bytes": 4919
     },
     {
       "path": "psx_app/services/migration_service.py",
@@ -360,14 +474,19 @@
       "bytes": 2621
     },
     {
+      "path": "psx_app/services/sector_reference.py",
+      "sha256": "154188fa82a783d8933abfc9848dcca8b75ad6f408b44b915ab15c704d5be672",
+      "bytes": 4977
+    },
+    {
       "path": "psx_app/services/signal_reliability.py",
       "sha256": "713457b035fc32a98580a7c346713f3af034117afb43c197164bc238000bd03e",
       "bytes": 3130
     },
     {
       "path": "psx_app/services/technical_service.py",
-      "sha256": "d8a6111339e96f822b3a97807c150ea659423f81b3f695248b02f1972e799c55",
-      "bytes": 39267
+      "sha256": "1167ea96511169224f3c4e205ffd6cbe1e4f6c3df0e7149e3667c982e3507421",
+      "bytes": 39104
     },
     {
       "path": "psx_app/services/top5_service.py",
@@ -381,23 +500,33 @@
     },
     {
       "path": "psx_app/static/app.js",
-      "sha256": "137d0ea5511d64707dc26a5b0e44c34824c901eec1dfde6ea0d16ce01b6ae9c7",
-      "bytes": 173560
+      "sha256": "7bc2aa22c2182072b5c8e7fe2e521b7e75925a2b214ccf6e3ab55799eb6f549f",
+      "bytes": 173862
     },
     {
       "path": "psx_app/static/index.html",
-      "sha256": "5408354ce497567de3065d57fcd98f9cedb601e6b9eb587171e076da7d2cd338",
-      "bytes": 4837
+      "sha256": "531644c9c5761548b0765e6b9f03c8281393f7ec0b3ef388f2cd81ef73ed290a",
+      "bytes": 5024
     },
     {
       "path": "psx_app/static/styles.css",
-      "sha256": "e90ea0c8fcec6be11390ae10e534f1ff5ba6a1a31cc6e8c68bfc382964495968",
-      "bytes": 30215
+      "sha256": "f63bd1a0a4b49540dc293ed7248507d87aa14e404acaadf046d7c4e3502acd97",
+      "bytes": 32112
     },
     {
       "path": "psx_app/static/table_display.js",
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a",
       "bytes": 1793
+    },
+    {
+      "path": "psx_app/static/upgrade139.js",
+      "sha256": "0271d18c6da851db426b6251789b8b12b7dc753c0abe0b4d23edc2f7e1494bef",
+      "bytes": 25481
+    },
+    {
+      "path": "psx_app/upgrade_routes.py",
+      "sha256": "cbb34b9bfe4f271c6ad501ceb4d1141eff8ac8f2fe482c3c95455549787c3997",
+      "bytes": 3138
     },
     {
       "path": "pytest.ini",
@@ -491,8 +620,8 @@
     },
     {
       "path": "tests/test_turso_remote.py",
-      "sha256": "71eccbcfca850505b7cf60e083d1971648f7dfcd9ae5deb9cc28b35464e854c6",
-      "bytes": 12116
+      "sha256": "3d40afb1c9632b6cc68c6e48b8fe978878ed6c5e3bab561e62516289f633db37",
+      "bytes": 13603
     },
     {
       "path": "tests/test_v133_import_and_latest.py",
@@ -501,18 +630,28 @@
     },
     {
       "path": "tests/test_v134_freshness_and_history.py",
-      "sha256": "5085241714669945d46eb9b75f360ce008761f69791922991a138cdbd498ae4a",
-      "bytes": 6300
+      "sha256": "60552b2a8c1ee02f0b3e09e983932d229239eb548e24525ffaebf27d32af3f03",
+      "bytes": 6309
     },
     {
       "path": "tests/test_v137_reliability.py",
-      "sha256": "b7118b3daa4e0f33747d98d551859f62601cf5b1e4808bd52a1b1a228beebb14",
-      "bytes": 10884
+      "sha256": "c502df448cda48a0bd545d597fd70e0d3065f4660f480561207937a69ffd7229",
+      "bytes": 10968
     },
     {
       "path": "tests/test_v138_tables.py",
       "sha256": "5d250fde288bb07a3221290aeb51fc8dedac6a2428481e37de8cf1b8d61b8f6f",
       "bytes": 3523
+    },
+    {
+      "path": "tests/test_v139_accountability.py",
+      "sha256": "24eb5237438a4418c2a22696f3203801610a0c8fcf1d2955be3bab3be05cbd09",
+      "bytes": 4514
+    },
+    {
+      "path": "tools/refresh_learning.py",
+      "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f",
+      "bytes": 984
     },
     {
       "path": "vercel.json",

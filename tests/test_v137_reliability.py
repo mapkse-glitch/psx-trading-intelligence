@@ -161,7 +161,7 @@ def test_old_indicator_cache_is_recomputed_after_engine_upgrade(tmp_path):
         c.executemany('INSERT INTO equity_ohlcv(symbol,trade_date,open,high,low,close,volume) VALUES (?,?,?,?,?,?,?)',[('ATRL',b['trade_date'],b['open'],b['high'],b['low'],b['close'],b['volume']) for b in data])
         c.execute('INSERT INTO indicator_cache(symbol,trade_date,rule_version,payload_json,updated_at) VALUES (?,?,?,?,?)',('ATRL',data[-1]['trade_date'],1,json.dumps({'engine_version':'1.3.6','symbol':'ATRL','close':9999}),'old'))
     items=TechnicalService(db).get_universe_summary(scope='all')['items']
-    assert items[0]['close']==data[-1]['close'] and items[0]['engine_version']=='1.3.7'
+    assert items[0]['close']==data[-1]['close'] and items[0]['engine_version']==__import__('psx_app.services.technical_service',fromlist=['ENGINE_VERSION']).ENGINE_VERSION
 
 
 def test_history_quality_flags_do_not_remove_or_adjust_rows():

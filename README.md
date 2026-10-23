@@ -1,3 +1,11 @@
+# Current release: PSX Intelligence 1.3.9
+
+**Start with [UPGRADE_1_3_9.md](UPGRADE_1_3_9.md)** for deployment, new forecast/sector/Market Explorer features, optional external research learning, and material limitations. Keep the existing Vercel Turso credentials private. No database is bundled.
+
+The learning baseline is research-only and does not silently replace production trading rules. INDEX identity/volume and fundamentals are not invented.
+
+---
+
 # PSX Intelligence 1.3.8 — aligned tables and newest-first dates
 
 **Existing Turso users: read [UPGRADE_1_3_8.md](UPGRADE_1_3_8.md).**
