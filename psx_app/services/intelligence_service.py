@@ -6,152 +6,10 @@ from psx_app.config import CORE_36_TICKERS
 from psx_app.database.schema import get_connection
 from psx_app.services.technical_service import TechnicalService
 
-PSX_SECTOR_MAP: Dict[str, Dict[str, str]] = {
-    "OGDC": {
-        "sector": "Oil & Gas Exploration",
-        "fundamental": "Strong gas tariff reforms improving circular debt cash collections, high dividend yield, and E&P reserve replacement tailwinds.",
-    },
-    "PPL": {
-        "sector": "Oil & Gas Exploration",
-        "fundamental": "Improved Sui/Kandhkot receivables recovery following energy tariff adjustments and active frontier exploration.",
-    },
-    "PSO": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "Market-leading OMC retail volume share, declining finance costs from monetary easing, and LNG receivable settlement progress.",
-    },
-    "ATRL": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "Healthy gross refining margins (GRMs), high distillate share, debt-free balance sheet, and Brownfield Refinery Policy upgrade optionality.",
-    },
-    "NRL": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "Lube base-oil margin recovery, fuel oil export economics, and lower working-capital borrowing rates.",
-    },
-    "PRL": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "High operational throughput leverage to regional cracks and refinery policy incentives.",
-    },
-    "SNGP": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "Unaccounted-for-Gas (UFG) control below regulatory benchmarks and WACC-linked regulated asset base returns.",
-    },
-    "SSGC": {
-        "sector": "Oil & Gas Marketing & Refinery",
-        "fundamental": "Ongoing rehabilitation lowers UFG losses alongside revised OGRA revenue requirements.",
-    },
-    "LUCK": {
-        "sector": "Cement & Construction",
-        "fundamental": "Lowest-cost cement producer in Pakistan with diversified earnings from Lucky Electric, Lucky Core Industries, and regional clinker exports.",
-    },
-    "MLCF": {
-        "sector": "Cement & Construction",
-        "fundamental": "Internal power generation efficiency (coal/solar/WHR), strong domestic Northern zone pricing discipline, and deleveraging benefit.",
-    },
-    "DGKC": {
-        "sector": "Cement & Construction",
-        "fundamental": "High financial leverage to SBP interest-rate cuts and Southern hub export access via Hub plant.",
-    },
-    "THCCL": {
-        "sector": "Cement & Construction",
-        "fundamental": "Southern zone retention price stability and strong free-cash-flow generation.",
-    },
-    "UBL": {
-        "sector": "Commercial Banking",
-        "fundamental": "Tier-1 ROE leadership, high current-account deposit mix, sovereign PIB portfolio capital gains, and premier cash dividend payout.",
-    },
-    "HBL": {
-        "sector": "Commercial Banking",
-        "fundamental": "Largest domestic deposit franchise, expanding agricultural & SME credit book, and digital banking scale.",
-    },
-    "NBP": {
-        "sector": "Commercial Banking",
-        "fundamental": "Balance-sheet re-rating post pension litigation clarity and strong treasury income.",
-    },
-    "BOP": {
-        "sector": "Commercial Banking",
-        "fundamental": "Deep discount to book value with expanding public-sector and Punjab commercial lending volumes.",
-    },
-    "FFC": {
-        "sector": "Fertilizer & Chemicals",
-        "fundamental": "Consistent urea offtake resilience, post-merger scale synergies, and blue-chip dividend yield stability.",
-    },
-    "ENGROH": {
-        "sector": "Fertilizer & Chemicals",
-        "fundamental": "Conglomerate holding value across fertilizers, petrochemicals, telecom towers, and energy terminals.",
-    },
-    "HUBC": {
-        "sector": "Power Generation & Utilities",
-        "fundamental": "Diversified cash flows from Thar coal power (TEL/TNPTL), CPEC energy assets, and BYD electric-vehicle assembly venture.",
-    },
-    "NCPL": {
-        "sector": "Power Generation & Utilities",
-        "fundamental": "High liquidity and tariff settlement cash payouts supporting yield.",
-    },
-    "NPL": {
-        "sector": "Power Generation & Utilities",
-        "fundamental": "Strong balance sheet liquidity and consistent dividend distribution record.",
-    },
-    "SYS": {
-        "sector": "Technology & IT Exports",
-        "fundamental": "Structural USD/GCC IT software export growth, enterprise cloud/AI transformation contracts, and zero domestic circular-debt exposure.",
-    },
-    "TRG": {
-        "sector": "Technology & IT Exports",
-        "fundamental": "High-beta technology & BPO portfolio valuation sensitivity and liquid futures trading participation.",
-    },
-    "NETSOL": {
-        "sector": "Technology & IT Exports",
-        "fundamental": "Global auto-finance SaaS (NFS Ascent) recurring subscription revenue in North America, Europe, and Asia-Pacific.",
-    },
-    "PTC": {
-        "sector": "Telecom & Exchange",
-        "fundamental": "ARPU expansion in broadband/fiber, Telenor Pakistan acquisition synergies, and lower KIBOR interest expense on debt.",
-    },
-    "PSX": {
-        "sector": "Telecom & Exchange",
-        "fundamental": "Direct operational leverage to rising Pakistan Stock Exchange daily traded value, new listings, and investor participation.",
-    },
-    "SAZEW": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Surging Haval SUV / HEV hybrid sales volume, strong cash margins, and new energy vehicle expansion.",
-    },
-    "GAL": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Commercial truck/bus fleet replacement demand and Chery crossover localization.",
-    },
-    "GHNI": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Isuzu commercial vehicle volume recovery as logistics and trade activity rebound.",
-    },
-    "PAEL": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Power transformer/switchgear grid orders and consumer appliance demand recovery under lower financing rates.",
-    },
-    "MUGHAL": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Long steel rebar demand sensitivity to construction revival and non-ferrous copper export revenues.",
-    },
-    "ISL": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Flat steel (CRC/HDGC) market leader benefiting from auto/appliance recovery and lower finance charges.",
-    },
-    "INIL": {
-        "sector": "Automobiles & Engineering",
-        "fundamental": "Steel pipe/polymer exports and majority stake in International Steels (ISL).",
-    },
-    "SEARL": {
-        "sector": "Pharmaceuticals & Healthcare",
-        "fundamental": "Deregulation of non-essential drug prices restoring gross margins alongside lower finance costs post debt restructuring.",
-    },
-    "CPHL": {
-        "sector": "Pharmaceuticals & Healthcare",
-        "fundamental": "API and formulation volume growth with margin expansion following CPI-linked and non-essential drug pricing flexibility.",
-    },
-    "NML": {
-        "sector": "Textiles & Conglomerate",
-        "fundamental": "Value-added textile export recovery plus substantial portfolio dividend income from MCB, Lalpir, and Nishat group companies.",
-    },
-}
+from psx_app.services.sector_reference import SectorReference
+
+# Sector classification is file-backed; no hard-coded fundamental claims.
+PSX_SECTOR_MAP = {}  # Legacy import compatibility only; runtime uses SectorReference.
 
 
 class IntelligenceService:
@@ -164,9 +22,11 @@ class IntelligenceService:
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path
         self.tech_service = TechnicalService(db_path)
+        self.reference = SectorReference(db_path)
+        self.sector_map = {sym:dict(row, fundamental='Fundamentals unavailable; no verified financial/news input supplied.') for sym,row in self.reference.directory().items()}
 
     def get_available_sectors_and_filters(self) -> Dict[str, Any]:
-        sectors = sorted({v["sector"] for v in PSX_SECTOR_MAP.values()})
+        sectors = sorted({v["sector"] for v in self.sector_map.values()})
         return {
             "presets": [
                 {"id": "CORE36", "label": "Core 36 Institutional Watchlist"},
@@ -175,6 +35,7 @@ class IntelligenceService:
                 {"id": "ALL_MARKET", "label": "All PSX Cash Equities (531 Tickers)"},
             ],
             "sectors": sectors,
+            "reference_lists": list(self.reference.lists()),
             "core_tickers": CORE_36_TICKERS,
         }
 
@@ -195,7 +56,7 @@ class IntelligenceService:
         if not integrity["ok"]:
             return {"status": "BLOCKED", "message": integrity["message"], "date_integrity": integrity,
                     "target_label": custom_query or scope_or_sector, "candidates_scanned": 0, "setups_count": 0, "setups": []}
-        uni_scope = "all" if (scope_or_sector == "ALL_MARKET" or custom_query.strip()) else "core36"
+        uni_scope = "core36" if scope_or_sector == "CORE36" and not custom_query.strip() else "all"
         uni = self.tech_service.get_universe_summary(scope=uni_scope)
         items = uni["items"]
 
@@ -210,9 +71,13 @@ class IntelligenceService:
         q_clean = self.tech_service.resolve_ticker(custom_query.strip()) if custom_query.strip() else ""
         filtered: List[Dict[str, Any]] = []
 
+        rejected = []
+        ref_lists = self.reference.lists()
+        membership = {r['symbol'] for r in ref_lists.get(scope_or_sector, [])}
         for it in items:
             sym = it["symbol"]
-            sec_info = PSX_SECTOR_MAP.get(sym, {
+            if scope_or_sector in ref_lists and sym not in membership: continue
+            sec_info = self.sector_map.get(sym, {
                 "sector": "PSX Listed Equity",
                 "fundamental": "Active PSX equity with institutional price-volume participation and technical structure.",
             })
@@ -225,7 +90,7 @@ class IntelligenceService:
             elif scope_or_sector == "FUTURES":
                 if not it.get("is_futures_eligible"):
                     continue
-            elif scope_or_sector not in ("CORE36", "ALL_MARKET"):
+            elif scope_or_sector not in ("CORE36", "ALL_MARKET") and scope_or_sector not in ref_lists:
                 if sec_info["sector"].lower() != scope_or_sector.lower():
                     continue
 
@@ -266,6 +131,7 @@ class IntelligenceService:
             # One validated execution plan is shared with the deep-dive and analyst.
             plan = sig.get("trade_plan") or {}
             if plan.get("status") != "VALID":
+                rejected.append({'symbol':sym,'reason':plan.get('reason','No valid structural entry.'),'score':score})
                 continue
             is_bullish = plan["side"] == "LONG"
             if direction_filter == "LONG" and not is_bullish:
@@ -291,7 +157,7 @@ class IntelligenceService:
             prob_pct = min(100, max(0, int(round(conviction_raw))))
             grade = "STRONG RULE AGREEMENT" if prob_pct >= 75 else ("MODERATE RULE AGREEMENT" if prob_pct >= 50 else "WEAK RULE AGREEMENT")
 
-            sec_info = PSX_SECTOR_MAP.get(sym, {
+            sec_info = self.sector_map.get(sym, {
                 "sector": "PSX Listed Equity",
                 "fundamental": "Active PSX equity with institutional price-volume participation.",
             })
@@ -321,7 +187,7 @@ class IntelligenceService:
                 f"ADX(14)={adx:.1f} (+DI={it.get('plus_di') or 0:.1f} / -DI={it.get('minus_di') or 0:.1f}) and MACD({macd_v:.2f} vs Sig {macd_s:.2f}, Hist {macd_h:+.2f}).",
             ]
 
-            liq_notes = ["Unverified static background (not a current finding): " + sec_info["fundamental"]]
+            liq_notes = ["Fundamentals unavailable: no verified current financial statements/news supplied."]
             if (sym, it["latest_date"]) in top5_tickers:
                 liq_notes.append(
                     f"Same-date Top 5 register context (not proof of institutional ownership): {top5_tickers[(sym, it['latest_date'])]:,} shares across ranked blocks on {it['latest_date']}."
@@ -350,7 +216,7 @@ class IntelligenceService:
                 "score_interpretation": "Rule strength /100, not a probability, backtest result, or execution approval.",
                 "trade_plan": plan,
                 "history_coverage": {"first_date": it["first_date"], "latest_date": it["latest_date"], "bars_count": it["bars_count"]},
-                "background_status": "Unverified static background; not current fundamental research.",
+                "background_status": "Fundamentals unavailable.",
                 "composite_score": f"{score:+d}/9",
                 "current_price": round(c_price, 2),
                 "change_pct": round(float(it.get("change_pct") or 0.0), 2),
@@ -386,6 +252,7 @@ class IntelligenceService:
             "setups_count": len(top_setups),
             "screening_note": "Only current imported-session, positive-volume candidates with a valid structural plan and gross R/R >= 1.5 are returned. Fewer than five or zero is valid. Rule scores are not win probabilities.",
             "setups": top_setups,
+            "rejected": sorted(rejected,key=lambda r:abs(r["score"]),reverse=True)[:10],
         }
 
     def run_automated_technical_analyst(
@@ -505,7 +372,7 @@ class IntelligenceService:
         sig = lat["signal"]
         dp = lat["daily_pivots"]["classic"]
         wp = (lat.get("weekly_pivots") or {}).get("pivots") or {}
-        sec_info = PSX_SECTOR_MAP.get(sym, {
+        sec_info = self.sector_map.get(sym, {
             "sector": "PSX Listed Equity",
             "fundamental": "Active PSX equity with institutional price-volume participation.",
         })
@@ -592,7 +459,7 @@ class IntelligenceService:
             "symbol": sym,
             "display_label": t_data.get("display_label", sym),
             "sector": sec_info["sector"],
-            "fundamental_summary": "Unverified static background (not current research): " + sec_info["fundamental"],
+            "fundamental_summary": "Fundamentals unavailable: no verified financial statements or current news supplied.",
             "intended_action": intended_action,
             "structure_snapshot": structure_snapshot,
             "key_levels": key_levels,

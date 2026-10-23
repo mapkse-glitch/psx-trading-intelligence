@@ -62,9 +62,12 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.8",
+    version="1.3.9",
     lifespan=lifespan,
 )
+
+from psx_app.upgrade_routes import router as upgrade_router
+app.include_router(upgrade_router)
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 install_request_safety(app)
@@ -73,6 +76,7 @@ install_request_safety(app)
 async def serialize_mutations(request: Request, call_next):
     guarded = request.method == "POST" and request.url.path in {
         "/api/import/commit", "/api/imports/commit", "/api/settings", "/api/backups/restore",
+        "/api/v139/reference/commit", "/api/v139/forecasts/record", "/api/v139/forecasts/evaluate",
         "/api/admin/date-normalization/apply", "/api/cloud-sync/sync-now", "/api/cloud-sync/reload"
     }
     if not guarded:
@@ -128,7 +132,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.8",
+        "version": "1.3.9",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -139,7 +143,7 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.8"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.9"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
         if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
             result["changed"] = True
@@ -149,7 +153,7 @@ async def api_system_freshness(force: bool = Query(False)):
                 await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.8"}
+        return {**result, "version": "1.3.9"}
 
 
 @app.middleware("http")
@@ -436,6 +440,12 @@ def api_commit_imports(req: CommitBatchRequest, request: Request) -> Dict[str, A
             cloud.mark_pending()
         res = orch.commit_staged_batch(req.batch_uuid, allow_revisions=req.allow_revisions)
         invalidate_api_cache()
+        # Data commit must remain successful even if bounded forecast reconciliation fails.
+        try:
+            from psx_app.services.forecast_ledger import ForecastLedger
+            res["forecast_reconciliation"] = ForecastLedger(DB_PATH).reconcile()
+        except Exception:
+            res["forecast_reconciliation"] = {"status":"RETRY_REQUIRED", "note":"Import is committed. Use Forecasts & Results to retry evaluation."}
         cloud = CloudSyncService(DB_PATH)
         if res.get("status") != "ALREADY_COMMITTED" or cloud.base_state().get("pending"):
             cloud.mark_pending()
@@ -945,7 +955,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.8", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.9", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 
@@ -991,5 +1001,9 @@ def serve_spa_css() -> FileResponse:
 def serve_spa_js() -> FileResponse:
     return FileResponse(str(STATIC_DIR / "app.js"), media_type="application/javascript", headers={"Cache-Control": "no-store, max-age=0"})
 
+
+@app.get("/upgrade139.js", include_in_schema=False)
+def serve_upgrade_js():
+    return FileResponse(str(STATIC_DIR / "upgrade139.js"), media_type="application/javascript", headers={"Cache-Control":"no-store, max-age=0"})
 
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")

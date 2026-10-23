@@ -1,4 +1,4 @@
-// PSX Trading Intelligence Dashboard v1.3.8 — Frontend Application
+// PSX Trading Intelligence Dashboard v1.3.9 — Frontend Application
 const DEFAULT_QUICK_SYMBOLS = [
   "ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "UBL", "HBL", "SYS", "TRG", "SAZEW", "FFC", "HUBC", "ENGROH"
 ];
@@ -218,6 +218,7 @@ async function switchView(view) {
     else if (view === "acc91269") await renderAccountView(container, "91269");
     else if (view === "futures") await renderFuturesView(container);
     else if (view === "technical") await renderTechnicalView(container);
+    else if (view === "market") await renderMarketView(container);
     else if (view === "reconciliation") await renderReconciliationView(container);
     else if (view === "exports") await renderExportsView(container);
     else if (view === "settings") await renderSettingsView(container);
@@ -235,7 +236,7 @@ function buildQuickSelectBarHtml(activeSymbol, onClickFnName) {
   const quickItems = getQuickSelectSymbols(13);
   return quickItems.map((item) => {
     const isAct = item.symbol === activeSymbol;
-    const countBadge = item.count > 0 ? `<span class="quick-count">${item.count}</span>` : "";
+    const countBadge = "";
     return `<button type="button" class="quick-pill ${isAct ? "active" : ""}" onclick="${onClickFnName}('${item.symbol}')" title="${item.count > 0 ? `Searched ${item.count} time(s)` : "Click to analyze"}">${item.symbol}${countBadge}</button>`;
   }).join("");
 }
@@ -244,7 +245,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
   if (ideasRes.status === "BLOCKED") return `<section class="card notice" id="tradingIdeasCard"><h3>Setups paused: check dates</h3><p>${escapeHtml(ideasRes.message)}</p><button class="btn btn-secondary" onclick="switchView('settings')">Review date integrity</button></section>`;
   const idState = state.ideas;
   const sectorOptions = (filtersMeta?.sectors || []).map(
-    (s) => `<option value="${s}" ${idState.scope_or_sector === s ? "selected" : ""}>Sector: ${s}</option>`
+    (s) => `<option value="${escapeHtml(s)}" ${idState.scope_or_sector === s ? "selected" : ""}>Sector: ${escapeHtml(s)}</option>`
   ).join("");
 
   return `
@@ -264,11 +265,11 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <div class="filter-group">
           <label>Stock / Index / Sector:</label>
           <select id="ideasScopeSelect" onchange="runTradingIdeasGenerator()">
-            <option value="CORE36" ${idState.scope_or_sector === "CORE36" ? "selected" : ""}>Index: Core 36 Institutional Watchlist</option>
-            <option value="TOP5_VOL" ${idState.scope_or_sector === "TOP5_VOL" ? "selected" : ""}>Index: Top 5 Volume Register (23 Tickers)</option>
-            <option value="FUTURES" ${idState.scope_or_sector === "FUTURES" ? "selected" : ""}>Index: Deliverable Futures Universe</option>
-            <option value="ALL_MARKET" ${idState.scope_or_sector === "ALL_MARKET" ? "selected" : ""}>Index: All PSX Cash Equities (531 Symbols)</option>
-            ${sectorOptions}
+            <option value="CORE36" ${idState.scope_or_sector === "CORE36" ? "selected" : ""}>Core 36 watchlist (not an index)</option>
+            <option value="TOP5_VOL" ${idState.scope_or_sector === "TOP5_VOL" ? "selected" : ""}>Top 5 Volume Register</option>
+            <option value="FUTURES" ${idState.scope_or_sector === "FUTURES" ? "selected" : ""}>Futures-observed symbols (eligibility unverified)</option>
+            <option value="ALL_MARKET" ${idState.scope_or_sector === "ALL_MARKET" ? "selected" : ""}>All imported cash equities</option>
+            ${(filtersMeta.reference_lists||[]).filter(x=>x!=="COMP_LIST").map(x=>`<option value="${escapeHtml(x)}" ${idState.scope_or_sector===x?"selected":""}>Imported list: ${escapeHtml(x)}</option>`).join("")}${sectorOptions}
           </select>
         </div>
         <div class="filter-group">
@@ -296,7 +297,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
                 <div>
                   <span class="badge ${isLong ? "badge-green" : "badge-red"}">#${st.rank} • ${st.direction}</span>
                   <b style="font-size:15px;margin-left:6px;cursor:pointer;color:var(--text-main);text-decoration:underline;" onclick="triggerAnalystForTicker('${st.symbol}')" title="Click to analyze ${st.symbol} in Card 2">${st.display_label}</b>
-                  <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${st.sector})</span>
+                  <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${escapeHtml(st.sector)})</span>
                 </div>
                 <div style="text-align:right;">
                   <span class="badge badge-blue">Rule strength ${st.setup_score}/100</span>
@@ -374,7 +375,7 @@ function buildAutomatedAnalystCardHtml(analystRes) {
       <div class="filter-bar" style="margin-bottom:14px;">
         <div class="filter-group">
           <label>Ticker Symbol:</label>
-          <input type="text" id="analystTickerInput" value="${anState.symbol}" style="width:105px;font-weight:700;" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()" />
+          <input type="text" id="analystTickerInput" value="${anState.symbol}" style="width:105px;font-weight:700;" oninput="scheduleAnalyst139()" onkeydown="if(event.key==='Enter'){clearTimeout(analystTimer);runAutomatedAnalyst()}" />
         </div>
         <div class="filter-group" style="flex-wrap:wrap;">
           <label title="Automatically ranks your most-searched symbols first!">Quick Select (Most Searched):</label>
@@ -388,12 +389,12 @@ function buildAutomatedAnalystCardHtml(analystRes) {
             <option value="Evaluate Short / Take-Profit" ${anState.action === "Evaluate Short / Take-Profit" ? "selected" : ""}>Evaluate Short / Take-Profit</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="runAutomatedAnalyst()">🔍 Run Technical Analyst</button>
+        <button class="btn btn-primary" onclick="runAutomatedAnalyst()">Refresh analysis</button>
       </div>
 
       <div class="grid-4" style="margin-bottom:14px;">
         <div class="kpi-box">
-          <div class="kpi-label">${analystRes.display_label} (${analystRes.sector})</div>
+          <div class="kpi-label">${escapeHtml(analystRes.display_label)} (${escapeHtml(analystRes.sector)})</div>
           <div class="kpi-value">${fmtNum(lat.close)} PKR</div>
           <div class="kpi-sub ${pnlClass(lat.change_pct)}">Daily Chg: ${fmtPct(lat.change_pct, false)} • Completed 4W Chg: ${fmtPct(ws.change_4w_pct, false)}</div>
         </div>
@@ -622,7 +623,7 @@ function renderSyncButtons(cs) {
     ${cs.pending_local_changes?'<p class="neg">Local changes are not confirmed in the cloud. Download this snapshot before closing.</p>':''}`;
 }
 
-async function renderImportCenter(container) {
+async function renderImportLegacy(container) {
   const ticket = beginViewRender(container);
   const hist = await apiGet("/api/imports/history", false);
   const cs = hist.cloud_sync || {};
@@ -2061,7 +2062,7 @@ function formatCompactIndicatorValue(indName, valStr) {
   return valStr;
 }
 
-async function renderTechnicalView(container) {
+async function renderTechnicalLegacy(container) {
   const ticket = beginViewRender(container);
   const t = state.technical;
   let bodyHtml = "";
@@ -2113,7 +2114,7 @@ async function renderTechnicalView(container) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">${scope === "core36" ? "Core 36-Ticker Technical Matrix (with MLCF / MLF Alias)" : `Full PSX Cash Equity Screener (${uni.count} Symbols)`}</div>
+            <div class="card-title">${scope === "core36" ? "Core 36-Ticker Technical Matrix (with source ticker labels)" : `Full PSX Cash Equity Screener (${uni.count} Symbols)`}</div>
             <div class="card-subtitle">Click any ticker row to open its full 9-Factor Signal Deep-Dive, Daily/Weekly Pivots &amp; Interactive Chart</div>
           </div>
         </div>
@@ -2832,7 +2833,7 @@ function enhanceWorkspace() {
 async function renderLatestBadge(view) {
   const dates = await apiGet('/api/data-dates');
   if (state.currentView !== view) return;
-  const key = ({top5:'top5',futures:'futures',technical:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
+  const key = ({top5:'top5',futures:'futures',technical:'cash',market:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
   let badge = document.getElementById('moduleLatestBadge');
   if (!badge) {badge = document.createElement('span');badge.id='moduleLatestBadge';badge.className='badge badge-green';document.getElementById('viewTitle').after(badge);}
   badge.textContent = dates[key] ? 'Auto → Latest: '+fmtDate(dates[key]) : 'No imported data';
@@ -2853,7 +2854,7 @@ async function verifyWorkspaceFreshness(force=false) {
     if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
     state.freshnessStatus = result.status;
     const notice = document.getElementById('dataFreshnessNotice');
-    const versionChanged = result.version && result.version !== '1.3.8';
+    const versionChanged = result.version && result.version !== '1.3.9';
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');

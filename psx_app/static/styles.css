@@ -1031,3 +1031,15 @@ table.data-table th { line-height: 1.45; }
 table.data-table td[colspan] { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 table.settings-table input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
 table.data-table td.cell-wrap { white-space: normal; overflow-wrap: anywhere; min-width: 180px; max-width: 480px; }
+/* 1.3.9 stable, bounded market views */
+.market-svg{width:100%;height:auto;display:block;min-width:280px;color:var(--text-main)}
+.explorer-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px}.explorer-layout>div,.grid-2>*,.grid-4>*{min-width:0}
+.date-hierarchy{align-self:start}.date-hierarchy label{display:block;margin:14px 0}.date-hierarchy select{width:100%;margin-top:6px}
+.top-n139{display:flex;gap:5px;flex-wrap:wrap}.top-n139 button{min-width:38px}
+.chart-legend139{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:0;list-style:none;font-size:12px}.chart-legend139 i{display:inline-block;width:10px;height:10px;margin-right:6px}
+.extrema139{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}.extrema139>div{border-right:1px solid var(--border-color);padding:8px;overflow-wrap:anywhere}.extrema139 p{font-size:12px}
+.refreshing139{opacity:.75;cursor:progress;transition:opacity .18s ease}.loading139 span{display:block;height:28px;width:95%;margin:12px 0;border-radius:6px;background:linear-gradient(90deg,transparent,rgba(110,140,170,.2),transparent);background-size:200% 100%;animation:shimmer139 1.4s linear infinite}.loading139 span:nth-child(2){width:78%}.loading139 span:nth-child(3){width:60%}
+@keyframes shimmer139{from{background-position:150% 0}to{background-position:-50% 0}}
+@media(max-width:1000px){.extrema139{grid-template-columns:repeat(3,minmax(0,1fr))}.explorer-layout{grid-template-columns:150px minmax(0,1fr)}}
+@media(max-width:650px){.explorer-layout{display:block}.date-hierarchy label{display:inline-block;width:30%;margin-right:2%}.extrema139{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-legend139{grid-template-columns:1fr}.market-svg{min-width:0}}
+@media(prefers-reduced-motion:reduce){.loading139 span{animation:none}.refreshing139{transition:none}.view-container{animation:none!important}}

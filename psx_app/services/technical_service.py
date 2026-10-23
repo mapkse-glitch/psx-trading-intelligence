@@ -8,7 +8,7 @@ from psx_app.database.repository import Repository
 from psx_app.database.schema import get_connection
 
 
-ENGINE_VERSION = "1.3.7"
+ENGINE_VERSION = "1.3.9"
 
 
 class TechnicalService:
@@ -447,7 +447,7 @@ class TechnicalService:
         latest_summary = {
             "engine_version": ENGINE_VERSION,
             "symbol": symbol,
-            "display_label": "MLCF (MLF)" if symbol == "MLCF" else symbol,
+            "display_label": symbol,
             "is_core_36": symbol in CORE_36_TICKERS,
             "is_futures_eligible": is_futures_eligible,
             "bars_count": n_bars,
@@ -788,7 +788,7 @@ class TechnicalService:
         from psx_app.services.signal_reliability import annotate_freshness
         if res.get("latest"):
             annotate_freshness(res["latest"], market_date)
-        res["display_label"] = "MLCF (MLF)" if sym == "MLCF" else sym
+        res["display_label"] = sym
         if res["series"] and tail_bars > 0:
             res["series"] = res["series"][-tail_bars:]
         return res
@@ -888,8 +888,7 @@ class TechnicalService:
         for it in summaries:
             act = it["signal"]["combined_signal"].upper()
             signal_counts[act] = signal_counts.get(act, 0) + 1
-            if "display_label" not in it:
-                it["display_label"] = "MLCF (MLF)" if it["symbol"] == "MLCF" else it["symbol"]
+            it["display_label"] = it["symbol"]
 
         return {
             "scope": scope,

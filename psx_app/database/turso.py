@@ -68,7 +68,7 @@ class Connection:
     def execute(self, sql, parameters=()):
         # Read-only cache writes and temporary upload data must not trigger browser refresh loops.
         change = re.match(r'\s*(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+["`\[]?(\w+)', sql, re.I)
-        if change and change[1].lower() not in ('indicator_cache', 'psx_blob_parts', 'psx_runtime'):
+        if change and change[1].lower() not in ('indicator_cache', 'psx_blob_parts', 'psx_runtime', 'forecast_ledger', 'forecast_observations', 'learning_runs', 'reference_previews'):
             self.dirty = True
         try:
             return Cursor(self.raw.execute(sql, parameters))
@@ -155,6 +155,13 @@ def initialize():
             scope TEXT NOT NULL, part INTEGER NOT NULL, data BLOB NOT NULL,
             updated_at INTEGER NOT NULL, PRIMARY KEY(scope, part))''')
         c.execute('CREATE INDEX IF NOT EXISTS idx_psx_blob_age ON psx_blob_parts(updated_at)')
+        from psx_app.database.schema import DDL_STATEMENTS
+        # Only new additive tables; never recreate/drop imported canonical price/account tables.
+        for statement in DDL_STATEMENTS.split('CREATE TABLE IF NOT EXISTS source_files',1)[0].split(';'):
+            if 'CREATE TABLE' in statement or 'CREATE INDEX' in statement:
+                c.execute(statement.strip())
+        c.commit()
+
 
 
 def revision():

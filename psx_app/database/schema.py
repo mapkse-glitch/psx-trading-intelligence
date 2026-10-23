@@ -9,6 +9,12 @@ DDL_STATEMENTS = """
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 
+CREATE TABLE IF NOT EXISTS company_reference (list_name TEXT NOT NULL,symbol TEXT NOT NULL,company TEXT NOT NULL,sector TEXT NOT NULL,PRIMARY KEY(list_name,symbol));
+CREATE TABLE IF NOT EXISTS reference_previews (token TEXT PRIMARY KEY,payload_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS forecast_ledger (forecast_id TEXT PRIMARY KEY,symbol TEXT NOT NULL,as_of TEXT NOT NULL,horizon INTEGER NOT NULL,version TEXT NOT NULL,payload_json TEXT NOT NULL,created_at TEXT NOT NULL,outcome_json TEXT,evaluated_revision TEXT,last_checked TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS forecast_observations (forecast_id TEXT NOT NULL,digest TEXT NOT NULL,outcome_json TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(forecast_id,digest));
+CREATE INDEX IF NOT EXISTS idx_forecast_asof ON forecast_ledger(as_of,symbol);
+CREATE TABLE IF NOT EXISTS learning_runs (run_id TEXT PRIMARY KEY,symbol TEXT NOT NULL,as_of TEXT NOT NULL,result_json TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS source_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     filename TEXT NOT NULL,
