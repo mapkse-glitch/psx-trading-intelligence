@@ -1,3 +1,5 @@
+> Legacy reference: deployment and Section 07 behavior have changed. Current instructions: ../UPGRADE_1_3_7.md and SECTION07_RELIABILITY.md. Older fixture-specific statements are not a report of your current database.
+
 # Official 2026 Documentation Audit: How to Host PSX Trading Intelligence Dashboard on ONE Permanent Free URL
 
 This guide is based on a direct, line-by-line review of the official 2026 documentation for **Render.com**, **Hugging Face Spaces**, **Vercel**, **GitHub (Pages & Codespaces)**, **Koyeb**, **Fly.io**, **PythonAnywhere**, **Cloudflare Tunnel**, and **Tailscale Serve/Funnel**.

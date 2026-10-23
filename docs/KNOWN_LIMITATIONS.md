@@ -1,3 +1,5 @@
+> Legacy reference: deployment and Section 07 behavior have changed. Current instructions: ../UPGRADE_1_3_7.md and SECTION07_RELIABILITY.md. Older fixture-specific statements are not a report of your current database.
+
 # Known Limitations, Historical Data Notes & Design Boundaries
 
 ## 1. Historical vs Raw Execution Coverage in Module B (Accounts 91404 & 91269)

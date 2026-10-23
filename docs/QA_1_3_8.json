@@ -1,0 +1,1498 @@
+{
+  "release": "1.3.8",
+  "previous_release": "1.3.7",
+  "technical_engine_version": "1.3.7 (unchanged)",
+  "scope": "Local isolated databases and browser preview; not live Turso or Vercel deployment verification",
+  "tests": {
+    "passed": 113,
+    "skipped": 20,
+    "warnings": 1,
+    "seconds": 11.01,
+    "warning": "Starlette httpx TestClient deprecation",
+    "skips": "Existing opt-in/private-fixture tests not run",
+    "new_tests": "10 date-ordering/display-contract tests including immutable arrays, stable ties, invalid dates, year/month/day/time boundaries and timezone offsets"
+  },
+  "browser": {
+    "page_errors": [],
+    "api_failures": [],
+    "states": [
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 0,
+        "headers": [],
+        "pageOverflow": false,
+        "state": "overview"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Timestamp (PKT)",
+            "count": 14,
+            "first": "22-10-2026 17:37 PKT",
+            "last": "21-10-2026 23:32 PKT",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Batch ID",
+            "Status",
+            "File Name(s)",
+            "Source Label",
+            "Timestamp (PKT)",
+            "Files",
+            "Rows Read",
+            "New Records",
+            "Duplicates Ignored",
+            "Revisions",
+            "Actions"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "import"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 16,
+        "headers": [
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ],
+          [
+            "Rank",
+            "Rate",
+            "Volume",
+            "Trades"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "top5"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 0,
+            "first": null,
+            "last": null,
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 2,
+        "headers": [
+          [
+            "Date",
+            "Contract Symbol",
+            "Base Symbol",
+            "Contract",
+            "Future Close",
+            "Current Cash Value"
+          ],
+          [
+            "Symbol",
+            "Sessions Count",
+            "First Date",
+            "Last Date",
+            "Status"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "reconciliation"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Created at (PKT)",
+            "count": 0,
+            "first": null,
+            "last": null,
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Backup Archive",
+            "Created at (PKT)",
+            "Size",
+            "Integrity",
+            "Actions"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "settings"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Period",
+            "Gross P&L",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_dashboard",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 40,
+            "first": "22-10-2026",
+            "last": "17-08-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbols Traded",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Avg Buy",
+            "Avg Sell",
+            "Gross P&L",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_daily_summary",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Symbol",
+            "Buy Qty",
+            "Buy Value",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value",
+            "Avg Sell",
+            "Price Diff",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_daily_detail",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 15,
+            "first": "22-10-2026",
+            "last": "01-10-2026",
+            "descending": true
+          },
+          {
+            "column": "Date",
+            "count": 15,
+            "first": "22-10-2026",
+            "last": "01-10-2026",
+            "descending": true
+          },
+          {
+            "column": "Date",
+            "count": 40,
+            "first": "22-10-2026",
+            "last": "17-08-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 3,
+        "headers": [
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ],
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ],
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_mtd_qtd_ytd",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Month",
+            "count": 3,
+            "first": "01-10-2026",
+            "last": "01-08-2026",
+            "descending": true
+          },
+          {
+            "column": "Year",
+            "count": 1,
+            "first": "2026",
+            "last": "2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 2,
+        "headers": [
+          [
+            "Month",
+            "Days",
+            "Buy Qty",
+            "Buy Value (PKR)",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value (PKR)",
+            "Avg Sell",
+            "Price Diff (S\u2212B)",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ],
+          [
+            "Year",
+            "Days",
+            "Buy Qty",
+            "Buy Value (PKR)",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value (PKR)",
+            "Avg Sell",
+            "Price Diff (S\u2212B)",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_monthly_yearly",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Rank",
+            "Symbol",
+            "Trading Dates (First \u2192 Last)",
+            "Days",
+            "Buy Qty",
+            "Sell Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L",
+            "Commission",
+            "SST",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy",
+            ""
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_symbol_perf",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 446,
+            "first": "22-10-2026",
+            "last": "16-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Time",
+            "Symbol",
+            "Market",
+            "Raw Type",
+            "Normalized",
+            "Order ID",
+            "Execution ID",
+            "Qty",
+            "Price",
+            "Value",
+            "Slab",
+            "Comm",
+            "SST"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91404_trade_log",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 0,
+        "headers": [],
+        "pageOverflow": false,
+        "state": "acc91404_data_checks",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Period",
+            "Gross P&L",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_dashboard",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 21,
+            "first": "19-10-2026",
+            "last": "24-08-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbols Traded",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Avg Buy",
+            "Avg Sell",
+            "Gross P&L",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_daily_summary",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Symbol",
+            "Buy Qty",
+            "Buy Value",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value",
+            "Avg Sell",
+            "Price Diff",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_daily_detail",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 6,
+            "first": "19-10-2026",
+            "last": "01-10-2026",
+            "descending": true
+          },
+          {
+            "column": "Date",
+            "count": 6,
+            "first": "19-10-2026",
+            "last": "01-10-2026",
+            "descending": true
+          },
+          {
+            "column": "Date",
+            "count": 21,
+            "first": "19-10-2026",
+            "last": "24-08-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 3,
+        "headers": [
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ],
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ],
+          [
+            "Date",
+            "Symbols",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L (PKR)",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_mtd_qtd_ytd",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Month",
+            "count": 3,
+            "first": "01-10-2026",
+            "last": "01-08-2026",
+            "descending": true
+          },
+          {
+            "column": "Year",
+            "count": 1,
+            "first": "2026",
+            "last": "2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 2,
+        "headers": [
+          [
+            "Month",
+            "Days",
+            "Buy Qty",
+            "Buy Value (PKR)",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value (PKR)",
+            "Avg Sell",
+            "Price Diff (S\u2212B)",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ],
+          [
+            "Year",
+            "Days",
+            "Buy Qty",
+            "Buy Value (PKR)",
+            "Avg Buy",
+            "Sell Qty",
+            "Sell Value (PKR)",
+            "Avg Sell",
+            "Price Diff (S\u2212B)",
+            "Net Qty",
+            "Gross P&L",
+            "Commission Slab",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_monthly_yearly",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Rank",
+            "Symbol",
+            "Trading Dates (First \u2192 Last)",
+            "Days",
+            "Buy Qty",
+            "Sell Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Gross P&L",
+            "Commission",
+            "SST",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy",
+            ""
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_symbol_perf",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 4,
+            "first": "19-10-2026",
+            "last": "19-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Time",
+            "Symbol",
+            "Market",
+            "Raw Type",
+            "Normalized",
+            "Order ID",
+            "Execution ID",
+            "Qty",
+            "Price",
+            "Value",
+            "Slab",
+            "Comm",
+            "SST"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "acc91269_trade_log",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 0,
+        "headers": [],
+        "pageOverflow": false,
+        "state": "acc91269_data_checks",
+        "account_latest_badges_consistent": true
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 129,
+            "first": "22-10-2026",
+            "last": "22-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_monthly_comparison"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 56,
+            "first": "22-10-2026",
+            "last": "22-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_month_filter"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 24,
+            "first": "22-10-2026",
+            "last": "21-09-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_symbol_filter"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 129,
+            "first": "22-10-2026",
+            "last": "22-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_annualized_comparison"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 129,
+            "first": "22-10-2026",
+            "last": "22-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_date_filter"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "DATE",
+            "count": 27,
+            "first": "22-10-2026",
+            "last": "16-09-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "DATE",
+            "PR_CL",
+            "OPEN",
+            "High",
+            "LOW",
+            "AVG",
+            "CLOSE",
+            "VOLUME",
+            "Change"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_future_symbol_summary"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "DATE",
+            "count": 129,
+            "first": "22-10-2026",
+            "last": "22-10-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "DATE",
+            "SYMBOL",
+            "PR_CL",
+            "OPEN",
+            "High",
+            "LOW",
+            "AVG",
+            "CLOSE",
+            "VOLUME",
+            "Change"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_date_summary"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 0,
+        "headers": [],
+        "pageOverflow": false,
+        "state": "futures_rolling_window"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 4377,
+            "first": "22-10-2026",
+            "last": "01-09-2026",
+            "descending": true
+          }
+        ],
+        "selects": [
+          true
+        ],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "futures_all_dates"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Symbol",
+            "Close",
+            "Chg %",
+            "RSI(14)",
+            "RSI Zone",
+            "Pivot (P)",
+            "R1",
+            "S1",
+            "W-Pivot",
+            "MACD",
+            "MACD Sig",
+            "EMA 9/21/50",
+            "ADX(14)",
+            "Score",
+            "Action / Combined Signal"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "technical_core36"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 3,
+        "headers": [
+          [
+            "Key Levels Map (ATRL)",
+            "Price (PKR)",
+            "Role"
+          ],
+          [
+            "Moving Average (Daily & Weekly)",
+            "Level (PKR)",
+            "Dist %",
+            "Alignment Status"
+          ],
+          [
+            "Week",
+            "Period",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "technical_ideas_and_analyst"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 5,
+        "headers": [
+          [
+            "Indicator",
+            "Value",
+            "Signal",
+            "Actionable Advice",
+            "Vote"
+          ],
+          [
+            "Level",
+            "Daily Classic",
+            "Daily Fibonacci",
+            "Daily Camarilla",
+            "Weekly Classic (2026-W42)"
+          ],
+          [
+            "Key Levels Map (ATRL)",
+            "Price (PKR)",
+            "Role"
+          ],
+          [
+            "Moving Average (Daily & Weekly)",
+            "Level (PKR)",
+            "Dist %",
+            "Alignment Status"
+          ],
+          [
+            "Week",
+            "Period",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "technical_deep_dive"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Entry year",
+            "count": 2,
+            "first": "2026",
+            "last": "2025",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 6,
+        "headers": [
+          [
+            "Indicator",
+            "Value",
+            "Signal",
+            "Actionable Advice",
+            "Vote"
+          ],
+          [
+            "Level",
+            "Daily Classic",
+            "Daily Fibonacci",
+            "Daily Camarilla",
+            "Weekly Classic (2026-W42)"
+          ],
+          [
+            "Key Levels Map (ATRL)",
+            "Price (PKR)",
+            "Role"
+          ],
+          [
+            "Moving Average (Daily & Weekly)",
+            "Level (PKR)",
+            "Dist %",
+            "Alignment Status"
+          ],
+          [
+            "Week",
+            "Period",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
+          ],
+          [
+            "Entry year",
+            "Closed trades",
+            "Winning trades",
+            "Mean net return/trade"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "technical_audit"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Symbol",
+            "Close",
+            "Chg %",
+            "RSI(14)",
+            "RSI Zone",
+            "Pivot (P)",
+            "R1",
+            "S1",
+            "W-Pivot",
+            "MACD",
+            "MACD Sig",
+            "EMA 9/21/50",
+            "ADX(14)",
+            "Score",
+            "Action / Combined Signal"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "technical_all531"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 24,
+            "first": "22-10-2026",
+            "last": "21-09-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "dark_futures_symbol"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 24,
+            "first": "22-10-2026",
+            "last": "21-09-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbol",
+            "Contract/Month",
+            "Current Value",
+            "Future Value",
+            "Volume",
+            "High",
+            "Low",
+            "Difference",
+            "Difference %",
+            "Days",
+            "Annualized %"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "mobile_dark_futures"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Created at (PKT)",
+            "count": 0,
+            "first": null,
+            "last": null,
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Backup Archive",
+            "Created at (PKT)",
+            "Size",
+            "Integrity",
+            "Actions"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "mobile_settings"
+      },
+      {
+        "bad": [],
+        "dates": [
+          {
+            "column": "Date",
+            "count": 40,
+            "first": "22-10-2026",
+            "last": "17-08-2026",
+            "descending": true
+          }
+        ],
+        "selects": [],
+        "tables": 1,
+        "headers": [
+          [
+            "Date",
+            "Symbols Traded",
+            "Buy Qty",
+            "Sell Qty",
+            "Net Qty",
+            "Buy Value (PKR)",
+            "Sell Value (PKR)",
+            "Avg Buy",
+            "Avg Sell",
+            "Gross P&L",
+            "Commission",
+            "SST 13%",
+            "Total Charges",
+            "Net P&L (PKR)",
+            "Return on Buy"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "mobile_account"
+      },
+      {
+        "bad": [],
+        "dates": [],
+        "selects": [],
+        "tables": 5,
+        "headers": [
+          [
+            "Indicator",
+            "Value",
+            "Signal",
+            "Actionable Advice",
+            "Vote"
+          ],
+          [
+            "Level",
+            "Daily Classic",
+            "Daily Fibonacci",
+            "Daily Camarilla",
+            "Weekly Classic (2026-W42)"
+          ],
+          [
+            "Key Levels Map (ATRL)",
+            "Price (PKR)",
+            "Role"
+          ],
+          [
+            "Moving Average (Daily & Weekly)",
+            "Level (PKR)",
+            "Dist %",
+            "Alignment Status"
+          ],
+          [
+            "Week",
+            "Period",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
+          ]
+        ],
+        "pageOverflow": false,
+        "state": "mobile_technical"
+      }
+    ]
+  },
+  "extra_browser_checks": {
+    "mobile_table_scrollable": true,
+    "account_pin_and_reset": true,
+    "backup_fixture_latest_first": true,
+    "rules_fixture_latest_first": true,
+    "synthetic_settings_not_saved": true
+  },
+  "dark_total_contrast": {
+    "dark_total_cells_checked": 26,
+    "minimum_contrast_ratio": 13.0
+  },
+  "visual_review": "Representative desktop light/dark and 390px mobile screenshots reviewed; corrected total-row contrast and latest-badge inconsistency during review. Wide tables scroll within their region.",
+  "browser_summary": {
+    "states": 40,
+    "table_instances": 73,
+    "page_errors": 0,
+    "api_failures": 0,
+    "alignment_mismatches": 0,
+    "page_horizontal_overflow": false
+  },
+  "checks": [
+    "Newest-first date, month and year table rows",
+    "Import timestamp order (14 snapshot rows)",
+    "Date-selector order",
+    "Numeric header/cell alignment and matching column boundaries",
+    "Account latest badges agree with module latest date",
+    "Date input adjacent readout updates after edits",
+    "Manual account date pin/reset retained",
+    "Stable within-date rankings",
+    "Totals remain at bottom and readable in both themes",
+    "Backup/rule sorting with unsaved synthetic fixtures",
+    "Local static snapshot helper: no horizontal overflow, clipped-overflow diagnostics or overlay intersections"
+  ],
+  "unchanged": [
+    "All calculation/persistence Python services byte-identical to 1.3.7",
+    "Only backend application version strings changed",
+    "Chart chronology",
+    "Workbook export layouts/order",
+    "Stored database schemas, dates and values",
+    "Existing authentication/hosting access policy"
+  ],
+  "credentials_or_data_included": false,
+  "live_database_accessed_or_modified": false,
+  "snapshot_note": "The older local copy ends 2026-10-22 for cash/futures. It is not evidence of the newest data in the user's live database. No data was re-imported or rewritten for this release.",
+  "exclusions": [
+    "No live Vercel credential/routing verification",
+    "No exchange-feed or source-data completeness guarantee",
+    "No corporate-action validation",
+    "No security/access-policy redesign",
+    "No trading-performance claim"
+  ]
+}

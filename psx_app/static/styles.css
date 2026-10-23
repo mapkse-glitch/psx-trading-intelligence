@@ -636,7 +636,8 @@ table.data-table tr:hover td {
 }
 
 table.data-table tr.total-row td {
-  background-color: #1e293b;
+  background-color: var(--bg-card-alt);
+  color: var(--text-main);
   font-weight: 700;
   border-top: 2px solid var(--accent-blue);
 }
@@ -1015,3 +1016,18 @@ details[open]>summary {margin-bottom:12px;}
 .nav-btn:hover {color:var(--accent-blue);}
 .workflow-grid {margin-bottom:20px;}
 @media(max-width:380px) {.top5-grid {grid-template-columns:minmax(0,1fr);}}
+
+/* v1.3.8: one alignment contract for every data table.
+   Explicit table selectors beat the legacy left-aligned header rule. */
+table.data-table { font-variant-numeric: tabular-nums; }
+table.data-table th,
+table.data-table td { vertical-align: middle; text-align: left; }
+table.data-table th.num,
+table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table th.num { font-family: var(--font-mono); }
+table.data-table th { line-height: 1.45; }
+.table-wrap:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+/* Long explanatory cells wrap; identifiers, dates and numeric values stay intact. */
+table.data-table td[colspan] { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
+table.settings-table input[type="number"] { text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table td.cell-wrap { white-space: normal; overflow-wrap: anywhere; min-width: 180px; max-width: 480px; }

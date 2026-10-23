@@ -1,0 +1,129 @@
+{
+  "release": "1.3.7",
+  "scope": "Local isolated validation only; no live Turso or Vercel deployment verification",
+  "tests": {
+    "passed": 103,
+    "skipped": 20,
+    "warnings": 1,
+    "seconds": 14.67,
+    "command": "PSX_TEST_LIBSQL_SERVER=<disposable local HTTP libSQL> python -m pytest -q",
+    "skips": "Existing opt-in/private-fixture tests were not run",
+    "warning": "Starlette httpx TestClient deprecation"
+  },
+  "dependencies": {
+    "fastapi": "0.156.1",
+    "uvicorn": "0.54.0",
+    "python-multipart": "0.0.32",
+    "openpyxl": "3.1.5",
+    "pytest": "9.1.1",
+    "httpx": "0.28.1",
+    "libsql": "0.1.11"
+  },
+  "browser": {
+    "page_errors": [],
+    "failed_api_requests": [],
+    "sections": [
+      "import",
+      "top5",
+      "acc91404",
+      "acc91269",
+      "futures",
+      "technical",
+      "reconciliation",
+      "settings"
+    ],
+    "technical_tabs": [
+      "ideas_and_analyst",
+      "deep_dive",
+      "all531"
+    ],
+    "audit_result_text": "COMPLETED\n\nChronological fixed-rule long-only audit; not parameter optimization, walk-forward fitting, or a profit forecast.\n\nClosed trades: 8 \u2022 Win rate after assumed co"
+  },
+  "additional_browser_assertions": [
+    "History review flags visible",
+    "NO OPENING TRADE decision visible when structural reward/risk fails",
+    "Audit JSON download control available"
+  ],
+  "smoke": {
+    "environment": "Local HTTP libSQL over disposable copy of user snapshot; not live Turso",
+    "requests": [
+      {
+        "route": "/api/health",
+        "status": 200,
+        "seconds": 0.072
+      },
+      {
+        "route": "/api/data-dates",
+        "status": 200,
+        "seconds": 0.039
+      },
+      {
+        "route": "/api/technical/ticker/ATRL?tail_bars=100",
+        "status": 200,
+        "seconds": 0.383,
+        "coverage": {
+          "first_date": "2019-01-01",
+          "latest_date": "2026-10-22",
+          "bars_count": 1933,
+          "valid_indicators": 9,
+          "price_adjustment_status": "NOT VERIFIED \u2014 corporate-action adjustments not supplied"
+        }
+      },
+      {
+        "route": "/api/technical/universe?scope=core36",
+        "status": 200,
+        "seconds": 8.258
+      },
+      {
+        "route": "/api/intelligence/trading-ideas",
+        "status": 200,
+        "seconds": 0.65,
+        "setups_count": 0
+      },
+      {
+        "route": "/api/intelligence/automated-analyst/ATRL",
+        "status": 200,
+        "seconds": 0.422
+      },
+      {
+        "route": "/api/technical/validation/ATRL?start=2025-01-01&end=2026-10-22",
+        "status": 200,
+        "seconds": 0.254,
+        "audit_status": "COMPLETED",
+        "audit_closed_trades": 8
+      },
+      {
+        "route": "/api/futures/comparison",
+        "status": 200,
+        "seconds": 0.121
+      },
+      {
+        "route": "/api/accounts/91404",
+        "status": 200,
+        "seconds": 0.224
+      },
+      {
+        "route": "/api/accounts/91269",
+        "status": 200,
+        "seconds": 0.095
+      },
+      {
+        "route": "/api/settings",
+        "status": 200,
+        "seconds": 0.07
+      }
+    ]
+  },
+  "coverage_note": "Snapshot copy has ATRL 2019-01-01 through 2026-10-22, 1933 sessions. This is not evidence that 2016-2018 or any missing year exists in the live database. Indicators use all stored symbol history; chart display is trimmed separately.",
+  "claims_not_made": [
+    "No improved-return guarantee",
+    "No trained prediction model",
+    "No independent out-of-sample validation",
+    "No calibrated win probability",
+    "No verified corporate-action adjustment",
+    "No live deployment or live cloud write test"
+  ],
+  "financial_data_or_live_credentials_included": false,
+  "original_snapshot_modified": false,
+  "javascript_syntax": "node --check passed"
+}

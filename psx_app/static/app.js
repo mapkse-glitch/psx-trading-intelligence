@@ -1,4 +1,4 @@
-// PSX Trading Intelligence Dashboard v1.2 — Frontend Application
+// PSX Trading Intelligence Dashboard v1.3.8 — Frontend Application
 const DEFAULT_QUICK_SYMBOLS = [
   "ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "UBL", "HBL", "SYS", "TRG", "SAZEW", "FFC", "HUBC", "ENGROH"
 ];
@@ -280,13 +280,13 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
           <select id="ideasDirSelect" onchange="runTradingIdeasGenerator()">
             <option value="ALL" ${idState.direction === "ALL" ? "selected" : ""}>All directions</option>
             <option value="LONG" ${idState.direction === "LONG" ? "selected" : ""}>Long / Buy Setups Only</option>
-            <option value="SHORT" ${idState.direction === "SHORT" ? "selected" : ""}>Short / Tactical Sell Only</option>
+            <option value="SHORT" ${idState.direction === "SHORT" ? "selected" : ""}>Futures short candidates — verify contract</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="runTradingIdeasGenerator()">⚡ Scan &amp; Generate 5 Setups</button>
+        <button class="btn btn-primary" onclick="runTradingIdeasGenerator()">⚡ Scan for Qualified Setups</button>
       </div>
 
-      <p class="score-disclaimer">Scores rank deterministic technical rules—not a probability of profit. Historical data only; no order is placed.</p>
+      <p class="score-disclaimer">${escapeHtml(ideasRes.screening_note || "Scores rank deterministic rules, not a probability of profit. Historical data only; no order is placed.")}</p>${ideasRes.setups.length === 0 ? '<p class="card">No qualifying current-session setup passed the safeguards. No trade is a valid result.</p>' : ""}
       <div class="setup-grid">
         ${ideasRes.setups.map((st) => {
           const isLong = st.direction.includes("BUY");
@@ -299,7 +299,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
                   <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${st.sector})</span>
                 </div>
                 <div style="text-align:right;">
-                  <span class="badge badge-blue">Score ${st.setup_score}/100</span>
+                  <span class="badge badge-blue">Rule strength ${st.setup_score}/100</span>
                 </div>
               </div>
 
@@ -395,7 +395,7 @@ function buildAutomatedAnalystCardHtml(analystRes) {
         <div class="kpi-box">
           <div class="kpi-label">${analystRes.display_label} (${analystRes.sector})</div>
           <div class="kpi-value">${fmtNum(lat.close)} PKR</div>
-          <div class="kpi-sub ${pnlClass(lat.change_pct)}">Daily Chg: ${fmtPct(lat.change_pct, false)} • 4W Chg: ${fmtPct(ws.change_4w_pct, false)}</div>
+          <div class="kpi-sub ${pnlClass(lat.change_pct)}">Daily Chg: ${fmtPct(lat.change_pct, false)} • Completed 4W Chg: ${fmtPct(ws.change_4w_pct, false)}</div>
         </div>
         <div class="kpi-box">
           <div class="kpi-label">20D Trend Line &amp; Channel</div>
@@ -408,9 +408,9 @@ function buildAutomatedAnalystCardHtml(analystRes) {
           <div class="kpi-sub">S1: ${fmtNum(dp.S1)} | R1: ${fmtNum(dp.R1)} | R2: ${fmtNum(dp.R2)}</div>
         </div>
         <div class="kpi-box">
-          <div class="kpi-label">Step-by-Step Signal Verdict</div>
-          <div class="kpi-value ${sig.score > 0 ? "pos" : (sig.score < 0 ? "neg" : "")}">${sig.combined_signal} (${sig.score > 0 ? "+" : ""}${sig.score}/9)</div>
-          <div class="kpi-sub">Entry: ${fmtNum(sig.entry_reference)} | SL: ${fmtNum(sig.stop_loss_reference)} | Target: ${fmtNum(sig.target_reference)}</div>
+          <div class="kpi-label">Opening-Trade Decision / Raw Signal</div>
+          <div class="kpi-value ${sig.score > 0 ? "pos" : (sig.score < 0 ? "neg" : "")}">${sig.trade_plan?.status === "VALID" ? sig.combined_signal : "NO OPENING TRADE"} (${sig.score > 0 ? "+" : ""}${sig.score}/9)</div>
+          <div class="kpi-sub">Raw signal: ${escapeHtml(sig.combined_signal)} • ${escapeHtml(sig.trade_plan?.reason || sig.invalidation || "")}<br>Entry: ${fmtNum(sig.entry_reference)} | SL: ${fmtNum(sig.stop_loss_reference)} | Target: ${fmtNum(sig.target_reference)}</div>
         </div>
       </div>
 
@@ -418,7 +418,7 @@ function buildAutomatedAnalystCardHtml(analystRes) {
         const ss = analystRes.structure_snapshot || {};
         return `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;">
           ${[
-            [ss.weekly_trend, ss.weekly_trend && ss.weekly_trend.startsWith("BULLISH") ? "badge-green" : (ss.weekly_trend && ss.weekly_trend.startsWith("BEARISH") ? "badge-red" : "badge-blue")],
+            [ss.weekly_trend ? "Completed-week context: " + ss.weekly_trend : "", ss.weekly_trend && ss.weekly_trend.startsWith("BULLISH") ? "badge-green" : (ss.weekly_trend && ss.weekly_trend.startsWith("BEARISH") ? "badge-red" : "badge-blue")],
             [ss.price_vs_daily_pivot, ss.price_vs_daily_pivot && ss.price_vs_daily_pivot.startsWith("ABOVE") ? "badge-green" : "badge-red"],
             [ss.ma_alignment, ss.ma_alignment && parseInt(ss.ma_alignment) >= 5 ? "badge-green" : "badge-blue"],
             [ss.rsi_zone, "badge-blue"],
@@ -491,10 +491,10 @@ function buildAutomatedAnalystCardHtml(analystRes) {
                 <tr><th>Week</th><th>Period</th><th class="num">Open</th><th class="num">High</th><th class="num">Low</th><th class="num">Close</th><th class="num">Volume</th></tr>
               </thead>
               <tbody>
-                ${(ws.recent_weeks || []).slice(-5).reverse().map((w) => `
+                ${TableDisplay.newestFirst(ws.recent_weeks, w => w.end_date).slice(0, 5).map((w) => `
                   <tr>
                     <td><b>${w.week_key}</b></td>
-                    <td>${w.start_date.slice(5)} → ${w.end_date.slice(5)}</td>
+                    <td>${fmtDate(w.start_date)} → ${fmtDate(w.end_date)}</td>
                     <td class="num">${fmtNum(w.open)}</td>
                     <td class="num">${fmtNum(w.high)}</td>
                     <td class="num">${fmtNum(w.low)}</td>
@@ -679,7 +679,7 @@ async function renderImportCenter(container) {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Batch ID</th>
+              <th class="num">Batch ID</th>
               <th>Status</th>
               <th>File Name(s)</th>
               <th>Source Label</th>
@@ -693,7 +693,7 @@ async function renderImportCenter(container) {
             </tr>
           </thead>
           <tbody>
-            ${hist.batches.map((b) => `
+            ${TableDisplay.newestFirst(hist.batches, b => b.committed_at || b.created_at).map((b) => `
               <tr>
                 <td class="num">#${b.id} <span style="color:var(--text-muted);font-size:10.5px;">(${b.batch_uuid.slice(0, 8)})</span></td>
                 <td><span class="badge ${b.status === "COMMITTED" ? "badge-green" : (b.status === "STAGED" ? "badge-amber" : "badge-red")}">${b.status}</span></td>
@@ -1046,25 +1046,25 @@ async function renderTop5View(container) {
       <div class="card-header">
         <div>
           <div class="card-title">Top 5 Volume &amp; Rate Register Blocks (${data.blocks_count} Ticker-Date Blocks • ${data.total_rows} Rows)</div>
-          <div class="card-subtitle">Date Header Format: DD-MM-YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
+          <div class="card-subtitle">Latest trading date first • Date Header Format: DD-MM-YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:14px;">
-        ${data.date_blocks.slice(0, 60).map((blk) => `
+        ${TableDisplay.newestFirst(data.date_blocks, b => b.trade_date).slice(0, 60).map((blk) => `
           <div style="background:var(--bg-card-alt);border:1px solid var(--border-color);border-radius:8px;padding:12px;">
             <div style="font-weight:700;color:var(--accent-blue);margin-bottom:8px;font-size:13px;">
               ${blk.title}
             </div>
             <table class="data-table">
               <thead>
-                <tr><th>Rank</th><th class="num">Rate</th><th class="num">Volume</th><th class="num">Trades</th></tr>
+                <tr><th class="num">Rank</th><th class="num">Rate</th><th class="num">Volume</th><th class="num">Trades</th></tr>
               </thead>
               <tbody>
                 ${blk.rows.map((r) => {
                   const pct = blk.max_volume > 0 ? Math.round((r.volume / blk.max_volume) * 92) : 0;
                   return `
                     <tr>
-                      <td><b>${r.rank}</b></td>
+                      <td class="num"><b>${r.rank}</b></td>
                       <td class="num">${fmtNum(r.rate)}</td>
                       <td class="num vol-bar-cell">
                         <div class="vol-bar-fill" style="width:${pct}%"></div>
@@ -1165,7 +1165,7 @@ async function renderAccountView(container, accountId) {
   const activeTab = state.accTab[accountId] || "dashboard";
   state.accSelectedDate[accountId] = rep.selected_date;
 
-  const tDates = rep.trading_dates || rep.available_dates || [];
+  const tDates = TableDisplay.newestFirst(rep.trading_dates || rep.available_dates);
   if (!tDates.length) {
     if (!currentViewRender(container, ticket)) return;
     container.innerHTML = `<section class="card"><h3>Account ${escapeHtml(accountId)}</h3><p>No trading records have been imported for this account yet. The other account remains separate.</p><p>Import your source files or restore a verified backup to begin.</p><button class="btn btn-primary" onclick="switchView('import')">Import account files</button></section>`;
@@ -1235,7 +1235,7 @@ async function renderAccountView(container, accountId) {
       </div>
     `;
   } else if (activeTab === "daily_summary") {
-    const rows = rep.daily_summary.rows;
+    const rows = TableDisplay.newestFirst(rep.daily_summary.rows, r => r.trade_date);
     const tot = rep.daily_summary.total;
     bodyHtml = `
       <div class="card">
@@ -1308,7 +1308,7 @@ async function renderAccountView(container, accountId) {
           <div class="filter-group">
             <label>Select Trading Date:</label>
             <select onchange="openAccountDateDetail('${accountId}', this.value)">
-              ${tDates.slice().reverse().map((d) => `<option value="${d}" ${d === det.trade_date ? "selected" : ""}>${d}</option>`).join("")}
+              ${tDates.map((d) => `<option value="${d}" ${d === det.trade_date ? "selected" : ""}>${fmtDate(d)}</option>`).join("")}
             </select>
           </div>
         </div>
@@ -1398,7 +1398,7 @@ async function renderAccountView(container, accountId) {
               </tr>
             </thead>
             <tbody>
-              ${(b.daily_rows || []).map((r) => `
+              ${TableDisplay.newestFirst(b.daily_rows, r => r.trade_date).map((r) => `
                 <tr>
                   <td><b>${fmtDate(r.trade_date)}</b></td>
                   <td style="max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.symbols_str || ""}"><b>${r.symbols_count || 0}</b> <span style="color:var(--text-muted);font-size:10.5px;">${r.symbols_str || "—"}</span></td>
@@ -1443,7 +1443,7 @@ async function renderAccountView(container, accountId) {
         <div class="card-header">
           <div>
             <div class="card-title">Monthly Summary — Month-Wise Performance (Account ${accountId})</div>
-            <div class="card-subtitle">One row per calendar month with trading data, oldest → newest (matches the monthly sheet of the Trade Summary workbook)</div>
+            <div class="card-subtitle">One row per calendar month with trading data • Latest month first • Totals unchanged</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -1452,7 +1452,7 @@ async function renderAccountView(container, accountId) {
               <tr><th>Month</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
-              ${rep.monthly_summary.rows.map((r) => `
+              ${TableDisplay.newestFirst(rep.monthly_summary.rows, r => r.month).map((r) => `
                 <tr>
                   <td><b>${r.month}</b></td><td class="num">${r.trading_days}</td>
                   <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td><td class="num">${fmtNum(r.avg_buy_price)}</td>
@@ -1486,7 +1486,7 @@ async function renderAccountView(container, accountId) {
         <div class="card-header">
           <div>
             <div class="card-title">Yearly Summary — Year-Wise Performance (Account ${accountId})</div>
-            <div class="card-subtitle">One row per calendar year with trading data (weighted averages from totals; Return on Buy = Net P&amp;L ÷ Buy Value, never averaged)</div>
+            <div class="card-subtitle">Latest year first • Weighted averages from totals; Return on Buy = Net P&amp;L ÷ Buy Value, never averaged</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -1495,7 +1495,7 @@ async function renderAccountView(container, accountId) {
               <tr><th>Year</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
-              ${rep.yearly_summary.rows.map((r) => `
+              ${TableDisplay.newestFirst(rep.yearly_summary.rows, r => r.year).map((r) => `
                 <tr>
                   <td><b>${r.year}</b></td><td class="num">${r.trading_days}</td>
                   <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td><td class="num">${fmtNum(r.avg_buy_price)}</td>
@@ -1539,14 +1539,14 @@ async function renderAccountView(container, accountId) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Rank</th><th>Symbol</th><th>Trading Dates (First → Last)</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th><th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th><th></th></tr>
+              <tr><th class="num">Rank</th><th>Symbol</th><th>Trading Dates (First → Last)</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th><th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th><th></th></tr>
             </thead>
             <tbody>
               ${rep.symbol_performance.map((r, i) => `
                 <tr title="All dates: ${r.dates_str || ''}">
                   <td class="num">#${i + 1}</td>
                   <td><b>${r.symbol}</b></td>
-                  <td style="font-size:11px;"><b>${r.first_date || "—"}</b> → <b>${r.last_date || "—"}</b></td>
+                  <td style="font-size:11px;"><b>${fmtDate(r.first_date)}</b> → <b>${fmtDate(r.last_date)}</b></td>
                   <td class="num">${r.trading_days}</td>
                   <td class="num">${fmtInt(r.buy_qty)}</td>
                   <td class="num">${fmtInt(r.sell_qty)}</td>
@@ -1597,10 +1597,10 @@ async function renderAccountView(container, accountId) {
           <div class="table-wrap">
             <table class="data-table">
               <thead>
-                <tr><th>Date</th><th>Time</th><th>Symbol</th><th>Market</th><th>Raw Type</th><th>Normalized</th><th>Order ID</th><th>Execution ID</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Value</th><th>Slab</th><th class="num">Comm</th><th class="num">SST</th></tr>
+                <tr><th>Date</th><th>Time</th><th>Symbol</th><th>Market</th><th>Raw Type</th><th>Normalized</th><th class="num">Order ID</th><th class="num">Execution ID</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Value</th><th>Slab</th><th class="num">Comm</th><th class="num">SST</th></tr>
               </thead>
               <tbody>
-                ${rep.trade_log.map((ex) => `
+                ${TableDisplay.newestFirst(rep.trade_log, ex => `${ex.trade_date}T${/^\d{2}:\d{2}(?::\d{2})?$/.test(ex.trade_time || "") ? ex.trade_time : "00:00:00"}`).map((ex) => `
                   <tr>
                     <td>${fmtDate(ex.trade_date)}</td><td>${ex.trade_time}</td><td><b>${ex.symbol}</b></td><td>${ex.market_type}</td>
                     <td>${ex.raw_side}</td>
@@ -1644,7 +1644,7 @@ async function renderAccountView(container, accountId) {
         <a class="btn btn-secondary" href="/api/exports/generate/csv_${accountId}" download>CSV</a>
       </div>
     </div>
-    <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[tDates.length-1])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
+    <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[0])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
     ${bodyHtml}
   `;
 }
@@ -1671,9 +1671,9 @@ async function renderFuturesView(container) {
   const f = state.futures;
   const meta = await apiGet(`/api/futures/metadata?apply_rolling=${f.apply_rolling}`);
   f.meta = meta;
-  const availDates = meta.dates || meta.retained_dates || [];
+  const availDates = TableDisplay.newestFirst(meta.dates || meta.retained_dates);
   const latestDate = meta.latest_date || "";
-  const earliestDate = availDates.length ? availDates[0] : latestDate;
+  const earliestDate = availDates.length ? availDates.at(-1) : latestDate;
   for (const tab of ['monthly_comparison','month_filter','annualized_comparison','date_filter','date_summary']) {
     if (!f[tab].date_manual) f[tab].selected_date = latestDate;
   }
@@ -1748,7 +1748,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTHLY COMPARISON — FUTURES vs CURRENT",
-      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Latest trading date first; Annualized % ascending within each date • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "month_filter") {
@@ -1778,7 +1778,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "MONTH / CONTRACT FILTER",
-      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} • Month/Contract: ${st.contract_month} (${comp.rows_count} Rows) • Latest trading date first; Annualized % ascending within each date • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "symbol_filter") {
@@ -1816,7 +1816,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "SYMBOL FILTER — ALL DATES FOR SELECTED CONTRACT & SYMBOL",
-      `Month/Contract: ${st.contract_month} • Symbol: ${st.base_symbol} • Days: ${st.days} (${comp.rows_count} Date Rows, Sorted Chronologically)`,
+      `Month/Contract: ${st.contract_month} • Symbol: ${st.base_symbol} • Days: ${st.days} (${comp.rows_count} Date Rows, Latest Trading Date First)`,
       comp.rows
     );
   } else if (f.subtab === "annualized_comparison") {
@@ -1838,7 +1838,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "ANNUALIZED COMPARISON — ALL SYMBOLS & CONTRACTS",
-      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Latest trading date first; Annualized % ascending within each date • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "date_filter") {
@@ -1860,7 +1860,7 @@ async function renderFuturesView(container) {
     `;
     contentHtml = renderFuturesComparisonTableCard(
       "DATE FILTER — FULL DAY COMPARISON",
-      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Sorted by Annualized % Ascending • Days = ${st.days}`,
+      `Selected Date: ${fmtDate(comp.selected_date)}${resolvedNote(comp)} (${comp.rows_count} Rows) • Latest trading date first; Annualized % ascending within each date • Days = ${st.days}`,
       comp.rows
     );
   } else if (f.subtab === "future_symbol_summary") {
@@ -1879,8 +1879,8 @@ async function renderFuturesView(container) {
         <div class="filter-group">
           <label>Date Window:</label>
           <select onchange="state.futures.apply_rolling=(this.value==='true');renderFuturesView(document.getElementById('viewContainer'))">
-            <option value="true" ${f.apply_rolling ? "selected" : ""}>2-Month Active Window (Sep–Oct 2026)</option>
-            <option value="false" ${!f.apply_rolling ? "selected" : ""}>All Dates From Start (Aug–Oct 2026)</option>
+            <option value="true" ${f.apply_rolling ? "selected" : ""}>Active rolling window (latest imported dates)</option>
+            <option value="false" ${!f.apply_rolling ? "selected" : ""}>All imported dates</option>
           </select>
         </div>
         ${exportBtnHtml}
@@ -1890,8 +1890,8 @@ async function renderFuturesView(container) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">FUTURE SYMBOL SUMMARY — ALL RETAINED DATES (2026F)</div>
-            <div class="card-subtitle">Symbol / Item: <b>${res.selected_contract_symbol}</b> (${res.rows_count} Trading Days) • Sorted by DATE Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-title">FUTURE SYMBOL SUMMARY — ALL RETAINED DATES</div>
+            <div class="card-subtitle">Symbol / Item: <b>${res.selected_contract_symbol}</b> (${res.rows_count} Trading Days) • Latest trading date first • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -1900,7 +1900,7 @@ async function renderFuturesView(container) {
               <tr><th>DATE</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
-              ${res.rows.map((r) => `
+              ${TableDisplay.newestFirst(res.rows, r => r.DATE).map((r) => `
                 <tr>
                   <td><b>${fmtDate(r.DATE)}</b></td>
                   <td class="num">${fmtNum(r.PR_CL)}</td>
@@ -1932,8 +1932,8 @@ async function renderFuturesView(container) {
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE (2026F)</div>
-            <div class="card-subtitle">Selected Date: <b>${fmtDate(res.selected_date)}</b>${resolvedNote(res)} (${res.rows_count} Futures Contracts) • Sorted by SYMBOL Ascending • Change = CLOSE − PR_CL</div>
+            <div class="card-title">DATE SUMMARY — ALL SYMBOLS FOR SELECTED DATE</div>
+            <div class="card-subtitle">Selected Date: <b>${fmtDate(res.selected_date)}</b>${resolvedNote(res)} (${res.rows_count} Futures Contracts) • Latest trading date first; symbol ascending within each date • Change = CLOSE − PR_CL</div>
           </div>
         </div>
         <div class="table-wrap">
@@ -1942,7 +1942,7 @@ async function renderFuturesView(container) {
               <tr><th>DATE</th><th>SYMBOL</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
-              ${res.rows.map((r) => `
+              ${TableDisplay.newestFirst(res.rows, r => r.DATE).map((r) => `
                 <tr>
                   <td>${fmtDate(r.DATE)}</td>
                   <td><b>${r.SYMBOL}</b></td>
@@ -1969,8 +1969,8 @@ async function renderFuturesView(container) {
         <div class="filter-group">
           <label>Active Rolling Policy:</label>
           <select onchange="state.futures.apply_rolling=(this.value==='true');renderFuturesView(document.getElementById('viewContainer'))">
-            <option value="true" ${f.apply_rolling ? "selected" : ""}>Enforce 2-Month Rolling Retention (Sep–Oct 2026 Active)</option>
-            <option value="false" ${!f.apply_rolling ? "selected" : ""}>Show Full Database History Including August 2026</option>
+            <option value="true" ${f.apply_rolling ? "selected" : ""}>Enforce rolling retention (latest imported window)</option>
+            <option value="false" ${!f.apply_rolling ? "selected" : ""}>Show full imported database history</option>
           </select>
         </div>
         ${exportBtnHtml}
@@ -1983,7 +1983,7 @@ async function renderFuturesView(container) {
           <div class="kpi-box"><div class="kpi-label">Latest Date in Dataset</div><div class="kpi-value">${fmtDate(prev.latest_date)}</div></div>
           <div class="kpi-box"><div class="kpi-label">2-Month Cutoff Date</div><div class="kpi-value">${fmtDate(prev.cutoff_date)}</div></div>
           <div class="kpi-box"><div class="kpi-label">Active Retained Futures Rows</div><div class="kpi-value pos">${fmtInt(prev.futures_rows_retained_in_active_window)}</div></div>
-          <div class="kpi-box"><div class="kpi-label">Older Futures Rows (August)</div><div class="kpi-value">${fmtInt(prev.futures_rows_older_than_cutoff)}</div></div>
+          <div class="kpi-box"><div class="kpi-label">Older Futures Rows (Before Cutoff)</div><div class="kpi-value">${fmtInt(prev.futures_rows_older_than_cutoff)}</div></div>
         </div>
         <p style="color:var(--text-muted);">${prev.note}</p>
       </div>
@@ -2003,6 +2003,7 @@ async function renderFuturesView(container) {
 }
 
 function renderFuturesComparisonTableCard(title, subtitle, rows) {
+  const displayRows = TableDisplay.newestFirst(rows, r => r.trade_date);
   return `
     <div class="card">
       <div class="card-header">
@@ -2023,7 +2024,7 @@ function renderFuturesComparisonTableCard(title, subtitle, rows) {
             </tr>
           </thead>
           <tbody>
-            ${rows.map((r) => `
+            ${displayRows.map((r) => `
               <tr>
                 <td><b>${fmtDate(r.trade_date)}</b></td>
                 <td><b>${r.symbol}</b></td>
@@ -2134,7 +2135,7 @@ async function renderTechnicalView(container) {
                 const bCls = act === "BUY" ? "badge-green" : (act === "SELL" || act === "SHORT SELL" ? "badge-red" : "badge-amber");
                 return `
                   <tr style="cursor:pointer" data-symbol="${item.symbol}" data-label="${item.display_label}" onclick="openTickerDeepDive('${item.symbol}')">
-                    <td><b>${item.display_label}</b></td>
+                    <td><b>${item.display_label}</b><br><small>${fmtDate(item.first_date)} → ${fmtDate(item.latest_date)}<br>${fmtInt(item.bars_count)} sessions • ${item.data_freshness?.status || "UNKNOWN"}</small></td>
                     <td class="num">${fmtNum(item.close)}</td>
                     <td class="num ${pnlClass(item.change_pct)}">${fmtPct(item.change_pct, false)}</td>
                     <td class="num">${fmtNum(item.rsi14)}</td>
@@ -2147,8 +2148,8 @@ async function renderTechnicalView(container) {
                     <td class="num">${fmtNum(item.macd_sig)}</td>
                     <td class="num">${fmtNum(item.ema9, 1)} / ${fmtNum(item.ema21, 1)} / ${fmtNum(item.ema50, 1)}</td>
                     <td class="num">${fmtNum(item.adx14)}</td>
-                    <td class="num ${pnlClass(item.signal.score)}">${item.signal.score > 0 ? "+" : ""}${item.signal.score}/9</td>
-                    <td><span class="badge ${bCls}">${item.signal.combined_signal}</span></td>
+                    <td class="num ${pnlClass(item.signal.score)}">${item.signal.score > 0 ? "+" : ""}${item.signal.score}/9<br><small>${item.valid_indicators ?? 9} valid indicators</small></td>
+                    <td><span class="badge ${bCls}">${item.signal.combined_signal}</span><br><small>${escapeHtml(item.signal.trade_plan?.status || "NO TRADE")}</small></td>
                   </tr>
                 `;
               }).join("")}
@@ -2163,6 +2164,10 @@ async function renderTechnicalView(container) {
       apiGet(`/api/intelligence/automated-analyst/${encodeURIComponent(t.selectedSymbol)}`),
     ]);
     const lat = res.latest;
+    if (!lat) {
+      if (currentViewRender(container, ticket)) container.innerHTML = '<div class="card">No historical cash data is available for this symbol. Select another symbol from Section 07.</div>';
+      return;
+    }
     const sig = lat.signal;
     const dp = lat.daily_pivots;
     const wp = lat.weekly_pivots?.pivots || {};
@@ -2180,6 +2185,12 @@ async function renderTechnicalView(container) {
         </div>
       </div>
 
+      <div class="card" style="line-height:1.8;">
+        <b>History used:</b> ${fmtDate(lat.first_date)} → ${fmtDate(lat.latest_date)} • ${fmtInt(lat.bars_count)} sessions • <b>${escapeHtml(lat.data_freshness?.status || "UNKNOWN")}</b><br>
+        Latest imported market session: ${fmtDate(lat.data_freshness?.market_latest_date)}. Chart trimming does not trim indicator history.<br>
+        <b>RSI ${escapeHtml(lat.rsi_ytd_year || "current year")}:</b> ${fmtNum(lat.rsi_ytd_low?.value)}–${fmtNum(lat.rsi_ytd_high?.value)} • <b>Full-history RSI:</b> ${fmtNum(lat.rsi_history_low?.value)}–${fmtNum(lat.rsi_history_high?.value)}<br>
+        History review flags: ${lat.history_quality?.large_close_changes_over_30pct ?? 0} large close changes; ${lat.history_quality?.zero_volume_sessions ?? 0} zero-volume sessions. Flags do not prove an error.<br>Rule strength is not a win probability. Corporate-action adjustment status is unverified. Same-date futures data is not broker approval to short.
+      </div>
       <div class="grid-4">
         <div class="kpi-box">
           <div class="kpi-label">${res.display_label} • Last Close (${fmtDate(lat.latest_date)})</div>
@@ -2187,19 +2198,19 @@ async function renderTechnicalView(container) {
           <div class="kpi-sub ${pnlClass(lat.change_pct)}">Day Change: ${fmtNum(lat.change_val)} (${fmtPct(lat.change_pct, false)})</div>
         </div>
         <div class="kpi-box">
-          <div class="kpi-label">Composite Signal (${sig.score > 0 ? "+" : ""}${sig.score} / 9)</div>
-          <div class="kpi-value ${sig.score > 0 ? "pos" : (sig.score < 0 ? "neg" : "")}">${sig.action}</div>
-          <div class="kpi-sub">${sig.combined_signal} • Rule strength: ${sig.confidence}</div>
+          <div class="kpi-label">Composite Signal (${sig.score > 0 ? "+" : ""}${sig.score} / 9; ${sig.valid_indicators ?? lat.valid_indicators ?? 0} valid)</div>
+          <div class="kpi-value ${sig.score > 0 ? "pos" : (sig.score < 0 ? "neg" : "")}">${sig.trade_plan?.status === "VALID" ? sig.action : "NO OPENING TRADE"}</div>
+          <div class="kpi-sub">Raw signal: ${sig.combined_signal} • Rule strength: ${sig.confidence}</div>
         </div>
         <div class="kpi-box">
           <div class="kpi-label">Entry / Stop-Loss / Target Reference</div>
           <div class="kpi-value" style="font-size:15px;">E: ${fmtNum(sig.entry_reference)} | SL: ${fmtNum(sig.stop_loss_reference)}</div>
-          <div class="kpi-sub">Target: ${fmtNum(sig.target_reference)} PKR • R/R Ratio: ${sig.risk_reward}x</div>
+          <div class="kpi-sub">Target: ${fmtNum(sig.target_reference)} PKR • Gross R/R: ${sig.risk_reward}x</div><div class="kpi-sub"><b>${escapeHtml(sig.trade_plan?.status || "NO TRADE")}</b> — ${escapeHtml(sig.trade_plan?.reason || sig.invalidation || "")}</div>
         </div>
         <div class="kpi-box">
           <div class="kpi-label">VWAP &amp; EMA-200 Methodology Note</div>
           <div class="kpi-value" style="font-size:14px;">Typ. Price: ${fmtNum(lat.vwap_typical_daily)} | 20d VWAP: ${fmtNum(lat.vwap_rolling20)}</div>
-          <div class="kpi-sub">Bars: ${lat.bars_count} (Strict EMA200=N/A; Legacy Rec. EMA200=${fmtNum(lat.ema200_recursive)})</div>
+          <div class="kpi-sub">${lat.bars_count} sessions • EMA200: ${lat.ema200_sufficient ? fmtNum(lat.ema200) : "N/A — fewer than 200 sessions; excluded in strict mode"}</div>
         </div>
       </div>
 
@@ -2221,7 +2232,7 @@ async function renderTechnicalView(container) {
               <thead>
                 <tr>
                   <th style="width:22%;">Indicator</th>
-                  <th style="width:26%;">Value</th>
+                  <th class="num" style="width:26%;">Value</th>
                   <th style="width:24%;">Signal</th>
                   <th style="width:20%;">Actionable Advice</th>
                   <th class="num" style="width:8%;">Vote</th>
@@ -2231,7 +2242,7 @@ async function renderTechnicalView(container) {
                 ${sig.indicator_breakdown.map((b) => `
                   <tr>
                     <td><b>${b.indicator}</b></td>
-                    <td style="font-family:var(--font-mono);font-size:11.2px;">${formatCompactIndicatorValue(b.indicator, b.value)}</td>
+                    <td class="num" style="font-size:11.2px;">${formatCompactIndicatorValue(b.indicator, b.value)}</td>
                     <td><span class="badge ${b.vote > 0 ? "badge-green" : (b.vote < 0 ? "badge-red" : "badge-amber")}">${b.signal}</span></td>
                     <td>${b.advice}</td>
                     <td class="num ${pnlClass(b.vote)}"><b>${b.vote > 0 ? "+1" : b.vote}</b></td>
@@ -2269,6 +2280,7 @@ async function renderTechnicalView(container) {
       </div>
 
       ${buildAutomatedAnalystCardHtml(analystRes)}
+      ${historicalValidationControls(t.selectedSymbol, lat.first_date, lat.latest_date)}
     `;
   }
 
@@ -2400,7 +2412,7 @@ async function renderReconciliationView(container) {
           <table class="data-table">
             <thead><tr><th>Date</th><th>Contract Symbol</th><th>Base Symbol</th><th>Contract</th><th class="num">Future Close</th><th>Current Cash Value</th></tr></thead>
             <tbody>
-              ${dq.unmatched_futures_contracts.items.map((u) => `
+              ${TableDisplay.newestFirst(dq.unmatched_futures_contracts.items, u => u.trade_date).map((u) => `
                 <tr>
                   <td>${fmtDate(u.trade_date)}</td><td><b>${u.contract_symbol}</b></td><td>${u.base_symbol}</td><td>${u.contract_month}</td>
                   <td class="num">${fmtNum(u.future_close)}</td><td><span class="badge badge-amber">N/A (No Same-Date Cash Row)</span></td>
@@ -2422,7 +2434,7 @@ async function renderReconciliationView(container) {
           <table class="data-table">
             <thead><tr><th>Symbol</th><th class="num">Sessions Count</th><th>First Date</th><th>Last Date</th><th>Status</th></tr></thead>
             <tbody>
-              ${dq.indicator_history_checks.tickers_under_26_bars.map((t) => `
+              ${TableDisplay.newestFirst(dq.indicator_history_checks.tickers_under_26_bars, t => t.last_date).map((t) => `
                 <tr>
                   <td><b>${t.symbol}</b></td><td class="num">${t.bars_count}</td><td>${fmtDate(t.first_date)}</td><td>${fmtDate(t.last_date)}</td>
                   <td><span class="badge badge-amber">&lt; 26 Bars (Insufficient for MACD)</span></td>
@@ -2521,7 +2533,7 @@ async function renderSettingsView(container) {
             <thead><tr><th>Backup Archive</th><th>Created at (PKT)</th><th class="num">Size</th><th>Integrity</th><th>Actions</th></tr></thead>
             <tbody>
               ${data.backups.length===0?`<tr><td colspan="5">${cs.backend==='turso' ? 'Backups are downloaded outside Vercel. Use Turso → your database → Download SQLite File. To restore, import into a new database, verify it, then switch server credentials. This avoids overwriting the active database.' : 'No local backups yet. Create and download an independent backup.'}</td></tr>`:''}
-              ${data.backups.map((b) => `
+              ${TableDisplay.newestFirst(data.backups, b => b.created_at).map((b) => `
                 <tr>
                   <td><b>${escapeHtml(b.zip_filename)}</b><br><span style="color:var(--text-muted);font-size:10.5px;">SHA256: ${(b.db_sha256 || "").slice(0, 16)}...</span></td>
                   <td>${fmtDate(b.created_at || "")}</td>
@@ -2562,16 +2574,16 @@ async function renderSettingsView(container) {
       ${rules.length === 0 ? `<p style="color:var(--text-muted);">Using baseline v1 calculation rules. Any parameter changes saved above will be logged here with version numbers and timestamps.</p>` : `
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>ID</th><th>Version</th><th>Rule Note</th><th>Effective Date</th><th>Timestamp</th><th>Parameters</th></tr></thead>
+            <thead><tr><th class="num">ID</th><th>Version</th><th>Rule Note</th><th>Effective Date</th><th>Timestamp</th><th>Parameters</th></tr></thead>
             <tbody>
-              ${rules.map((r) => `
+              ${TableDisplay.newestFirst(rules, r => r.created_at || r.effective_from).map((r) => `
                 <tr>
                   <td class="num">#${r.id}</td>
                   <td><span class="badge badge-blue">v${r.version}</span></td>
                   <td><b>${r.rule_name}</b></td>
-                  <td>${r.effective_from}</td>
+                  <td>${fmtDate(r.effective_from)}</td>
                   <td>${fmtDate(r.created_at || "")}</td>
-                  <td style="font-family:var(--font-mono);font-size:11px;">${r.parameters_json}</td>
+                  <td class="cell-wrap" style="font-family:var(--font-mono);font-size:11px;">${escapeHtml(r.parameters_json)}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -2791,8 +2803,12 @@ function enhanceWorkspace() {
     const label = group?.querySelector('label') || el.closest('tr')?.querySelector('label');
     if (label && !label.querySelector('input')) label.htmlFor=el.id;
     if (!el.getAttribute('aria-label') && !document.querySelector(`label[for="${CSS.escape(el.id)}"]`) && !el.closest('label')) el.setAttribute('aria-label', el.placeholder || (el.closest('tr')?.cells[0]?.textContent.trim()) || (el.type==='file'?'Choose files':'Worksheet filter'));
-    if (el.type==='date' && !group?.querySelector('.date-readout') && !el.nextElementSibling?.classList.contains('date-readout')) {
-      const readout=document.createElement('span'); readout.className='date-readout'; readout.textContent=fmtDate(el.value); el.after(readout);
+    if (el.type==='date' && !group?.querySelector('.date-readout')) {
+      if (!el.nextElementSibling?.classList.contains('date-readout')) {
+        const readout=document.createElement('span'); readout.className='date-readout'; el.after(readout);
+      }
+      const readout=el.nextElementSibling, text=fmtDate(el.value);
+      if (readout.textContent!==text) readout.textContent=text;
     }
   });
   root.querySelectorAll('.table-wrap').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label','Scrollable data table');});
@@ -2800,6 +2816,7 @@ function enhanceWorkspace() {
     if (table.querySelector('#set_slab1_upper')) {table.classList.add('settings-table');return;}
     const wrapper=document.createElement('div');wrapper.className='table-wrap';table.replaceWith(wrapper);wrapper.append(table);
   });
+  root.querySelectorAll('table.data-table thead th').forEach(th=>th.setAttribute('scope','col'));
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
   let node;const edits=[];
   while ((node=walker.nextNode())) {
@@ -2836,7 +2853,7 @@ async function verifyWorkspaceFreshness(force=false) {
     if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
     state.freshnessStatus = result.status;
     const notice = document.getElementById('dataFreshnessNotice');
-    const versionChanged = result.version && result.version !== '1.3.6';
+    const versionChanged = result.version && result.version !== '1.3.8';
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');
@@ -2861,3 +2878,49 @@ function exportCurrentModule() {
   if (key) {window.location.href='/api/exports/generate/'+key;return;}
   showToast('Download from the Top 5, Account, Futures or Technical module. Full database backups are in Settings and Backup.');
 }
+
+
+function historicalValidationControls(symbol, first, latest) {
+  return `<div class="card" style="line-height:1.7;">
+    <div class="card-title">Historical Rule Audit — ${escapeHtml(symbol)} (long-only)</div>
+    <p>Tests fixed BUY rules chronologically, using earlier history for warm-up. Not a trained prediction model or a proof of future profit. Runs only when requested.</p>
+    <div class="filter-bar" style="flex-wrap:wrap;">
+      <label>Start <input id="validationStart" type="date" value="${first}" /></label>
+      <label>End <input id="validationEnd" type="date" value="${latest}" /></label>
+      <label>Holding sessions <input id="validationHorizon" type="number" min="1" max="60" value="10" style="width:70px;" /></label>
+      <label>Fees each side (bps) <input id="validationFees" type="number" min="0" max="200" step="0.1" value="10" style="width:70px;" /></label>
+      <label>Slippage each side (bps) <input id="validationSlippage" type="number" min="0" max="200" step="0.1" value="10" style="width:70px;" /></label>
+      <button class="btn btn-primary" id="validationRun" onclick="runHistoricalValidation()">Run historical audit</button>
+    </div>
+    <p>10 bps = 0.10%. Defaults are illustrative, not verified broker charges. Minimum structural gross R/R is 1.5. One hypothetical position at a time. Maximum 6,000 sessions.</p>
+    <div id="validationResult" aria-live="polite"></div>
+  </div>`;
+}
+async function runHistoricalValidation() {
+  const box=document.getElementById('validationResult'), button=document.getElementById('validationRun');
+  const symbol=state.technical.selectedSymbol;
+  const q=new URLSearchParams({horizon:document.getElementById('validationHorizon').value,fees_bps:document.getElementById('validationFees').value,slippage_bps:document.getElementById('validationSlippage').value});
+  for(const [key,id] of [['start','validationStart'],['end','validationEnd']]) if(document.getElementById(id).value) q.set(key,document.getElementById(id).value);
+  button.disabled=true;box.textContent='Running chronological rule audit…';
+  try {
+    const r=await apiGet(`/api/technical/validation/${encodeURIComponent(symbol)}?${q}`,false), m=r.summary;
+    if(!box.isConnected)return;
+    box.innerHTML=`<b>${escapeHtml(r.status)}</b><p>${escapeHtml(r.method)}</p>
+      <p>Closed trades: ${fmtInt(m.closed_trades)} • Win rate after assumed costs: ${m.win_rate_pct===null?'N/A':fmtNum(m.win_rate_pct)+'%'} • Mean net return/trade: ${m.mean_net_return_pct===null?'N/A':fmtNum(m.mean_net_return_pct)+'%'}<br>
+      Hypothetical compounded trade return: ${m.compounded_trade_return_pct===null?'N/A':fmtNum(m.compounded_trade_return_pct)+'%'} • Trade-close drawdown (not intratrade): ${m.trade_close_drawdown_pct===null?'N/A':fmtNum(m.trade_close_drawdown_pct)+'%'}</p>
+      <p>${escapeHtml(m.sample_warning || "")} Unresolved positions excluded: ${fmtInt(m.unresolved_positions_excluded || 0)}.</p><p>Historical trade frequency is not a calibrated probability for the current setup. No independent out-of-sample claim is made.</p>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Entry year</th><th class="num">Closed trades</th><th class="num">Winning trades</th><th class="num">Mean net return/trade</th></tr></thead><tbody>${TableDisplay.newestFirst(r.yearly, y => y.year).map(y=>`<tr><td>${escapeHtml(y.year)}</td><td class="num">${fmtInt(y.trades)}</td><td class="num">${fmtInt(y.wins)}</td><td class="num">${fmtNum(y.net_sum_pct/y.trades)}%</td></tr>`).join('')}</tbody></table></div>
+      <p><b>Limitations:</b> ${r.limitations.map(escapeHtml).join(' ')}</p>
+      <button id="validationDownload" class="btn btn-secondary">Download full audit (JSON)</button>`;
+    box.querySelector('#validationDownload').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download=`${symbol}_rule_audit.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+  } catch(e){if(box.isConnected)box.textContent='Audit could not complete: '+e.message;}
+  finally {if(button.isConnected)button.disabled=false;}
+}
+
+// Input values remain ISO; only the adjacent human-readable date text changes.
+for (const eventName of ['input', 'change']) document.addEventListener(eventName, event => {
+  const el = event.target;
+  if (!el.matches?.('input[type="date"]')) return;
+  const readout = el.nextElementSibling;
+  if (readout?.classList.contains('date-readout')) readout.textContent = fmtDate(el.value);
+});

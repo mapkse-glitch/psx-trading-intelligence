@@ -62,7 +62,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.6",
+    version="1.3.8",
     lifespan=lifespan,
 )
 
@@ -128,7 +128,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.6",
+        "version": "1.3.8",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -139,7 +139,7 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.6"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.8"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
         if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
             result["changed"] = True
@@ -149,7 +149,7 @@ async def api_system_freshness(force: bool = Query(False)):
                 await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.6"}
+        return {**result, "version": "1.3.8"}
 
 
 @app.middleware("http")
@@ -648,6 +648,27 @@ def api_technical_universe(
     return res
 
 
+@app.get("/api/technical/validation/{symbol}")
+def api_technical_validation(
+    symbol: str,
+    start: Optional[str] = Query(None),
+    end: Optional[str] = Query(None),
+    horizon: int = Query(10, ge=1, le=60),
+    fees_bps: float = Query(10.0, ge=0, le=200),
+    slippage_bps: float = Query(10.0, ge=0, le=200),
+    min_rr: float = Query(1.5, ge=0, le=10),
+) -> Dict[str, Any]:
+    # Explicit opt-in read-only audit; never executes during normal page loading.
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,24}", symbol):
+        raise HTTPException(status_code=400, detail="Invalid symbol.")
+    from psx_app.services.historical_validation import HistoricalValidationService
+    try:
+        return HistoricalValidationService(DB_PATH).run(symbol, start=start, end=end,
+            horizon=horizon, fees_bps=fees_bps, slippage_bps=slippage_bps, min_rr=min_rr)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+
+
 @app.get("/api/technical/ticker/{symbol}")
 def api_technical_ticker(symbol: str, tail_bars: int = Query(120)) -> Dict[str, Any]:
     cache_key = f"tech_tkr:{symbol.upper()}:{tail_bars}"
@@ -924,7 +945,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.6", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.8", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 

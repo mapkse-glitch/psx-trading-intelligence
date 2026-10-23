@@ -302,6 +302,8 @@ def test_setup_context_is_same_date_and_most_liquid(fresh_db,monkeypatch):
     item={'symbol':'OGDC','latest_date':'2026-10-16','bars_count':50,'close':100,'rsi14':55,'rsi_zone':'NEUTRAL',
           'signal':{'score':4,'combined_signal':'BUY'},'ema9':101,'ema21':99,'ema50':98,
           'daily_pivots':{'classic':{'P':100,'R1':102,'R2':104,'R3':106,'S1':98,'S2':96}},'is_futures_eligible':True}
+    item.update(volume=10000, first_date='2026-01-01')
+    item['signal']['trade_plan']={'status':'VALID','side':'LONG','entry':100,'stop':98,'target_1':104,'target_2':106}
     svc=IntelligenceService(fresh_db)
     monkeypatch.setattr(svc.tech_service,'get_universe_summary',lambda **kw:{'items':[item]})
     result=svc.generate_trading_ideas()

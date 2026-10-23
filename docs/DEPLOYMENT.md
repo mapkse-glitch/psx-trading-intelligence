@@ -1,3 +1,5 @@
+> Legacy reference: deployment and Section 07 behavior have changed. Current instructions: ../UPGRADE_1_3_7.md and SECTION07_RELIABILITY.md. Older fixture-specific statements are not a report of your current database.
+
 # Deployment & Local Installation Guide (Windows 11 & Cross-Platform)
 
 ## 1. System Requirements

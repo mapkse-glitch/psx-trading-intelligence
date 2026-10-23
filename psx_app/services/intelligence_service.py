@@ -229,6 +229,8 @@ class IntelligenceService:
                 if sec_info["sector"].lower() != scope_or_sector.lower():
                     continue
 
+            if it.get("data_freshness", {}).get("status") == "STALE" or float(it.get("volume") or 0) <= 0:
+                continue
             if it["bars_count"] < 26 or it.get("rsi14") is None:
                 continue
 
@@ -261,39 +263,21 @@ class IntelligenceService:
             e21 = float(it.get("ema21") or c_price)
             e50 = float(it.get("ema50") or c_price)
 
-            is_bullish = score >= 0
-            if direction_filter == "SHORT":
-                is_bullish = False
-            elif direction_filter == "LONG":
-                is_bullish = True
-
-            if is_bullish:
-                setup_type = "LONG / MOMENTUM BREAKOUT" if c_price >= p else "LONG / PULLBACK TO SUPPORT"
-                entry_price = round(c_price if c_price >= p else max(s1, p * 0.995), 2)
-                stop_loss = round(min(s1, e21 * 0.985), 2)
-                if stop_loss >= entry_price:
-                    stop_loss = round(entry_price * 0.965, 2)
-                risk = max(entry_price - stop_loss, entry_price * 0.015)
-                target_1 = round(max(r1, entry_price + risk * 1.6), 2)
-                target_2 = round(max(r2, entry_price + risk * 2.6), 2)
-            else:
-                setup_type = (
-                    "SHORT SELL (FUTURES) / BREAKDOWN"
-                    if it.get("is_futures_eligible")
-                    else "TACTICAL SELL / RESISTANCE REJECTION"
-                )
-                entry_price = round(c_price if c_price <= p else min(r1, p * 1.005), 2)
-                stop_loss = round(max(r1, e21 * 1.015), 2)
-                if stop_loss <= entry_price:
-                    stop_loss = round(entry_price * 1.035, 2)
-                risk = max(stop_loss - entry_price, entry_price * 0.015)
-                target_1 = round(min(s1, entry_price - risk * 1.6), 2)
-                target_2 = round(min(s2, entry_price - risk * 2.6), 2)
-
-            reward_t1 = abs(target_1 - entry_price)
-            reward_t2 = abs(target_2 - entry_price)
-            rr_t1 = round(reward_t1 / risk, 2) if risk > 0 else 1.5
-            rr_t2 = round(reward_t2 / risk, 2) if risk > 0 else 2.5
+            # One validated execution plan is shared with the deep-dive and analyst.
+            plan = sig.get("trade_plan") or {}
+            if plan.get("status") != "VALID":
+                continue
+            is_bullish = plan["side"] == "LONG"
+            if direction_filter == "LONG" and not is_bullish:
+                continue
+            if direction_filter == "SHORT" and is_bullish:
+                continue
+            setup_type = "LONG / STRUCTURAL SETUP" if is_bullish else "FUTURES SHORT CANDIDATE / VERIFY ELIGIBILITY"
+            entry_price, stop_loss = plan["entry"], plan["stop"]
+            target_1, target_2 = plan["target_1"], plan["target_2"]
+            risk = abs(entry_price - stop_loss)
+            rr_t1 = abs(target_1 - entry_price) / risk
+            rr_t2 = abs(target_2 - entry_price) / risk
 
             # Conviction ranking metric (deterministic)
             dir_alignment = score if is_bullish else -score
@@ -304,8 +288,8 @@ class IntelligenceService:
                 + (5.0 if (sym, it["latest_date"]) in top5_tickers else 0.0)
                 + min(rr_t2, 4.0) * 3.0
             )
-            prob_pct = min(94, max(58, int(round(55 + conviction_raw * 0.42))))
-            grade = "A+" if prob_pct >= 84 else ("A" if prob_pct >= 75 else "B+")
+            prob_pct = min(100, max(0, int(round(conviction_raw))))
+            grade = "STRONG RULE AGREEMENT" if prob_pct >= 75 else ("MODERATE RULE AGREEMENT" if prob_pct >= 50 else "WEAK RULE AGREEMENT")
 
             sec_info = PSX_SECTOR_MAP.get(sym, {
                 "sector": "PSX Listed Equity",
@@ -360,10 +344,12 @@ class IntelligenceService:
                 "sector": sec_info["sector"],
                 "trade_date": it["latest_date"],
                 "setup_type": setup_type,
-                "direction": "BUY / LONG" if is_bullish else ("SHORT SELL" if it.get("is_futures_eligible") else "SELL"),
+                "direction": "BUY / LONG" if is_bullish else "SHORT CANDIDATE — VERIFY CONTRACT",
                 "setup_grade": grade,
                 "setup_score": prob_pct,
-                "score_interpretation": "Deterministic rule score, not a probability of profit.",
+                "score_interpretation": "Rule strength /100, not a probability, backtest result, or execution approval.",
+                "trade_plan": plan,
+                "history_coverage": {"first_date": it["first_date"], "latest_date": it["latest_date"], "bars_count": it["bars_count"]},
                 "background_status": "Unverified static background; not current fundamental research.",
                 "composite_score": f"{score:+d}/9",
                 "current_price": round(c_price, 2),
@@ -398,6 +384,7 @@ class IntelligenceService:
             "target_label": target_label,
             "candidates_scanned": len(filtered),
             "setups_count": len(top_setups),
+            "screening_note": "Only current imported-session, positive-volume candidates with a valid structural plan and gross R/R >= 1.5 are returned. Fewer than five or zero is valid. Rule scores are not win probabilities.",
             "setups": top_setups,
         }
 
@@ -420,7 +407,7 @@ class IntelligenceService:
         if not integrity["ok"]:
             return {"symbol": symbol, "status": "BLOCKED", "message": integrity["message"], "date_integrity": integrity}
         sym = self.tech_service.resolve_ticker(symbol)
-        t_data = self.tech_service.get_ticker_analysis(sym, tail_bars=200)
+        t_data = self.tech_service.get_ticker_analysis(sym, tail_bars=0)
         lat = t_data["latest"]
         series = t_data["series"]
 
@@ -461,13 +448,18 @@ class IntelligenceService:
                 w_obj["sessions"] += 1
 
         weekly_candles = [weeks_map[k] for k in week_keys]
+        # Never call an unfinished current week a confirmed weekly signal.
+        unfinished_week_excluded = datetime.strptime(series[-1]["trade_date"], "%Y-%m-%d").weekday() < 4
+        if unfinished_week_excluded:
+            weekly_candles = weekly_candles[:-1]
         w_closes = [w["close"] for w in weekly_candles]
-        w_sma4 = sum(w_closes[-4:]) / min(4, len(w_closes))
-        w_sma10 = sum(w_closes[-10:]) / min(10, len(w_closes))
-        w_chg_4w = ((w_closes[-1] - w_closes[-min(5, len(w_closes))]) / w_closes[-min(5, len(w_closes))] * 100.0) if len(w_closes) >= 2 else 0.0
-        weekly_trend = "BULLISH (Above 4W & 10W SMA)" if (w_closes[-1] >= w_sma4 and w_sma4 >= w_sma10) else (
-            "BEARISH (Below 4W & 10W SMA)" if (w_closes[-1] < w_sma4 and w_sma4 < w_sma10) else "CONSOLIDATING / TRANSITIONAL"
-        )
+        w_sma4 = sum(w_closes[-4:]) / 4 if len(w_closes) >= 4 else 0.0
+        w_sma10 = sum(w_closes[-10:]) / 10 if len(w_closes) >= 10 else 0.0
+        w_chg_4w = ((w_closes[-1] - w_closes[-min(5, len(w_closes))]) / w_closes[-min(5, len(w_closes))] * 100.0) if len(w_closes) >= 5 else 0.0
+        weekly_trend = "INSUFFICIENT COMPLETED WEEKS (<10)"
+        if len(w_closes) >= 10:
+            weekly_trend = "BULLISH (Above 4W & 10W SMA)" if (w_closes[-1] >= w_sma4 and w_sma4 >= w_sma10) else (
+                "BEARISH (Below 4W & 10W SMA)" if (w_closes[-1] < w_sma4 and w_sma4 < w_sma10) else "CONSOLIDATING / TRANSITIONAL")
 
         # 2. Compute 20-Session Linear Regression Trend Line & Channel
         tail20 = series[-min(20, len(series)):]
@@ -496,7 +488,7 @@ class IntelligenceService:
             ("SMA 20 (Bollinger Mid)", lat.get("sma20")),
             ("EMA 50 (Medium Trend)", lat.get("ema50")),
             ("SMA 50", lat.get("sma50")),
-            ("EMA 200 (Recursive Warm-Up)", lat.get("ema200_recursive")),
+            ("EMA 200 (Strict)", lat.get("ema200")),
             ("Weekly SMA 4 (~1 Month)", w_sma4),
             ("Weekly SMA 10 (~1 Quarter)", w_sma10),
         ]:
@@ -524,7 +516,7 @@ class IntelligenceService:
                 "verdict": weekly_trend,
                 "detail": (
                     f"On the Daily chart ({lat['latest_date']}), {sym} closed at {c_val:.2f} PKR ({lat['change_pct']:+.2f}%). "
-                    f"On the Weekly chart ({len(weekly_candles)} weeks), price is {w_chg_4w:+.2f}% over 4 weeks with Weekly SMA(4)={w_sma4:.2f} and Weekly SMA(10)={w_sma10:.2f}."
+                    f"Completed-week context ({len(weekly_candles)} weeks; through {weekly_candles[-1]['end_date'] if weekly_candles else 'N/A'}): completed-week close change {w_chg_4w:+.2f}% over 4 weeks; SMA(4)={w_sma4:.2f}, SMA(10)={w_sma10:.2f}. This can differ from the latest daily close."
                 ),
             },
             {
@@ -562,7 +554,7 @@ class IntelligenceService:
                 "step": f"Step 5 • Final Step-by-Step Signal ({sig['combined_signal']}) & Execution Plan",
                 "verdict": f"{sig['combined_signal']} (Score {sig['score']:+d}/9)",
                 "detail": (
-                    f"For requested action '{intended_action}': System issues '{sig['combined_signal']}' with {sig['confidence']} confidence. "
+                    f"For requested action '{intended_action}': System issues '{sig['combined_signal']}' with {sig['confidence']} rule strength (not a probability). "
                     f"Entry Reference: {sig['entry_reference']} PKR | Stop-Loss Reference: {sig['stop_loss_reference']} PKR | "
                     f"Target Reference: {sig['target_reference']} PKR (R/R: {sig['risk_reward']}x). Invalidation: {sig['invalidation']}"
                 ),
@@ -616,6 +608,9 @@ class IntelligenceService:
             },
             "weekly_summary": {
                 "weeks_count": len(weekly_candles),
+                "last_completed_week_end": weekly_candles[-1]["end_date"] if weekly_candles else None,
+                "unfinished_week_excluded": unfinished_week_excluded,
+                "method": "Completed imported weeks; no exchange holiday calendar is available. Unfinished latest week is excluded conservatively.",
                 "weekly_sma4": round(w_sma4, 2),
                 "weekly_sma10": round(w_sma10, 2),
                 "change_4w_pct": round(w_chg_4w, 2),

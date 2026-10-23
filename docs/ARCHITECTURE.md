@@ -1,3 +1,5 @@
+> Legacy reference: deployment and Section 07 behavior have changed. Current instructions: ../UPGRADE_1_3_7.md and SECTION07_RELIABILITY.md. Older fixture-specific statements are not a report of your current database.
+
 # System Architecture — Unified PSX Trading Intelligence Dashboard
 
 ## 1. Architectural Overview & 10-Layer Separation of Responsibilities

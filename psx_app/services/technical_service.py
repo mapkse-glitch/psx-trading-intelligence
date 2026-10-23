@@ -8,6 +8,9 @@ from psx_app.database.repository import Repository
 from psx_app.database.schema import get_connection
 
 
+ENGINE_VERSION = "1.3.7"
+
+
 class TechnicalService:
     """
     Module D — Technical Analysis & 36-Ticker (+ 531 Universe) Engine.
@@ -87,10 +90,12 @@ class TechnicalService:
         last_dt = datetime.strptime(latest_wk_bars[-1]["trade_date"], "%Y-%m-%d")
 
         # A PSX trading week is complete if its last trading day is Friday (weekday==4) or if it's the only week
-        if last_dt.weekday() >= 4 or len(week_order) == 1:
+        if last_dt.weekday() >= 4:
             target_wk = latest_wk
-        else:
+        elif len(week_order) >= 2:
             target_wk = week_order[-2]
+        else:
+            return {"status": "INSUFFICIENT COMPLETED WEEKS", "week_label": None, "pivots": None}
 
         w_bars = weeks[target_wk]
         valid_bars = [b for b in w_bars if (b.get("high") or 0) > 0 and (b.get("low") or 0) > 0]
@@ -297,8 +302,8 @@ class TechnicalService:
 
             r_val = rsi_series[i]
             m_val = macd_line[i] if obs_count >= macd_slow or not strict_suff else None
-            ms_val = macd_sig[i] if obs_count >= macd_slow or not strict_suff else None
-            mh_val = macd_hist[i] if obs_count >= macd_slow or not strict_suff else None
+            ms_val = macd_sig[i] if obs_count >= macd_slow + macd_sig_p - 1 or not strict_suff else None
+            mh_val = macd_hist[i] if obs_count >= macd_slow + macd_sig_p - 1 or not strict_suff else None
 
             e9 = ema9_raw[i] if obs_count >= 9 or not strict_suff else None
             e21 = ema21_raw[i] if obs_count >= 21 or not strict_suff else None
@@ -318,39 +323,37 @@ class TechnicalService:
                 score += 1 if mh_val > 0 else (-1 if mh_val < 0 else 0)
             # 2. RSI
             if r_val is not None:
-                if r_val < 30:
+                if r_val <= 30:
                     score += 1
-                elif r_val > 70:
+                elif r_val >= 70:
                     score -= 1
             # 3. Bollinger %B
             if pct_b[i] is not None:
-                if pct_b[i] > 0.55:
+                if pct_b[i] >= 0.55:
                     score += 1
-                elif pct_b[i] < 0.45:
+                elif pct_b[i] <= 0.45:
                     score -= 1
             # 4. EMA 9
-            if ema9_raw[i] is not None:
+            if e9 is not None:
                 score += 1 if c_val > ema9_raw[i] else -1
             # 5. EMA 21
-            if ema21_raw[i] is not None:
+            if e21 is not None:
                 score += 1 if c_val > ema21_raw[i] else -1
             # 6. EMA 50
-            if ema50_raw[i] is not None:
+            if e50 is not None:
                 score += 1 if c_val > ema50_raw[i] else -1
             # 7. EMA 200 (uses recursive in legacy score; in strict mode only when sufficient or noted)
             if (e200_display is not None):
                 score += 1 if c_val > e200_display else -1
-            elif not strict_suff or obs_count >= 50:
-                score += 1 if c_val > e200_rec else -1
             # 8. Typical Price / Pivot
             score += 1 if c_val >= tp_val else -1
             # 9. ADX +DI/-DI
             if adx_v is not None and adx_v >= 20:
                 score += 1 if pdi_v > mdi_v else -1
 
-            if obs_count < 15:
+            if obs_count < 26 or r_val is None:
                 action = "INSUFFICIENT DATA"
-            elif score >= buy_th:
+            elif score >= buy_th and e21 is not None and c_val >= e21:
                 action = "BUY"
             elif score <= sell_th:
                 action = "SELL"
@@ -385,6 +388,7 @@ class TechnicalService:
                 "adx14": adx_v,
                 "plus_di": pdi_v,
                 "minus_di": mdi_v,
+                "valid_indicators": sum(v is not None for v in (mh_val, r_val, pct_b[i], e9, e21, e50, e200_display, tp_val, adx_v)),
                 "score": score,
                 "action": action,
             })
@@ -410,10 +414,13 @@ class TechnicalService:
             cfg=cfg,
         )
 
-        # RSI YTD high/low
+        # Distinguish latest calendar year from full-history indicator extremes.
         valid_rsis = [(s["rsi14"], s["trade_date"]) for s in series_out if s["rsi14"] is not None]
-        rsi_high = max(valid_rsis, key=lambda x: x[0]) if valid_rsis else (None, None)
-        rsi_low = min(valid_rsis, key=lambda x: x[0]) if valid_rsis else (None, None)
+        all_rsi_high = max(valid_rsis, key=lambda x: x[0]) if valid_rsis else (None, None)
+        all_rsi_low = min(valid_rsis, key=lambda x: x[0]) if valid_rsis else (None, None)
+        year_rsis = [(v, d) for v, d in valid_rsis if d[:4] == last_bar["trade_date"][:4]]
+        rsi_high = max(year_rsis, key=lambda x: x[0]) if year_rsis else (None, None)
+        rsi_low = min(year_rsis, key=lambda x: x[0]) if year_rsis else (None, None)
 
         vol_20d_avg = sum(vols[-20:]) / float(min(20, n_bars))
         sma50_val = (sum(closes[-50:]) / 50.0) if n_bars >= 50 else None
@@ -421,7 +428,7 @@ class TechnicalService:
         warnings: List[str] = []
         if n_bars < 200:
             warnings.append(
-                f"EMA 200 requires 200 sessions for full lookback; dataset contains {n_bars} sessions (01-Jan-2026 to {last_bar['trade_date']}). "
+                f"EMA 200 requires 200 sessions for full lookback; dataset contains {n_bars} sessions ({bars[0]['trade_date']} to {last_bar['trade_date']}). "
                 f"Strict mode shows N/A (recursive warm-up value: {last_bar['ema200_recursive']:.2f} PKR)."
             )
         if n_bars < 26:
@@ -431,7 +438,14 @@ class TechnicalService:
             "both single-day Typical Price ((H+L+C)/3) and 20-Day Rolling Volume-Weighted Typical Price are shown and explicitly labeled as daily approximations."
         )
 
+        history_quality = {
+            "zero_volume_sessions": sum(float(b.get("volume") or 0) <= 0 for b in bars),
+            "missing_or_nonpositive_reported_high_low_sessions": sum(float(b.get("high") or 0) <= 0 or float(b.get("low") or 0) <= 0 for b in bars),
+            "large_close_changes_over_30pct": sum(float(bars[j-1]["close"]) > 0 and abs(float(bars[j]["close"])/float(bars[j-1]["close"])-1) > .30 for j in range(1, n_bars)),
+            "interpretation": "Review flags, not confirmed errors or corporate actions. No rows are silently removed or adjusted.",
+        }
         latest_summary = {
+            "engine_version": ENGINE_VERSION,
             "symbol": symbol,
             "display_label": "MLCF (MLF)" if symbol == "MLCF" else symbol,
             "is_core_36": symbol in CORE_36_TICKERS,
@@ -455,6 +469,13 @@ class TechnicalService:
                 "NO DATA" if last_bar["rsi14"] is None
                 else ("OVERBOUGHT" if last_bar["rsi14"] >= 70.0 else ("OVERSOLD" if last_bar["rsi14"] <= 30.0 else "NEUTRAL"))
             ),
+            "rsi_history_high": {"value": all_rsi_high[0], "date": all_rsi_high[1]},
+            "rsi_history_low": {"value": all_rsi_low[0], "date": all_rsi_low[1]},
+            "rsi_ytd_year": last_bar["trade_date"][:4],
+            "valid_indicators": last_bar["valid_indicators"],
+            "history_quality": history_quality,
+            "history_years": sorted({b["trade_date"][:4] for b in bars}),
+            "price_adjustment_status": "NOT VERIFIED — corporate-action adjustments not supplied",
             "rsi_ytd_high": {"value": rsi_high[0], "date": rsi_high[1]},
             "rsi_ytd_low": {"value": rsi_low[0], "date": rsi_low[1]},
             "sma20": last_bar["bb_mid"],
@@ -551,10 +572,10 @@ class TechnicalService:
         macd_bull = mh is not None and mh > 0
         breakdown.append({
             "indicator": "MACD (12,26,9)",
-            "value": f"{m_val:.2f} / sig {ms_val:.2f} (hist {mh:+.2f})",
-            "signal": "BULLISH MOMENTUM" if macd_bull else "BEAR CROSS / NEG HIST",
-            "advice": "BUY" if macd_bull else "SELL",
-            "vote": 1 if macd_bull else -1,
+            "value": f"{m_val:.2f} / sig {ms_val:.2f} (hist {mh:+.2f})" if all(v is not None for v in (m_val, ms_val, mh)) else "N/A — MACD signal warm-up incomplete",
+            "signal": ("BULLISH MOMENTUM" if macd_bull else "BEAR CROSS / NEG HIST") if mh is not None else "INSUFFICIENT SIGNAL HISTORY",
+            "advice": ("BUY" if macd_bull else "SELL") if mh is not None else "NO VOTE",
+            "vote": 1 if mh is not None and mh > 0 else (-1 if mh is not None and mh < 0 else 0),
         })
 
         # 2. RSI(14)
@@ -608,7 +629,7 @@ class TechnicalService:
         })
 
         # 6. EMA 50
-        e50 = last_bar["ema50"] if n_bars >= 50 else None
+        e50 = last_bar["ema50"]
         e50_vote = (1 if c > e50 else -1) if e50 is not None else 0
         breakdown.append({
             "indicator": "EMA 50",
@@ -624,7 +645,7 @@ class TechnicalService:
             e200_val_str = f"N/A ({n_bars}/200 bars; warm-up {e200_rec:.2f})"
             e200_sig = "INSUFFICIENT HISTORY (<200 BARS)"
             e200_adv = "N/A (STRICT)"
-            e200_vote = 1 if c > e200_rec else -1  # Keep legacy score parity while flagging sufficiency
+            e200_vote = 0  # Strictly unavailable indicators never contribute.
         else:
             e200_val_str = f"{e200_rec:.2f}"
             e200_vote = 1 if c > e200_rec else -1
@@ -684,30 +705,16 @@ class TechnicalService:
         else:
             combined_signal = "Hold / Neutral"
 
-        # Reference levels (analytical only)
-        if combined_signal == "Buy":
-            entry_ref = round(p if c >= p else r1, 2)
-            stop_ref = round(min(s1, e21), 2)
-            target_ref = round(r2 if c >= r1 else r1, 2)
-            invalidation = f"Daily close below S1 ({s1:.2f} PKR) or EMA 21 ({e21:.2f} PKR)."
-        elif combined_signal in ("Sell", "Short Sell"):
-            entry_ref = round(p if c <= p else s1, 2)
-            stop_ref = round(max(r1, e21), 2)
-            target_ref = round(s2 if c <= s1 else s1, 2)
-            invalidation = f"Daily close above R1 ({r1:.2f} PKR) or EMA 21 ({e21:.2f} PKR)."
-        else:
-            entry_ref = round(r1, 2)
-            stop_ref = round(s1, 2)
-            target_ref = round(r2, 2)
-            invalidation = f"Range-bound between S1 ({s1:.2f} PKR) and R1 ({r1:.2f} PKR); wait for directional breakout."
-
-        risk = abs(c - stop_ref)
-        reward = abs(target_ref - c)
-        rr_ratio = round(reward / risk, 2) if risk > 0.0001 else "N/A"
+        from psx_app.services.signal_reliability import build_trade_plan
+        side = "LONG" if combined_signal == "Buy" else ("SHORT" if combined_signal == "Short Sell" else None)
+        plan = build_trade_plan(last_bar, daily_pivots, side, min_rr=1.5)
+        entry_ref, stop_ref, target_ref = plan["entry"], plan["stop"], plan["target_1"]
+        rr_ratio = plan["risk_reward"] if plan["risk_reward"] is not None else "N/A"
+        invalidation = plan["reason"] if plan["status"] != "VALID" else f"Invalidate at the stop reference {stop_ref:.2f} PKR; recheck actual fill and costs."
 
         short_trigger_note = (
             f"Analytical Short-Sell Trigger < {min(s1, e21):.2f} PKR (stop {r1:.2f} PKR) — "
-            + ("Eligible on PSX Deliverables Futures Market." if is_futures_eligible else "NOT eligible for Deliverable Futures short-selling; regular market only.")
+            + ("Same-market-date futures data exists; current contract and broker eligibility must be verified." if is_futures_eligible else "No same-market-date futures data; do not treat as short-sale eligibility.")
         )
 
         sma20 = last_bar["bb_mid"] or c
@@ -716,7 +723,7 @@ class TechnicalService:
             f"Trend: Close {c:.2f} PKR is {((c - sma20)/sma20*100):+.2f}% vs SMA(20) ({sma20:.2f}) and EMA(21) ({e21:.2f})."
         )
         rationale.append(
-            f"Momentum: Wilder RSI(14) = {rsi:.2f} ({'OVERSOLD' if rsi<=30 else ('OVERBOUGHT' if rsi>=70 else 'NEUTRAL')}) | MACD Hist = {mh:+.2f}."
+            f"Momentum: Wilder RSI(14) = {rsi:.2f} ({'OVERSOLD' if rsi<=30 else ('OVERBOUGHT' if rsi>=70 else 'NEUTRAL')}) | MACD Hist = {f'{mh:+.2f}' if mh is not None else 'N/A (warm-up)' }."
         )
         rationale.append(
             f"Pivot Context: Close ({c:.2f}) is {'ABOVE' if c >= p else 'BELOW'} Daily Classic Pivot P ({p:.2f}); R1 = {r1:.2f}, S1 = {s1:.2f}."
@@ -731,6 +738,10 @@ class TechnicalService:
 
         confidence = "HIGH" if abs(score) >= 5 else ("MODERATE" if abs(score) >= 3 else "LOW")
         return {
+            "trade_plan": plan,
+            "rule_strength": confidence,
+            "confidence_interpretation": "Indicator agreement, not measured probability of profit",
+            "valid_indicators": last_bar["valid_indicators"],
             "action": combined_signal.upper(),
             "combined_signal": combined_signal.upper(),
             "legacy_action": last_bar["action"],
@@ -768,11 +779,15 @@ class TechnicalService:
                 ).fetchall()
             ]
             fut_cnt = c.execute(
-                "SELECT COUNT(*) FROM futures_ohlcv WHERE base_symbol = ?",
+                "SELECT COUNT(*) FROM futures_ohlcv WHERE base_symbol = ? AND trade_date = (SELECT MAX(trade_date) FROM equity_ohlcv)",
                 (sym,),
             ).fetchone()[0]
 
+            market_date = c.execute("SELECT MAX(trade_date) FROM equity_ohlcv").fetchone()[0]
         res = self.calculate_series_for_bars(sym, bars, is_futures_eligible=(fut_cnt > 0))
+        from psx_app.services.signal_reliability import annotate_freshness
+        if res.get("latest"):
+            annotate_freshness(res["latest"], market_date)
         res["display_label"] = "MLCF (MLF)" if sym == "MLCF" else sym
         if res["series"] and tail_bars > 0:
             res["series"] = res["series"][-tail_bars:]
@@ -807,10 +822,8 @@ class TechnicalService:
                 q = self.resolve_ticker(search.strip())
                 target_syms = [s for s in target_syms if q in s or s in search.strip().upper()]
 
-            fut_bases = {
-                r[0]
-                for r in c.execute("SELECT DISTINCT base_symbol FROM futures_ohlcv").fetchall()
-            }
+            market_date = c.execute("SELECT MAX(trade_date) FROM equity_ohlcv").fetchone()[0]
+            fut_bases = {r[0] for r in c.execute("SELECT DISTINCT base_symbol FROM futures_ohlcv WHERE trade_date = ?", (market_date,)).fetchall()}
 
             cached_rows = {
                 r["symbol"]: json.loads(r["payload_json"])
@@ -826,7 +839,11 @@ class TechnicalService:
             for sym in target_syms:
                 if sym in cached_rows:
                     item = cached_rows[sym]
+                    if item.get("engine_version") != ENGINE_VERSION:
+                        item = None
                 else:
+                    item = None
+                if item is None:
                     bars = [
                         dict(r)
                         for r in c.execute(
@@ -844,6 +861,8 @@ class TechnicalService:
                     if item:
                         new_cache_entries.append((sym, item["latest_date"], rule_ver, json.dumps(item), now))
                 if item:
+                    from psx_app.services.signal_reliability import annotate_freshness
+                    annotate_freshness(item, market_date)
                     if signal_filter and signal_filter != "ALL":
                         if item["signal"]["combined_signal"].upper() != signal_filter.upper() and item["signal"]["legacy_action"].upper() != signal_filter.upper():
                             continue
