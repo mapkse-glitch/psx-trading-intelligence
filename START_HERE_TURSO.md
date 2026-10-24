@@ -1,3 +1,5 @@
+> **Existing deployment upgrade:** use [UPGRADE_1_3_10.md](UPGRADE_1_3_10.md). Preserve your current Turso database and credentials; do not repeat the initial database import.
+
 > Already using Turso? Follow UPGRADE_1_3_8.md. Keep your working credentials; do not re-import the snapshot.
 
 # Turso setup — PSX Intelligence 1.3.8

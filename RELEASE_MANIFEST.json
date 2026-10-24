@@ -1,27 +1,23 @@
 {
-  "release": "1.3.9",
-  "name": "Accountable Technical Analysis, Forecast Ledger & Market Explorer \u2014 Turso",
-  "previous_release": "1.3.8",
-  "technical_engine": "1.3.9",
-  "repository_base_commit": "7d5720d4567d57f5fcf1027ed0d594c77cea5718",
+  "release": "1.3.10",
+  "name": "Audited Scanner Accounting, Cross-Module Coverage & Sector Import \u2014 Turso",
+  "previous_release": "1.3.9",
+  "technical_engine": "1.3.9 (compatible indicator mathematics; futures-context cache validation enhanced)",
+  "repository_base_commit": "56266de8aeb1c2bcde14320a8ac14ee635ef6b2a",
   "database_included": false,
   "credentials_included": false,
   "deployment_required": true,
-  "database_migration_required": "Automatic additive tables only; no canonical data reset.",
+  "database_migration_required": false,
   "live_database_modified": false,
-  "research_model": "Chronological research baseline; uncalibrated; no automatic production promotion. Optional external refresh disabled until configured.",
-  "tests": "122 passed, 20 skipped, 1 deprecation warning; real local libSQL integration and local browser interactions verified.",
-  "instructions": "UPGRADE_1_3_9.md",
+  "tests": "137 passed, 20 skipped (private fixtures), 1 test-client deprecation warning; disposable local libSQL + desktop/mobile browser validation",
+  "instructions": "UPGRADE_1_3_10.md",
+  "audit": "docs/LIVE_AUDIT_1_3_10.md",
+  "validation": "docs/VALIDATION_1_3_10.md",
   "files": [
     {
-      "path": ".github/workflows/research-refresh.yml",
-      "sha256": "e21b862a471d115af9380bfa10092adceacfe42de4afe8ba7e3c2349b6fed676",
-      "bytes": 1372
-    },
-    {
       "path": ".gitignore",
-      "sha256": "86c10658f797f029ef87158a6cf20b574ec6807126389e464acf7aef475dbd01",
-      "bytes": 132
+      "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603",
+      "bytes": 120
     },
     {
       "path": "Dockerfile",
@@ -30,13 +26,18 @@
     },
     {
       "path": "README.md",
-      "sha256": "e9a355eedaf65ea0f84ed0963f6e52a7befdf3855f9295d5a17745b6d420d1e8",
-      "bytes": 3061
+      "sha256": "a4f4c42e262db35ffdcee198e78473b0f366d921aeede6281d037e555d97066d",
+      "bytes": 3255
     },
     {
       "path": "START_HERE_TURSO.md",
-      "sha256": "74a28a688990190ead553acfa004b754364d25f51980e96fa03a89b4db601390",
-      "bytes": 7459
+      "sha256": "8163a5b50b2d98ff9b8180d1751c37bd835d227b7742c19dfe7d3c7b28fbd540",
+      "bytes": 7636
+    },
+    {
+      "path": "UPGRADE_1_3_10.md",
+      "sha256": "ba35ce7ad2c1c6267f117da18545803967896c2c317f6c5650783a906ef84c55",
+      "bytes": 6643
     },
     {
       "path": "UPGRADE_1_3_7.md",
@@ -112,6 +113,16 @@
       "path": "docs/KNOWN_LIMITATIONS.md",
       "sha256": "348800860d15926d554ee4337e4d6152e955591daf737be5a6794ee1505c487a",
       "bytes": 3631
+    },
+    {
+      "path": "docs/LIVE_AUDIT_1_3_10.md",
+      "sha256": "98356f6eacea432e3b3b85c87bee2bcef845c20260216e0f26c9d878237175ce",
+      "bytes": 4167
+    },
+    {
+      "path": "docs/LIVE_SYMBOL_COVERAGE_2026_10_23.csv",
+      "sha256": "a4f7f3104273154aba4bd95b1c15971a8e3a28c0d432bf317f5e346f391c6b9f",
+      "bytes": 147777
     },
     {
       "path": "docs/MIGRATION_PLAN.md",
@@ -222,6 +233,11 @@
       "path": "docs/USER_GUIDE.md",
       "sha256": "15d40f05ee7028b0f8b15465d88112590b11ac7d3a5fd2c76bc229e6bce98a36",
       "bytes": 4990
+    },
+    {
+      "path": "docs/VALIDATION_1_3_10.md",
+      "sha256": "0b14db3c2ff856099a010d7de0ee786f9ba9b21a1d9f9d871c12fadcb2ac8b43",
+      "bytes": 2476
     },
     {
       "path": "docs/WORKFLOW_MAPPING.md",
@@ -345,8 +361,8 @@
     },
     {
       "path": "psx_app/main.py",
-      "sha256": "87a5b9b38c93e8667b97a5ed6184afb9e352cce9fb56174429a555281d9a84c2",
-      "bytes": 43643
+      "sha256": "14cb650834dd9023414c30e83d135c2f69bdbc6c3974298f22ac9aee01049cd1",
+      "bytes": 43722
     },
     {
       "path": "psx_app/parsers/__init__.py",
@@ -355,8 +371,8 @@
     },
     {
       "path": "psx_app/parsers/detector.py",
-      "sha256": "c4599b04a08421569169c814fc93504cd3da9d758fed4e6d3e577b015d60db24",
-      "bytes": 5403
+      "sha256": "4eecbc16c31ebb712a10498b3b61af5ab7352ba53c25c87de9972aa73b5d64ad",
+      "bytes": 5882
     },
     {
       "path": "psx_app/parsers/ohlcv_parser.py",
@@ -404,6 +420,11 @@
       "bytes": 20886
     },
     {
+      "path": "psx_app/services/data_coverage.py",
+      "sha256": "b3647afca37b0352873cb55e42ff1d52f966dd84a8ef4f9e86fa07647f264f99",
+      "bytes": 6165
+    },
+    {
       "path": "psx_app/services/data_guard.py",
       "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca",
       "bytes": 1566
@@ -440,13 +461,13 @@
     },
     {
       "path": "psx_app/services/import_orchestrator.py",
-      "sha256": "311bdeebafc88b859168936cce52ec6e4caa0ccbf32f1fcef18346222e2330c7",
-      "bytes": 44622
+      "sha256": "5b6473447bdf157be8483582e77103baf92c4d4e1f543df8f5d6f6dbc57d0f4b",
+      "bytes": 48998
     },
     {
       "path": "psx_app/services/intelligence_service.py",
-      "sha256": "1445b2971cd1903ab458e66204a3ed73ea251e26a18cfa952f26471daf6e4843",
-      "bytes": 25885
+      "sha256": "465d2266faa65c44e1adbda95bae98fdefeb2e2573587401fc80708a8de5e673",
+      "bytes": 31378
     },
     {
       "path": "psx_app/services/learning_research.py",
@@ -475,8 +496,8 @@
     },
     {
       "path": "psx_app/services/sector_reference.py",
-      "sha256": "154188fa82a783d8933abfc9848dcca8b75ad6f408b44b915ab15c704d5be672",
-      "bytes": 4977
+      "sha256": "e001d01ae64a3e527e7481389197ee974c6afee62321988b4880b1a8274f2486",
+      "bytes": 5072
     },
     {
       "path": "psx_app/services/signal_reliability.py",
@@ -485,8 +506,8 @@
     },
     {
       "path": "psx_app/services/technical_service.py",
-      "sha256": "1167ea96511169224f3c4e205ffd6cbe1e4f6c3df0e7149e3667c982e3507421",
-      "bytes": 39104
+      "sha256": "848a0ed53cf7aaba3b80088ac5a36b8082e9067f6bd9c14a81331d25e360ba9b",
+      "bytes": 39531
     },
     {
       "path": "psx_app/services/top5_service.py",
@@ -500,13 +521,13 @@
     },
     {
       "path": "psx_app/static/app.js",
-      "sha256": "7bc2aa22c2182072b5c8e7fe2e521b7e75925a2b214ccf6e3ab55799eb6f549f",
-      "bytes": 173862
+      "sha256": "615a354f5e2a78b47a86c77287cba358772b2e4414e5966b9946ae3e31c213e4",
+      "bytes": 173978
     },
     {
       "path": "psx_app/static/index.html",
-      "sha256": "531644c9c5761548b0765e6b9f03c8281393f7ec0b3ef388f2cd81ef73ed290a",
-      "bytes": 5024
+      "sha256": "b3a2256aa29e4e2f0ec70ac7e2d02057b8911550f91dbe5b3077f524589a8770",
+      "bytes": 5082
     },
     {
       "path": "psx_app/static/styles.css",
@@ -520,13 +541,13 @@
     },
     {
       "path": "psx_app/static/upgrade139.js",
-      "sha256": "0271d18c6da851db426b6251789b8b12b7dc753c0abe0b4d23edc2f7e1494bef",
-      "bytes": 25481
+      "sha256": "0bc9123074ec3b88467ce0af445f60065a4ea6e8d20b6b5537e059f17a667d97",
+      "bytes": 31040
     },
     {
       "path": "psx_app/upgrade_routes.py",
-      "sha256": "cbb34b9bfe4f271c6ad501ceb4d1141eff8ac8f2fe482c3c95455549787c3997",
-      "bytes": 3138
+      "sha256": "544a8c4a250b8b6db7965aa90dd151a14a6eb597fa558d79cbd970625011b5a6",
+      "bytes": 3327
     },
     {
       "path": "pytest.ini",
@@ -620,8 +641,13 @@
     },
     {
       "path": "tests/test_turso_remote.py",
-      "sha256": "3d40afb1c9632b6cc68c6e48b8fe978878ed6c5e3bab561e62516289f633db37",
-      "bytes": 13603
+      "sha256": "bb1445a3c84272d28af9ace2dfd8e9e801a561afaf7b8073780c9c5688027c97",
+      "bytes": 17406
+    },
+    {
+      "path": "tests/test_v1310_coverage.py",
+      "sha256": "905a3af3c1df1a0fc3a638485c35e918b520e26328cde495f2eaafdf8f8956be",
+      "bytes": 9236
     },
     {
       "path": "tests/test_v133_import_and_latest.py",

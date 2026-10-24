@@ -251,3 +251,70 @@ def test_remote_v139_reference_forecast_learning_tables_and_revision(remote):
     service=SectorReference();p=service.preview(raw.getvalue());assert revision()==before
     service.commit(p['token']);assert revision()!=before
     assert service.directory()['ATRL']['sector']=='REFINERY'
+
+
+def reference_workbook_1310(rows):
+    w=openpyxl.Workbook();s=w.active;s.title='COMP_LIST'
+    s.append(['SYMBOL','COMPANY NAME','SECTOR'])
+    for row in rows:s.append(row)
+    b=io.BytesIO();w.save(b);return b.getvalue()
+
+
+def test_remote_reference_normal_upload_across_workers(remote):
+    from psx_app.services.import_orchestrator import ImportOrchestrator
+    from psx_app.database.schema import get_connection
+    a=ImportOrchestrator(data_root=remote/'worker-a')
+    raw=reference_workbook_1310([['TRG','TRG Pakistan','TECHNOLOGY']])
+    staged=a.stage_uploaded_files([('SECTOR_WISE.xlsx',raw)])
+    assert staged['rows_accepted']==1
+    shutil.rmtree(remote/'worker-a'/'data'/'staging')
+    b=ImportOrchestrator(data_root=remote/'worker-b')
+    result=b.commit_staged_batch(staged['batch_uuid'])
+    assert result['status']=='COMMITTED' and result['new_records']==1
+    assert b.commit_staged_batch(staged['batch_uuid'])['status']=='ALREADY_COMMITTED'
+    m=b.stage_uploaded_files([('renamed.xlsx',reference_workbook_1310([['TRG','Changed Company','TECHNOLOGY']]))])
+    assert b.commit_staged_batch(m['batch_uuid'])['revisions_count']==1
+    with get_connection() as c:
+        assert c.execute("SELECT company FROM company_reference WHERE symbol='TRG'").fetchone()[0]=='Changed Company'
+        assert c.execute('SELECT COUNT(*) FROM equity_ohlcv').fetchone()[0]==0
+        assert c.execute("SELECT COUNT(*) FROM source_revisions WHERE table_name='company_reference'").fetchone()[0]==1
+
+
+def test_remote_reference_atomic_rollback(remote):
+    from psx_app.services.import_orchestrator import ImportOrchestrator
+    from psx_app.database.schema import get_connection
+    with get_connection() as c:
+        c.execute("CREATE TRIGGER reject_reference BEFORE INSERT ON company_reference WHEN NEW.symbol='FAIL' BEGIN SELECT RAISE(ABORT,'synthetic rollback'); END")
+        c.commit()
+    service=ImportOrchestrator(data_root=remote)
+    m=service.stage_uploaded_files([('sector.xlsx',reference_workbook_1310([['TRG','TRG Pakistan','TECHNOLOGY'],['FAIL','Synthetic Failure','TEST']]))])
+    with pytest.raises(Exception,match='transaction was not confirmed'):
+        service.commit_staged_batch(m['batch_uuid'])
+    with get_connection() as c:
+        assert c.execute('SELECT COUNT(*) FROM company_reference').fetchone()[0]==0
+        assert c.execute('SELECT COUNT(*) FROM source_files').fetchone()[0]==0
+
+
+def test_remote_complete_bundled_reference_workbook_is_batched(remote,monkeypatch):
+    from psx_app.services.sector_reference import BUNDLED
+    from psx_app.services.import_orchestrator import ImportOrchestrator
+    from psx_app.database import turso
+    from psx_app.database.schema import get_connection
+    book=openpyxl.Workbook();book.remove(book.active)
+    lists=json.loads(BUNDLED.read_text());total=sum(len(rows) for rows in lists.values())
+    for name,rows in lists.items():
+        ws=book.create_sheet(name);ws.append(['SYMBOL','COMPANY NAME','SECTOR'])
+        for r in rows:ws.append([r['symbol'],r['company'],r['sector']])
+    stream=io.BytesIO();book.save(stream)
+    original=turso.Connection.execute;writes=[]
+    def counting(self,sql,parameters=()):
+        if sql.startswith('INSERT OR REPLACE INTO company_reference'):writes.append(1)
+        return original(self,sql,parameters)
+    monkeypatch.setattr(turso.Connection,'execute',counting)
+    service=ImportOrchestrator(data_root=remote)
+    staged=service.stage_uploaded_files([('SECTOR_WISE.xlsx',stream.getvalue())])
+    assert staged['rows_accepted']==total==903
+    result=service.commit_staged_batch(staged['batch_uuid'])
+    assert result['new_records']==903
+    assert 1 <= len(writes) <= 8
+    with get_connection() as c:assert c.execute('SELECT COUNT(*) FROM company_reference').fetchone()[0]==903
