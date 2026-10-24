@@ -398,3 +398,5 @@ contains account records; do not assume a public repository is a private backup.
 Normal pushes to `main` can automatically deploy Vercel. Review tests and saved
 Production variables first; Preview needs its own configured variable scopes.
 The one-time migration workflow never runs automatically on push.
+
+The migration workflow first performs a verified-TLS `SELECT 1` using the separate Actions secrets. If `CA_OR_URI_CONFIGURATION_INVALID` is reported, save the complete CA PEM (including BEGIN/END lines), not a download filename. `TLS_CA_NOT_TRUSTED` means the supplied CA did not validate this server; copy the CA and URI from the same Aiven service. Never fix this by disabling certificate verification. A preflight failure occurs before the canonical import.

@@ -48,6 +48,27 @@ jobs:
           python-version: '3.12'
       - name: Install pinned database driver
         run: pip install 'psycopg[binary]==3.2.12'
+      - name: Verify encrypted connection settings (read-only)
+        run: |
+          python - <<'PYCODE'
+          import json, ssl
+          from psx_app.database.postgres import settings
+          import psycopg
+          try:
+              config=settings()
+              ssl.create_default_context(cafile=config['sslrootcert'])
+          except Exception:
+              raise SystemExit('CONNECTION_PREFLIGHT: CA_OR_URI_CONFIGURATION_INVALID. Copy the complete CA PEM and PostgreSQL URI from the same Aiven service into Actions secrets.') from None
+          try:
+              with psycopg.connect(**config,autocommit=True) as c:
+                  assert c.execute('SELECT 1').fetchone()[0] == 1
+              print('CONNECTION_PREFLIGHT: VERIFIED_TLS_READ_OK')
+          except Exception as exc:
+              text=str(exc).lower()
+              checks=[('hostname','TLS_HOSTNAME_MISMATCH'),('certificate verify failed','TLS_CA_NOT_TRUSTED'),('root certificate file','TLS_CA_FILE_INVALID'),('password authentication failed','AUTHENTICATION_REJECTED'),('timeout','NETWORK_TIMEOUT'),('could not translate host','DNS_FAILED'),('connection refused','CONNECTION_REFUSED')]
+              code=next((code for match,code in checks if match in text),'CONNECTION_FAILED')
+              raise SystemExit('CONNECTION_PREFLIGHT: '+code+'. No migration was attempted; raw connection details are not printed.') from None
+          PYCODE
       - name: Verify source and migrate into empty target
         run: |
           python - <<'PY'
