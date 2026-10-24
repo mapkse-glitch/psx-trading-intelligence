@@ -163,6 +163,16 @@ function copyTextToClipboard(text, label = "Analysis report") {
   });
 }
 
+function databaseNotice1313(payload) {
+  const el = document.getElementById('databaseNotice1313');
+  if (!el) return;
+  if (!payload) { el.classList.add('hidden'); return; }
+  el.innerHTML = `<h3 class="neg">Database connection unavailable</h3><p>${escapeHtml(payload.detail || 'Prices and saved records cannot be loaded right now.')}</p><button class="btn btn-primary" onclick="refreshCurrentView()">Retry connection</button> <a class="btn btn-secondary" href="/api/health?diagnose=true" target="_blank" rel="noopener noreferrer">Connection diagnostics</a>`;
+  el.classList.remove('hidden');
+  document.getElementById('sidebarDbStatus').textContent = 'Database unavailable';
+  document.querySelector('.status-pill').dataset.connection = 'unavailable';
+}
+
 async function apiGet(url, useCache = true) {
   if (useCache && state.apiCache[url]) {
     return state.apiCache[url];
@@ -170,9 +180,11 @@ async function apiGet(url, useCache = true) {
   const res = await fetch(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "API request failed");
+    if (res.status === 503 && err.code) databaseNotice1313(err);
+    const error = new Error(err.detail || "API request failed"); error.code = err.code; throw error;
   }
   const data = await res.json();
+  databaseNotice1313(null);
   if (useCache) {
     state.apiCache[url] = data;
   }
@@ -223,7 +235,9 @@ async function switchView(view) {
     else if (view === "exports") await renderExportsView(container);
     else if (view === "settings") await renderSettingsView(container);
   } catch (err) {
-    container.innerHTML = `<div class="card"><h3 class="neg">Error loading view</h3><p>${escapeHtml(err.message)}</p></div>`;
+    container.innerHTML = err.code
+      ? '<div class="card"><h3>Records not loaded</h3><p>Restore the database connection using the controls above. No empty replacement data have been created.</p></div>'
+      : `<div class="card"><h3 class="neg">Error loading view</h3><p>${escapeHtml(err.message)}</p><button class="btn btn-primary" onclick="refreshCurrentView()">Retry</button></div>`;
   }
 }
 
@@ -2782,9 +2796,10 @@ async function updateSystemStatus() {
   try {
     const result = await apiGet('/api/system/status', false);
     const integrity = result.database_integrity.ok;
+    document.querySelector('.status-pill').dataset.connection = integrity ? 'ready' : 'unavailable';
     document.getElementById('sidebarDbStatus').textContent = result.cloud_sync.backend === 'turso' ? (integrity ? 'Turso: connected' : 'Turso: unavailable') : (integrity ? 'SQLite integrity: OK' : 'SQLite integrity: FAILED');
     document.getElementById('sidebarLastImport').textContent = 'Cloud: '+result.cloud_sync.health+' · Reference parity checked separately';
-  } catch (_) {document.getElementById('sidebarDbStatus').textContent='Status unavailable';}
+  } catch (_) {document.getElementById('sidebarDbStatus').textContent='Database unavailable';document.querySelector('.status-pill').dataset.connection='unavailable';}
 }
 // Add accessible names to existing legacy controls; date input locale is supplemented by a fixed-format readout.
 let enhancementQueued = false;
@@ -2857,6 +2872,7 @@ async function verifyWorkspaceFreshness(force=false) {
     const versionChanged = result.version && result.version !== document.querySelector('meta[name="psx-build-version"]')?.content;
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
+      notice.classList.toggle('connection-warning1313', !['CURRENT','LOCAL'].includes(result.status));
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');
     }
     return result;

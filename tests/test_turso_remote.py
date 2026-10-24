@@ -330,3 +330,20 @@ def test_remote_market_volume_derived_sum_matches_cash_universe(remote):
     assert r['index_rows'][0]['volume']==3000
     assert r['index_rows'][0]['volume_symbols']==2
     assert MarketExplorer().volume('2026-10-23')['total']==3000
+
+
+def test_remote_cold_start_defers_database_to_worker_and_serves_shell(remote, monkeypatch):
+    from fastapi.testclient import TestClient
+    from psx_app import main
+    from psx_app.database import turso
+    from psx_app.database.availability import Readiness
+    monkeypatch.setattr(turso, '_READY', False)
+    monkeypatch.setattr(main, 'readiness', Readiness())
+    with TestClient(main.app) as client:
+        assert turso._READY is False
+        assert client.get('/').status_code == 200
+        assert turso._READY is False
+        health = client.get('/api/health')
+        assert health.status_code == 200 and health.json()['db_integrity']['ok']
+        assert turso._READY is True
+        assert client.get('/api/v139/market/meta').status_code == 200

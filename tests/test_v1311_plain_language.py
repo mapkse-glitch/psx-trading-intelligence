@@ -106,7 +106,7 @@ assert.equal(numericValue1311('0.00'),0);
 def test_build_has_matching_version_exact_colours_and_calendar_controls():
     import re
     html=(ROOT/'psx_app/static/index.html').read_text();css=(ROOT/'psx_app/static/styles.css').read_text()
-    assert 'content="1.3.12"' in html and '/display1311.js?v=1.3.12' in html
+    assert 'content="1.3.13"' in html and '/display1311.js?v=1.3.13' in html
     assert set(re.findall(r'--pos-green:\s*(#[A-Fa-f0-9]{6})',css))=={'#03D815'}
     assert set(re.findall(r'--neg-red:\s*(#[A-Fa-f0-9]{6})',css))=={'#F63131'}
     app=(ROOT/'psx_app/static/app.js').read_text();ui=(ROOT/'psx_app/static/upgrade139.js').read_text()

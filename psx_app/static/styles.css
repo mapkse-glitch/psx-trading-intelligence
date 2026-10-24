@@ -1076,3 +1076,10 @@ input[type="date"] { min-height:44px; color-scheme:light; }
  .date-range-item1312 strong {font-size:22px;}
 }
 @media(max-width:360px) {.date-range1312{grid-template-columns:1fr;}}
+
+/* Connection status must never look healthy during an outage. */
+.status-pill:not([data-connection="ready"]) .dot {background:var(--text-muted);box-shadow:none;}
+.status-pill[data-connection="unavailable"] .dot {background:#F63131;box-shadow:none;}
+#dataFreshnessNotice.connection-warning1313 {color:var(--text-main);background:var(--neg-red-bg);border-color:#F63131;}
+#databaseNotice1313 {margin:16px 28px 0;}
+@media(max-width:650px){#databaseNotice1313{margin:12px 16px 0;}}

@@ -4,6 +4,7 @@ import re
 import sqlite3
 import uuid
 from urllib.parse import urlsplit
+from psx_app.database.availability import DatabaseUnavailable, safe_failure
 
 
 def enabled():
@@ -74,7 +75,7 @@ class Connection:
             return Cursor(self.raw.execute(sql, parameters))
         except Exception as exc:
             # Do not reflect connection strings, authorization headers, or driver diagnostics.
-            raise sqlite3.DatabaseError('Turso database operation failed; transaction was not confirmed. Check server logs and retry status before resubmitting.') from None
+            raise safe_failure(exc, 'query', uncertain=bool(self.dirty)) from None
 
     def executemany(self, sql, parameters):
         rows = list(parameters)
@@ -131,14 +132,14 @@ class Connection:
 
 
 def connect():
-    url, token = credentials()
     try:
+        url, token = credentials()
         import libsql
         raw = libsql.connect(database=url, auth_token=token)
         raw.execute('PRAGMA foreign_keys=ON')
         return Connection(raw)
-    except Exception:
-        raise RuntimeError('Turso connection failed. Check the private database token and URL; no local fallback was used.') from None
+    except Exception as exc:
+        raise safe_failure(exc, 'connect') from None
 
 
 def initialize():

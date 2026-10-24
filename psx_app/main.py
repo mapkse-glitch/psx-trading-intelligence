@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from psx_app.security import install_request_safety, MUTATION_LOCK
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from psx_app.database.availability import DatabaseUnavailable, readiness, http_read_diagnostic
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -43,8 +44,16 @@ def invalidate_api_cache() -> None:
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
     from psx_app.database.turso import enabled
-    if enabled():
-        init_db(DB_PATH)
+    try:
+        remote_backend = enabled()
+    except RuntimeError:
+        # Misconfiguration is reported through the same safe API diagnostics.
+        yield
+        return
+    if remote_backend:
+        # Remote I/O belongs in request worker threads, not in ASGI startup.
+        # A remote outage must not kill the static app or Vercel handler import.
+        # Every database API remains fail-closed behind the readiness gate.
         yield
         return
     startup_pull = CloudSyncService(DB_PATH).pull_latest_db_on_startup()
@@ -62,7 +71,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.12",
+    version="1.3.13",
     lifespan=lifespan,
 )
 
@@ -89,6 +98,12 @@ async def serialize_mutations(request: Request, call_next):
                 from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": str(exc)}, status_code=409)
         return await call_next(request)
+
+
+@app.exception_handler(DatabaseUnavailable)
+async def database_unavailable_handler(request: Request, exc: DatabaseUnavailable):
+    # No automatic write retry: a lost acknowledgement is not proof of rollback.
+    return JSONResponse(exc.payload(), status_code=503, headers={"Retry-After": "10", "Cache-Control": "no-store"})
 
 
 # ------------------------------------------------------------------
@@ -127,14 +142,18 @@ class RestoreBackupRequest(BaseModel):
 # 1. Overview & System Status Endpoints
 # ------------------------------------------------------------------
 @app.get("/api/health")
-def api_health() -> Dict[str, Any]:
-    b_svc = BackupService(DB_PATH, DATA_ROOT)
-    return {
-        "status": "ok",
-        "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.12",
-        "db_integrity": b_svc.run_integrity_check(),
-    }
+def api_health(diagnose: bool = Query(False)):
+    try:
+        readiness.check()
+        integrity = BackupService(DB_PATH).run_integrity_check()
+        return {"status": "ok", "app": "PSX Trading Intelligence Dashboard",
+                "version": "1.3.13", "db_integrity": integrity}
+    except DatabaseUnavailable as exc:
+        payload = {"status": "database_unavailable", "app": "PSX Trading Intelligence Dashboard",
+                   "version": "1.3.13", "db_integrity": {"ok": False, "check_type": "connectivity"}, **exc.payload()}
+        if diagnose:
+            payload["read_only_diagnostic"] = http_read_diagnostic()
+        return JSONResponse(payload, status_code=503, headers={"Retry-After": "10", "Cache-Control": "no-store"})
 
 
 @app.get("/api/system/freshness")
@@ -143,7 +162,7 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.12"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.13"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
         if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
             result["changed"] = True
@@ -153,7 +172,7 @@ async def api_system_freshness(force: bool = Query(False)):
                 await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.12"}
+        return {**result, "version": "1.3.13"}
 
 
 @app.middleware("http")
@@ -170,6 +189,18 @@ async def verify_data_read_worker(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store"
         return response
     return await call_next(request)
+
+
+# Registered after freshness middleware so this gate executes BEFORE it.
+@app.middleware("http")
+async def guard_database_availability(request: Request, call_next):
+    if not request.url.path.startswith("/api/") or request.url.path == "/api/health":
+        return await call_next(request)
+    try:
+        await run_in_threadpool(readiness.check)
+        return await call_next(request)
+    except DatabaseUnavailable as exc:
+        return JSONResponse(exc.payload(), status_code=503, headers={"Retry-After": "10", "Cache-Control": "no-store"})
 
 
 @app.get("/api/data-dates")
@@ -959,7 +990,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.12", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.13", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 
