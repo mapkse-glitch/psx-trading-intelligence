@@ -70,8 +70,8 @@ async def lifespan(app_instance: FastAPI):
 
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
-    description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.13",
+    description="PostgreSQL / Legacy Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
+    version="1.3.14",
     lifespan=lifespan,
 )
 
@@ -147,10 +147,10 @@ def api_health(diagnose: bool = Query(False)):
         readiness.check()
         integrity = BackupService(DB_PATH).run_integrity_check()
         return {"status": "ok", "app": "PSX Trading Intelligence Dashboard",
-                "version": "1.3.13", "db_integrity": integrity}
+                "version": "1.3.14", "db_integrity": integrity}
     except DatabaseUnavailable as exc:
         payload = {"status": "database_unavailable", "app": "PSX Trading Intelligence Dashboard",
-                   "version": "1.3.13", "db_integrity": {"ok": False, "check_type": "connectivity"}, **exc.payload()}
+                   "version": "1.3.14", "db_integrity": {"ok": False, "check_type": "connectivity"}, **exc.payload()}
         if diagnose:
             payload["read_only_diagnostic"] = http_read_diagnostic()
         return JSONResponse(payload, status_code=503, headers={"Retry-After": "10", "Cache-Control": "no-store"})
@@ -162,7 +162,7 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.13"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.14"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
         if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
             result["changed"] = True
@@ -172,7 +172,7 @@ async def api_system_freshness(force: bool = Query(False)):
                 await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.13"}
+        return {**result, "version": "1.3.14"}
 
 
 @app.middleware("http")
@@ -383,7 +383,7 @@ async def api_upload_chunk(request: Request) -> Dict[str, Any]:
     if enabled():
         from psx_app.services.remote_staging import put
         await run_in_threadpool(put, f'chunk:{upload_id}:{idx}', body)
-        return {"stored": True, "idx": idx, "total": total, "name": name, "storage": "turso"}
+        return {"stored": True, "idx": idx, "total": total, "name": name, "storage": "remote"}
     d = _chunk_dir(upload_id)
     d.mkdir(parents=True, exist_ok=True)
     (d / f"{idx:06d}.part").write_bytes(body)
@@ -833,9 +833,6 @@ def api_generate_export(
 @app.get("/api/docs")
 def api_list_docs() -> Dict[str, Any]:
     docs_list = []
-    if DOCS_DIR.exists():
-        for p in sorted(DOCS_DIR.glob("*.md")):
-            docs_list.append({"name": p.name, "size_bytes": p.stat().st_size})
     readme_p = APP_ROOT.parent / "README.md"
     if readme_p.exists():
         docs_list.insert(0, {"name": "README.md", "size_bytes": readme_p.stat().st_size})
@@ -849,7 +846,9 @@ def api_list_docs() -> Dict[str, Any]:
 @app.get("/api/docs/{doc_name}")
 def api_get_doc(doc_name: str) -> Dict[str, Any]:
     safe_name = Path(doc_name).name
-    p = (APP_ROOT.parent / "README.md") if safe_name == "README.md" else (DOCS_DIR / safe_name)
+    if safe_name != "README.md":
+        raise HTTPException(status_code=404, detail="Document not found.")
+    p = APP_ROOT.parent / "README.md"
     if not p.exists():
         raise HTTPException(status_code=404, detail="Document not found.")
     return {"name": safe_name, "content": p.read_text(encoding="utf-8")}
@@ -907,7 +906,7 @@ def api_cloud_sync_now() -> Dict[str, Any]:
 def api_download_cloud_snapshot() -> FileResponse:
     from psx_app.database.turso import enabled
     if enabled():
-        raise HTTPException(409, "Download an independent SQLite backup from the Turso dashboard; full-database serverless snapshots are disabled.")
+        raise HTTPException(409, "Use PostgreSQL export tools for your USB backup; full-database serverless snapshots are disabled.")
     gz_path = CloudSyncService(DB_PATH).create_local_gzip_snapshot()
     return FileResponse(path=str(gz_path), filename="latest_cloud_sync.db.gz", media_type="application/gzip")
 
@@ -916,7 +915,7 @@ def api_download_cloud_snapshot() -> FileResponse:
 def api_create_backup(req: CreateBackupRequest) -> Dict[str, Any]:
     from psx_app.database.turso import enabled
     if enabled():
-        raise HTTPException(409, "Use Turso dashboard Download SQLite File. No full database copy is made on Vercel.")
+        raise HTTPException(409, "Use a database export for your USB backup. No full database copy is made on Vercel.")
     b_svc = BackupService(DB_PATH, DATA_ROOT)
     created = b_svc.create_backup(label=req.label, include_raw_archive=req.include_raw_archive)
     return {"created": created, "backups": b_svc.list_backups()}
@@ -990,7 +989,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.13", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.14", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 
@@ -1008,7 +1007,7 @@ def api_cloud_reload(req: CloudReloadRequest):
     if enabled():
         invalidate_api_cache()
         _READ_FRESHNESS.clear()
-        return {"pulled": False, "backend": "turso", "reason": "Views refreshed; reads come directly from Turso."}
+        return {"pulled": False, "backend": __import__("psx_app.database.turso", fromlist=["backend_name"]).backend_name(), "reason": "Views refreshed; reads come directly from the configured remote database."}
     BackupService(DB_PATH, DATA_ROOT).create_backup(label="pre_cloud_reload")
     result = svc.pull_latest_db_on_startup()
     invalidate_api_cache()

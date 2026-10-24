@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 """Native market views; source averages only, exact-date benchmark joins."""
 from datetime import date, timedelta
 from psx_app.database.schema import get_connection
@@ -12,12 +13,14 @@ def delta(value, baseline):
 class MarketExplorer:
     def __init__(self, db_path=None): self.db_path = db_path
 
+    @persisted_result
     def metadata(self):
         with get_connection(self.db_path) as c:
             dates = [r[0] for r in c.execute('SELECT DISTINCT trade_date FROM equity_ohlcv ORDER BY trade_date DESC')]
             symbols = [r[0] for r in c.execute('SELECT DISTINCT symbol FROM equity_ohlcv ORDER BY symbol')]
         return {'dates': dates, 'symbols': symbols, 'benchmark_note': 'Imported INDEX series (unverified identity; confirm it is KSE-100). Volume is calculated as the sum of all imported cash-symbol volumes on that date; not verified index-constituent volume.'}
 
+    @persisted_result
     def volume(self, selected=None, top_n=10):
         top_n = min(10, max(1, int(top_n)))
         with get_connection(self.db_path) as c:
@@ -30,6 +33,7 @@ class MarketExplorer:
         for r in parts: r['pct'] = r['volume']/total*100 if total else 0
         return {'date': selected, 'top_n': top_n, 'total': total, 'parts': parts, 'top_pct': (total-others)/total*100 if total else 0, 'universe': 'All imported cash symbols with positive reported volume; not exchange-wide coverage verification.'}
 
+    @persisted_result
     def symbol(self, symbol, n=50, end=None):
         n = max(1, min(6000, int(n)))
         with get_connection(self.db_path) as c:

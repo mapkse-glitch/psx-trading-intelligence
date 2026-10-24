@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+psx_data/
+*.db
+*.db-wal
+*.db-shm
+*.db.gz
+*.sqlite*
+*.log

@@ -1,0 +1,50 @@
+name: Import existing SQLite snapshot into empty PostgreSQL
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_path:
+        description: Existing repository path to your trusted .db or .db.gz snapshot
+        required: true
+        type: string
+      confirm:
+        description: Type IMPORT_INTO_EMPTY_DATABASE to permit the one-time import
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: psx-postgres-migration
+  cancel-in-progress: false
+jobs:
+  migrate:
+    if: inputs.confirm == 'IMPORT_INTO_EMPTY_DATABASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PSX_DATABASE_BACKEND: postgres
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+      SNAPSHOT_PATH: ${{ inputs.snapshot_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install database driver
+        run: pip install 'psycopg[binary]==3.2.12'
+      - name: Validate path and migrate
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from tools.import_sqlite_to_postgres import migrate
+          import json
+          root=Path.cwd().resolve()
+          path=(root/os.environ['SNAPSHOT_PATH']).resolve()
+          if not path.is_relative_to(root) or not path.is_file():
+              raise SystemExit('Snapshot must already exist inside this checked-out repository.')
+          try:
+              print(json.dumps(migrate(path,confirm=True)))
+          except Exception:
+              raise SystemExit('Migration did not report success. Verify target counts before retrying. Credentials are not printed.') from None
+          PY

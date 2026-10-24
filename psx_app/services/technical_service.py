@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 import json
 import math
 from datetime import datetime, timezone
@@ -764,6 +765,13 @@ class TechnicalService:
         }
 
     def get_ticker_analysis(self, symbol: str, tail_bars: int = 200) -> Dict[str, Any]:
+        full=self._get_full_ticker_analysis(self.resolve_ticker(symbol))
+        result=dict(full)
+        if full.get('series') and tail_bars>0: result['series']=full['series'][-tail_bars:]
+        return result
+
+    @persisted_result
+    def _get_full_ticker_analysis(self, symbol: str) -> Dict[str, Any]:
         sym = self.resolve_ticker(symbol)
         with get_connection(self.db_path) as c:
             bars = [
@@ -789,10 +797,9 @@ class TechnicalService:
         if res.get("latest"):
             annotate_freshness(res["latest"], market_date)
         res["display_label"] = sym
-        if res["series"] and tail_bars > 0:
-            res["series"] = res["series"][-tail_bars:]
         return res
 
+    @persisted_result
     def get_universe_summary(
         self,
         scope: str = "core36",

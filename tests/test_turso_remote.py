@@ -113,7 +113,7 @@ def test_remote_stage_commit_on_different_worker_and_idempotency(remote):
     with get_connection() as c:
         assert c.execute('SELECT COUNT(*) FROM equity_ohlcv').fetchone()[0] == 20
         assert c.execute('SELECT COUNT(*) FROM psx_blob_parts').fetchone()[0] == 0
-        assert c.execute('SELECT archive_path FROM source_files').fetchone()[0].startswith('turso:metadata-only/')
+        assert c.execute('SELECT archive_path FROM source_files').fetchone()[0].startswith('remote:metadata-only/')
     again = first.stage_uploaded_files([('2025.xlsx', workbook())])
     assert again['duplicates_ignored'] == 20
     assert first.commit_staged_batch(again['batch_uuid'])['new_records'] == 0
@@ -158,7 +158,7 @@ def test_remote_http_endpoints_and_no_snapshot_fallback(remote, monkeypatch):
         result = client.post('/api/settings', json={'updates': {'futures_default_days': 20}})
         assert result.status_code == 200 and result.json()['cloud_sync']['saved']
         assert client.post('/api/cloud-sync/reload', json={'confirm':True}).status_code == 200
-    with pytest.raises(ValueError, match='NEW Turso'):
+    with pytest.raises(ValueError, match='NEW remote'):
         BackupService().restore_backup('anything.zip')
     assert not list(remote.rglob('app.db'))
 
@@ -204,7 +204,7 @@ def test_remote_chunked_upload_and_commit(remote, monkeypatch):
     with TestClient(main.app) as client:
         for i, part in enumerate(pieces):
             response = client.post(f'/api/imports/upload-chunk?upload_id={upload_id}&name=2025.xlsx&idx={i}&total=2', content=part)
-            assert response.status_code == 200 and response.json()['storage'] == 'turso'
+            assert response.status_code == 200 and response.json()['storage'] == 'remote'
         shutil.rmtree(remote/'worker', ignore_errors=True)
         response = client.post('/api/imports/stage-chunked', json={'uploads':[{'upload_id':upload_id,'name':'2025.xlsx','total_chunks':2}]})
         assert response.status_code == 200, response.text

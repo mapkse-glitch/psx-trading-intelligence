@@ -455,10 +455,10 @@ class ImportOrchestrator:
         if not enabled():
             raw_archive_dir.mkdir(parents=True, exist_ok=True)
 
-        commit_settings = self.repo.get_settings()
         conn = get_connection(self.db_path)
         affected_account_dates = set()
         equity_updated = False
+        affected_equity_symbols = set()
         actual_new = 0
         actual_dups = 0
         actual_revs = 0
@@ -466,6 +466,8 @@ class ImportOrchestrator:
 
         try:
             conn.execute("BEGIN IMMEDIATE")
+            # Read settings only after the cross-worker write lock is held.
+            commit_settings = self.repo.get_settings()
             batch_row = conn.execute(
                 "SELECT id, status FROM import_batches WHERE batch_uuid = ?",
                 (batch_uuid,),
@@ -510,7 +512,7 @@ class ImportOrchestrator:
                     """,
                     (
                         meta["filename"], meta["file_type"], meta["sha256"],
-                        meta["size_bytes"], ("turso:metadata-only/" + meta["filename"] if enabled() else str(arch_path)), d_min, d_max, now,
+                        meta["size_bytes"], ("remote:metadata-only/" + meta["filename"] if enabled() else str(arch_path)), d_min, d_max, now,
                     ),
                 )
                 sf_id = cur_sf.lastrowid
@@ -704,6 +706,8 @@ class ImportOrchestrator:
                         repaired = quarantine_verified_swaps(conn, mode, recs, batch_id, sf_id, now)
                         verified_date_repairs += repaired
                         equity_updated = equity_updated or (mode == "CASH" and repaired > 0)
+                        if mode == "CASH" and repaired:
+                            affected_equity_symbols.update(r["symbol"] for r in recs)
                     if mode == "CASH":
                         existing_map = {
                             (r["trade_date"], r["symbol"]): tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
@@ -721,6 +725,7 @@ class ImportOrchestrator:
                                 existing_map[k] = tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price"))
                                 actual_new += 1
                                 equity_updated = True
+                                affected_equity_symbols.add(r["symbol"])
                             elif existing_map[k] == tuple(r[col] for col in ("volume", "pr_close", "high", "low", "open", "close", "avg_price")):
                                 actual_dups += 1
                             elif not allow_revisions:
@@ -741,6 +746,7 @@ class ImportOrchestrator:
                                 )
                                 actual_revs += 1
                                 equity_updated = True
+                                affected_equity_symbols.add(r["symbol"])
                         if to_insert:
                             conn.executemany(
                                 """
@@ -824,7 +830,9 @@ class ImportOrchestrator:
                 conn.executemany(sql, values)
 
             if equity_updated:
-                conn.execute("DELETE FROM indicator_cache")
+                # Unchanged symbols retain their full-history calculations.
+                # Corrections invalidate the entire affected symbol, not only its last day.
+                conn.executemany("DELETE FROM indicator_cache WHERE symbol=?", [(s,) for s in sorted(affected_equity_symbols)])
 
             updated_manifest = {
                 **manifest,

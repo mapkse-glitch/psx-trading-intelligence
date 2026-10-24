@@ -1,754 +1,352 @@
 {
-  "release": "1.3.13",
-  "name": "Startup Recovery & Safe Turso Diagnostics",
-  "previous_release": "1.3.12",
-  "technical_engine": "1.3.9 (indicator mathematics retained)",
-  "forecast_rule_version": "1.3.9-rules-1 (existing immutable ledger retained)",
-  "database_included": false,
-  "credentials_included": false,
-  "deployment_required": true,
-  "database_migration_required": false,
-  "live_canonical_price_account_records_modified": false,
-  "live_mutation_requests_sent": false,
-  "validation_scope": "Local test-copy browser checks and isolated SQLite/libSQL tests only; not deployed.",
-  "validation": "191 passed, 20 private-reference fixture skips, 1 dependency warning; real disposable libSQL HTTP and local desktop/mobile Chromium checks",
-  "instructions": "UPGRADE_1_3_13.md",
-  "test_report": "docs/VALIDATION_1_3_13.md",
-  "files": [
-    {
-      "path": ".gitignore",
-      "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603",
-      "bytes": 120
-    },
-    {
-      "path": "Dockerfile",
-      "sha256": "ea329082f661b44b02e478367742b4d79da33127aa2da13a9f7035d4fc2f8724",
-      "bytes": 450
-    },
-    {
-      "path": "README.md",
-      "sha256": "06e321fc9eee3204a00e4361da109cd8aee05506b6105e504d844c7c89fe5de2",
-      "bytes": 4607
-    },
-    {
-      "path": "START_HERE_TURSO.md",
-      "sha256": "8163a5b50b2d98ff9b8180d1751c37bd835d227b7742c19dfe7d3c7b28fbd540",
-      "bytes": 7636
-    },
-    {
-      "path": "UPGRADE_1_3_10.md",
-      "sha256": "ba35ce7ad2c1c6267f117da18545803967896c2c317f6c5650783a906ef84c55",
-      "bytes": 6643
-    },
-    {
-      "path": "UPGRADE_1_3_11.md",
-      "sha256": "f883349895834131b36ef30fc5e41589027970a41bd34d56058214f2183dc2e8",
-      "bytes": 7825
-    },
-    {
-      "path": "UPGRADE_1_3_12.md",
-      "sha256": "343bc6d6794a655d40e4023484473f6c85c861fbba87319ba5fa69f46e8e23c8",
-      "bytes": 4121
-    },
-    {
-      "path": "UPGRADE_1_3_13.md",
-      "sha256": "c7c76ace71b0f08c2a384ae055429ab0317d327975d954f1f02bbd3b8ac38138",
-      "bytes": 6111
-    },
-    {
-      "path": "UPGRADE_1_3_7.md",
-      "sha256": "9f365c4cb0a5fa988a18d0a207fa25f328268b42cf9a5d3085a94d37d81a040e",
-      "bytes": 6038
-    },
-    {
-      "path": "UPGRADE_1_3_8.md",
-      "sha256": "4d737d9b6014458ffc6e55d7938985337930968f03c3777d655791dcec36192d",
-      "bytes": 4233
-    },
-    {
-      "path": "UPGRADE_1_3_9.md",
-      "sha256": "6b6c5c7c7eb56271dda9d3fc9a8dec9c20c2f244ce978217e7eb851446e05cd2",
-      "bytes": 8967
-    },
-    {
-      "path": "api/index.py",
-      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc",
-      "bytes": 29
-    },
-    {
-      "path": "docs/ARCHITECTURE.md",
-      "sha256": "1663d3fe502411d9a9a9518ee021d6aa9b6df075479b200aa28705c409acad97",
-      "bytes": 4444
-    },
-    {
-      "path": "docs/ASSUMPTIONS_AND_DECISIONS.md",
-      "sha256": "a02ba1d9156f6644ad74569e3abe0302756db1d8bfaf5eb39c51cecdc96e430d",
-      "bytes": 7363
-    },
-    {
-      "path": "docs/BACKUP_AND_RESTORE.md",
-      "sha256": "8c93f2b42951cf24c736e4cf27617b50aa119e46678157f41b787cc79cf33b1c",
-      "bytes": 2858
-    },
-    {
-      "path": "docs/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
-      "sha256": "a74fced620527c5aa5846b48f6ffab6eb8cc56183668d96d543a9a79ac90df73",
-      "bytes": 11283
-    },
-    {
-      "path": "docs/DATA_DICTIONARY.md",
-      "sha256": "31de73db46aab6463dd9445892f966f9af0bcfe96f2b0fe033ddde5e5114537a",
-      "bytes": 6764
-    },
-    {
-      "path": "docs/DEPLOYMENT.md",
-      "sha256": "b3e3b4aabc602b410e7825747d031216337d258aa67fce08d227467ca592fb09",
-      "bytes": 1970
-    },
-    {
-      "path": "docs/DEPLOY_1_3.md",
-      "sha256": "f665b4e62d997c4abb6e1ba404de00816c2cd4a3881595fdf25587538ecb75fc",
-      "bytes": 4911
-    },
-    {
-      "path": "docs/DESIGN_1_3.md",
-      "sha256": "894e3bf0019fcb7e9b9dab23017c051a087afe3967b5058fc051d9cb66a56af2",
-      "bytes": 2058
-    },
-    {
-      "path": "docs/FILE_INVENTORY.md",
-      "sha256": "a12f33eb1c1205dabe548a3098089a26159fb749b925d26a734a5b38b9c9dfd6",
-      "bytes": 7793
-    },
-    {
-      "path": "docs/FORMULAS_AND_SIGNALS.md",
-      "sha256": "77c3a5a8084a9cc42ec145434b7bd81acbc8fe803b20c413700ed22df838d7be",
-      "bytes": 9369
-    },
-    {
-      "path": "docs/KNOWN_LIMITATIONS.md",
-      "sha256": "348800860d15926d554ee4337e4d6152e955591daf737be5a6794ee1505c487a",
-      "bytes": 3631
-    },
-    {
-      "path": "docs/LIVE_AUDIT_1_3_10.md",
-      "sha256": "98356f6eacea432e3b3b85c87bee2bcef845c20260216e0f26c9d878237175ce",
-      "bytes": 4167
-    },
-    {
-      "path": "docs/LIVE_AUDIT_1_3_11.md",
-      "sha256": "fa9691b1120f8ec5eb84bd143031b35e15bc4fdafb8999a640b1f8b9177293c7",
-      "bytes": 2234
-    },
-    {
-      "path": "docs/LIVE_SYMBOL_COVERAGE_2026_10_23.csv",
-      "sha256": "a4f7f3104273154aba4bd95b1c15971a8e3a28c0d432bf317f5e346f391c6b9f",
-      "bytes": 147777
-    },
-    {
-      "path": "docs/MIGRATION_PLAN.md",
-      "sha256": "09cf00cae84971d74682a88e0c2c542f7aa6557d33c1b10dae775d6996a1ec59",
-      "bytes": 4612
-    },
-    {
-      "path": "docs/MIGRATION_REPORT.md",
-      "sha256": "115d6e5582912673c15c4df8b435715c4ca59d8bec38bb76d0439ebb4a4ce9eb",
-      "bytes": 6684
-    },
-    {
-      "path": "docs/QA_1_3_3.json",
-      "sha256": "aabd6ac398a51084cb9fdcfa46112259afce92fcc57cad680a1a13c6a507ae3f",
-      "bytes": 2996
-    },
-    {
-      "path": "docs/QA_1_3_4.json",
-      "sha256": "e658fd07e9ffb9d8a60a72301c4f278914d6524dc20687d298de5d6dc0afd6b2",
-      "bytes": 2381
-    },
-    {
-      "path": "docs/QA_1_3_5.json",
-      "sha256": "d87f65fb305f3690093dba3c8da434dbde83748174a0eb0323a5960695723347",
-      "bytes": 1340
-    },
-    {
-      "path": "docs/QA_1_3_6.json",
-      "sha256": "0f4ea6eab91de9fd2165a5ab0f5a7dca9e7e9a957c0338e9ebaeafcaebded537",
-      "bytes": 5449
-    },
-    {
-      "path": "docs/QA_1_3_7.json",
-      "sha256": "97052eedd7047f591afb9b3648d1cfd7c9a482d109c184c8c577e8c3b5fe15c6",
-      "bytes": 3809
-    },
-    {
-      "path": "docs/QA_1_3_8.json",
-      "sha256": "06c33a0febcec8e2742cf3ac466e2ae35500ce9216204bd8c47da2510b48e7ab",
-      "bytes": 34659
-    },
-    {
-      "path": "docs/QA_1_3_9.json",
-      "sha256": "8a8a8d6ecf80c668d9534de0cad888888c9e52c09abccc2ee4f32e30bf89c3e7",
-      "bytes": 1966
-    },
-    {
-      "path": "docs/QA_SUMMARY_1_3.json",
-      "sha256": "0e65a01b0fbdca1095f45d615ce746c3b56b7b078d2a94f9759a3bf366c9e17e",
-      "bytes": 643
-    },
-    {
-      "path": "docs/RELEASE_1_3.md",
-      "sha256": "16f15744ba9cd9c15f03d1a9f52aa81624fc5b019397781066b9ea920b4f2fbe",
-      "bytes": 1591
-    },
-    {
-      "path": "docs/RELEASE_1_3_3.md",
-      "sha256": "12095e54c3d9437b62f58f6fbb5a398fe5ecc963d1be38136617e8de3cf11697",
-      "bytes": 4535
-    },
-    {
-      "path": "docs/RELEASE_1_3_4.md",
-      "sha256": "5b91fce2a5942b3091cacaa605b7e4962ba9936685c1c0025034385b1f3760ac",
-      "bytes": 4497
-    },
-    {
-      "path": "docs/RELEASE_1_3_5.md",
-      "sha256": "d947acb253b12e4a8a02e449daac81e363b8d142597f5eec84bae6eb6bbca768",
-      "bytes": 3576
-    },
-    {
-      "path": "docs/RELEASE_1_3_6.md",
-      "sha256": "2e554523bae4b868db0f51bbcdbe77e063e8e99a8daef9aa59bead4e8226575e",
-      "bytes": 1645
-    },
-    {
-      "path": "docs/RELEASE_1_3_7.md",
-      "sha256": "d873c07f267639593c244481a6a3df9b8b2da62158687bf5dfb5b38443ed5903",
-      "bytes": 1724
-    },
-    {
-      "path": "docs/RELEASE_1_3_8.md",
-      "sha256": "df3594238272ab8b4b75bd4ac2ac5aaa7bff20bec244ecd75ec56570f3ebbec9",
-      "bytes": 1405
-    },
-    {
-      "path": "docs/REQUIREMENTS.md",
-      "sha256": "da7d615bd49757bd380b136818cb0ffc3a34cc0b2f9347b865d46fedcfa9a925",
-      "bytes": 5003
-    },
-    {
-      "path": "docs/SECTION07_RELIABILITY.md",
-      "sha256": "23e748fb4d973143ebbb3784caece27f2fc83ff673aa0f3af03e2cff172aa26b",
-      "bytes": 4276
-    },
-    {
-      "path": "docs/TESTING_1_3.md",
-      "sha256": "a5c81849653b8203f48404585b43e0c5221fcea2c94debd2f15d7b75ad81314a",
-      "bytes": 2255
-    },
-    {
-      "path": "docs/TEST_REPORT.md",
-      "sha256": "6bc34198f777bb8c6f506c400e21e2152f874cd11b3071e737f22fd06299b3df",
-      "bytes": 5507
-    },
-    {
-      "path": "docs/USER_GUIDE.md",
-      "sha256": "15d40f05ee7028b0f8b15465d88112590b11ac7d3a5fd2c76bc229e6bce98a36",
-      "bytes": 4990
-    },
-    {
-      "path": "docs/VALIDATION_1_3_10.md",
-      "sha256": "0b14db3c2ff856099a010d7de0ee786f9ba9b21a1d9f9d871c12fadcb2ac8b43",
-      "bytes": 2476
-    },
-    {
-      "path": "docs/VALIDATION_1_3_11.md",
-      "sha256": "fef522aa69988905cc5dd640b2f4cbc6a3b446fa7eb0b281c02e8d261f0276be",
-      "bytes": 3712
-    },
-    {
-      "path": "docs/VALIDATION_1_3_12.md",
-      "sha256": "1fd2f8b971048f2f90d50753f90730b7c36c433e334077d78f49b7c797aabb4f",
-      "bytes": 2738
-    },
-    {
-      "path": "docs/VALIDATION_1_3_13.md",
-      "sha256": "6fd78753f570e0a332472c235aabe60c95b9359b086d853bfce13ea02e8ff245",
-      "bytes": 3416
-    },
-    {
-      "path": "docs/WORKFLOW_MAPPING.md",
-      "sha256": "e3240dbb308afe2914bd0a8b6224f818df9359df87df2428c6ddca3f85e58be5",
-      "bytes": 6456
-    },
-    {
-      "path": "docs/historical/ARCHITECTURE.md",
-      "sha256": "c3decc064310e8e8c85c1cf0878b26d2bb72de4c3c19b6fb540045750bd059cd",
-      "bytes": 4551
-    },
-    {
-      "path": "docs/historical/ASSUMPTIONS_AND_DECISIONS.md",
-      "sha256": "d99663dfa9045296ad24813f5af44e3ff1c067d84235834d204ab0f7733577a5",
-      "bytes": 7689
-    },
-    {
-      "path": "docs/historical/BACKUP_AND_RESTORE.md",
-      "sha256": "3792e2a63ffd36f917727b7ba2c8f422e139732f55e9fd7d73dccb800f8aca2f",
-      "bytes": 2965
-    },
-    {
-      "path": "docs/historical/CLOUD_HOSTING_AND_SYNC_GUIDE.md",
-      "sha256": "9b414557fed317ef52729dd1daf3af66ab2f402ba0e803c017f249854e087721",
-      "bytes": 11390
-    },
-    {
-      "path": "docs/historical/DATA_DICTIONARY.md",
-      "sha256": "45ccb5c2708b7a73b22b1d83b6464a2995a0f81a66b07aa480d4b38b02483ef3",
-      "bytes": 7090
-    },
-    {
-      "path": "docs/historical/DEPLOYMENT.md",
-      "sha256": "c750375f21b0234156f3dd4fe32f8459257c3c57bdb12699159d9af01226a71b",
-      "bytes": 2077
-    },
-    {
-      "path": "docs/historical/FILE_INVENTORY.md",
-      "sha256": "1ce43c63577274d2359654c9f2611fb0da1e54be5a40c72139a1dfc71526001f",
-      "bytes": 8119
-    },
-    {
-      "path": "docs/historical/FORMULAS_AND_SIGNALS.md",
-      "sha256": "dc808cbf6d5534ae2b4f7ec15cc71b1f9c4e09affee610feec1f29859ad23e7e",
-      "bytes": 9476
-    },
-    {
-      "path": "docs/historical/KNOWN_LIMITATIONS.md",
-      "sha256": "18bf1cf5a7d75ce80697fca3bee3e0f15d8c07bd3e82318da010247e47b6388a",
-      "bytes": 3738
-    },
-    {
-      "path": "docs/historical/MIGRATION_PLAN.md",
-      "sha256": "837c33c7286814257520c83a0390a5251348da7fdb0b08b59ed85c0bf8561880",
-      "bytes": 4938
-    },
-    {
-      "path": "docs/historical/MIGRATION_REPORT.md",
-      "sha256": "675f2f2fdd86c4c898e9fbc55314f8ed96a3ee5edcb21088f2d56097ab89bad6",
-      "bytes": 7010
-    },
-    {
-      "path": "docs/historical/REQUIREMENTS.md",
-      "sha256": "84834ca2d7993fefa1a915f98383def84877fd22304a0d4b25300cf9c37d2119",
-      "bytes": 5329
-    },
-    {
-      "path": "docs/historical/TEST_REPORT.md",
-      "sha256": "4f8b71810d9a2b5cf6f19ceb838ed38c3b56f035c0007db156aaebe94f6a50b2",
-      "bytes": 5833
-    },
-    {
-      "path": "docs/historical/USER_GUIDE.md",
-      "sha256": "3efc7953b2b8929f2a95905fb2608caca41d4baf8472072b68fdd87eed934ea2",
-      "bytes": 5316
-    },
-    {
-      "path": "docs/historical/WORKFLOW_MAPPING.md",
-      "sha256": "a207f106817c021be0ac4241e1c2882af32860f5eaa047de20d81be042f6ec27",
-      "bytes": 6782
-    },
-    {
-      "path": "main.py",
-      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc",
-      "bytes": 29
-    },
-    {
-      "path": "psx_app/__init__.py",
-      "sha256": "1005840650a76f1dcb2d72617ad32ca50b6771cf71f54daa7da721df4dfa0f7e",
-      "bytes": 80
-    },
-    {
-      "path": "psx_app/config.py",
-      "sha256": "71d91001c215c7808673ffee05aec8ec3ad07ab8f32111b5dd02e9b395c216c4",
-      "bytes": 4401
-    },
-    {
-      "path": "psx_app/database/__init__.py",
-      "sha256": "52d8511e0f1121ec66e0c96b75a7285c3a3bbc7c91415bd9c3c24f5d6fd06917",
-      "bytes": 44
-    },
-    {
-      "path": "psx_app/database/availability.py",
-      "sha256": "bb049b8bf83e9b5a2c61955b6cbcd770e8785fdd66fb27b3abf722777839e0bd",
-      "bytes": 5553
-    },
-    {
-      "path": "psx_app/database/repository.py",
-      "sha256": "8b42eaa07df01652771ae6ee2372cd091ce6bf1d658d37c9f97a4ddfc4abc578",
-      "bytes": 8312
-    },
-    {
-      "path": "psx_app/database/schema.py",
-      "sha256": "1b168d0c38dbf2d48f77be1004a020dded02918200eab80f0d9dfe62dc4cd3d8",
-      "bytes": 11647
-    },
-    {
-      "path": "psx_app/database/selected_rows.py",
-      "sha256": "bb7c4879a82271149115e5764269dccded4f9faaefe303f190993be8f1718766",
-      "bytes": 667
-    },
-    {
-      "path": "psx_app/database/turso.py",
-      "sha256": "2b1207dc2935553d3561e20afdd19185bc3bc05c3de7c8451487ed717b0a919e",
-      "bytes": 7262
-    },
-    {
-      "path": "psx_app/main.py",
-      "sha256": "bdde57ddf4c4646cc1428d78a12b3126fe844c9cf87fb1d26fc814ee37a1d0c4",
-      "bytes": 45850
-    },
-    {
-      "path": "psx_app/parsers/__init__.py",
-      "sha256": "4d2bcdff8f16e29bec64c6d7b8590067e5812582c0bf9701f69a7299b478c743",
-      "bytes": 58
-    },
-    {
-      "path": "psx_app/parsers/detector.py",
-      "sha256": "4eecbc16c31ebb712a10498b3b61af5ab7352ba53c25c87de9972aa73b5d64ad",
-      "bytes": 5882
-    },
-    {
-      "path": "psx_app/parsers/ohlcv_parser.py",
-      "sha256": "4fa4ffa31bc9cf580d2b03dc5f79f30c523d76877f86c6e58b43b49d013125c5",
-      "bytes": 13030
-    },
-    {
-      "path": "psx_app/parsers/top5_parser.py",
-      "sha256": "4343d184d95215b481f6f5d02a2256a650960c10f99572857e3be05f86de3a1f",
-      "bytes": 9005
-    },
-    {
-      "path": "psx_app/parsers/tradelog_parser.py",
-      "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17",
-      "bytes": 20339
-    },
-    {
-      "path": "psx_app/reference/sectors.json",
-      "sha256": "05969baffedca5fd5919fcaa8aaf74348c051e3b1d0c2ac0ac1ec5a27fc04f1e",
-      "bytes": 85384
-    },
-    {
-      "path": "psx_app/security.py",
-      "sha256": "a663e0db1e168f6fd416d4e855b522d21c497bb513e61470c9507b5fb759f04a",
-      "bytes": 1527
-    },
-    {
-      "path": "psx_app/services/__init__.py",
-      "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221",
-      "bytes": 97
-    },
-    {
-      "path": "psx_app/services/account_service.py",
-      "sha256": "d7e812b8e3ed148c03975643d5da3733386420720e04601fdbfe3553e475ab63",
-      "bytes": 22083
-    },
-    {
-      "path": "psx_app/services/backup_service.py",
-      "sha256": "dba80d6a1c4510471def39d629c2b00f0156a3957ab386f5628dec445d553919",
-      "bytes": 8277
-    },
-    {
-      "path": "psx_app/services/cloud_sync_service.py",
-      "sha256": "3d07ce5e4311b82da0f44aa22217469b47b829cf68ba6274fb50301698b26e2f",
-      "bytes": 20886
-    },
-    {
-      "path": "psx_app/services/data_coverage.py",
-      "sha256": "b3647afca37b0352873cb55e42ff1d52f966dd84a8ef4f9e86fa07647f264f99",
-      "bytes": 6165
-    },
-    {
-      "path": "psx_app/services/data_guard.py",
-      "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca",
-      "bytes": 1566
-    },
-    {
-      "path": "psx_app/services/date_repair_service.py",
-      "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593",
-      "bytes": 17337
-    },
-    {
-      "path": "psx_app/services/export_service.py",
-      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5",
-      "bytes": 55600
-    },
-    {
-      "path": "psx_app/services/forecast_ledger.py",
-      "sha256": "e189bd3dffd2d25b8056334ed45de7e575132b197c013b80673e9e8c1f666ea5",
-      "bytes": 10213
-    },
-    {
-      "path": "psx_app/services/freshness_service.py",
-      "sha256": "7ec595f9faed4d6f2f0e7bb8c49cfcc0ed4f58c562fa46c7680035684c80e63d",
-      "bytes": 1966
-    },
-    {
-      "path": "psx_app/services/futures_service.py",
-      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2",
-      "bytes": 21551
-    },
-    {
-      "path": "psx_app/services/historical_validation.py",
-      "sha256": "8e4c3452440fc390f769f4970c55b2a1728faf12fac9424113f7b8969a478b40",
-      "bytes": 7608
-    },
-    {
-      "path": "psx_app/services/import_orchestrator.py",
-      "sha256": "5b6473447bdf157be8483582e77103baf92c4d4e1f543df8f5d6f6dbc57d0f4b",
-      "bytes": 48998
-    },
-    {
-      "path": "psx_app/services/intelligence_service.py",
-      "sha256": "465d2266faa65c44e1adbda95bae98fdefeb2e2573587401fc80708a8de5e673",
-      "bytes": 31378
-    },
-    {
-      "path": "psx_app/services/learning_research.py",
-      "sha256": "040489a9ac136ad0aac27fd002a2ac26b56a777f2c1bbe489b03ecde74e5c242",
-      "bytes": 4365
-    },
-    {
-      "path": "psx_app/services/market_explorer.py",
-      "sha256": "4b5574468ebd56c4f5e1906ee31e4b3380d9b104d0e4cdfc7d4964641fce6cdb",
-      "bytes": 5516
-    },
-    {
-      "path": "psx_app/services/migration_service.py",
-      "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68",
-      "bytes": 5753
-    },
-    {
-      "path": "psx_app/services/plain_language.py",
-      "sha256": "800505fea777b5853b9493708cf4010cc4febc6d5f7c3f964c24a7df354066c1",
-      "bytes": 9990
-    },
-    {
-      "path": "psx_app/services/reconciliation_service.py",
-      "sha256": "b968a0df35e6fe9f1e7f07e3c5fad1ea70c2cabab57eecfa9f65b53869f67a22",
-      "bytes": 17534
-    },
-    {
-      "path": "psx_app/services/remote_staging.py",
-      "sha256": "f60f69fe74312ef561c142fbd7da0f9bb53e4c2e4b3235eaa200ed4371d90306",
-      "bytes": 2621
-    },
-    {
-      "path": "psx_app/services/sector_reference.py",
-      "sha256": "e001d01ae64a3e527e7481389197ee974c6afee62321988b4880b1a8274f2486",
-      "bytes": 5072
-    },
-    {
-      "path": "psx_app/services/signal_reliability.py",
-      "sha256": "713457b035fc32a98580a7c346713f3af034117afb43c197164bc238000bd03e",
-      "bytes": 3130
-    },
-    {
-      "path": "psx_app/services/technical_service.py",
-      "sha256": "848a0ed53cf7aaba3b80088ac5a36b8082e9067f6bd9c14a81331d25e360ba9b",
-      "bytes": 39531
-    },
-    {
-      "path": "psx_app/services/top5_service.py",
-      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec",
-      "bytes": 5039
-    },
-    {
-      "path": "psx_app/services/verified_source_repair.py",
-      "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75",
-      "bytes": 2507
-    },
-    {
-      "path": "psx_app/static/app.js",
-      "sha256": "f482c8c31808959b3e161182c497e1ccea1a4aa05a518be955f6665f43fc8509",
-      "bytes": 176426
-    },
-    {
-      "path": "psx_app/static/display1311.js",
-      "sha256": "8d27a221492667e187e96c2f7f6716e268d9a8eeb3b25e497f2be8251b41be64",
-      "bytes": 3187
-    },
-    {
-      "path": "psx_app/static/index.html",
-      "sha256": "5da1a587a398e6b891faa6dd81e2fe746cb8b9061ebea557f49302d0a8e5334d",
-      "bytes": 5235
-    },
-    {
-      "path": "psx_app/static/styles.css",
-      "sha256": "1df3b67951c90233ce0d524aab258f9b50211f44249a00f2c016ed124e63a333",
-      "bytes": 35019
-    },
-    {
-      "path": "psx_app/static/table_display.js",
-      "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a",
-      "bytes": 1793
-    },
-    {
-      "path": "psx_app/static/upgrade139.js",
-      "sha256": "8a495fd3e8dc87c2cdddf655c97b76fad193d64a238cabb58cc85a2e2503bf6c",
-      "bytes": 37806
-    },
-    {
-      "path": "psx_app/upgrade_routes.py",
-      "sha256": "544a8c4a250b8b6db7965aa90dd151a14a6eb597fa558d79cbd970625011b5a6",
-      "bytes": 3327
-    },
-    {
-      "path": "pytest.ini",
-      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
-      "bytes": 42
-    },
-    {
-      "path": "render.yaml",
-      "sha256": "dee0e4ad0e3e0262b71f24a689a8765d10e1dce4b761dfc8246d00e54a57348f",
-      "bytes": 498
-    },
-    {
-      "path": "requirements.txt",
-      "sha256": "8ac27bb416b2f62ffff783388db61a78d65b77838f499aab0e9cec337925b43d",
-      "bytes": 118
-    },
-    {
-      "path": "scripts/cleanup_repository.py",
-      "sha256": "cdda437c419d833fe67bfb0c08af85d24950dbfe1c641ca7d7c729d90e41f212",
-      "bytes": 1371
-    },
-    {
-      "path": "start_dashboard.bat",
-      "sha256": "f5db859faecf002520fee88dcad8d27e5f0854d0dfe8ece88ef082cb181ef31e",
-      "bytes": 1051
-    },
-    {
-      "path": "start_dashboard.sh",
-      "sha256": "4a4d98e606271e0b8cbbf8e59ffdbb165527c148aac0cea9d0b50804d82b04ce",
-      "bytes": 270
-    },
-    {
-      "path": "tests/conftest.py",
-      "sha256": "120667ad90742a81905d24efd2e1338fea424e31c88fc54ceb33901404bb7d4c",
-      "bytes": 2456
-    },
-    {
-      "path": "tests/test_chunked_upload.py",
-      "sha256": "47139fc284cd7760ae76c698f3bdd128b994a1cbc7ce5f64eeb819230705e02b",
-      "bytes": 3381
-    },
-    {
-      "path": "tests/test_cloud_sync_state.py",
-      "sha256": "ab2925fed8e86b57e77bced182f49d5d4267232529789276a22a4718b924729a",
-      "bytes": 2293
-    },
-    {
-      "path": "tests/test_date_integrity.py",
-      "sha256": "4e53b0891249cd4db3f8697a14e35f8a391ec4156b6c45fd3920a9d8f2bdc9ed",
-      "bytes": 10884
-    },
-    {
-      "path": "tests/test_futures_date_resolution_and_intelligence.py",
-      "sha256": "82279d962492945ddc6f0aca98bc0cbe37049b9a9ac54ec2683b6d5d39ed810d",
-      "bytes": 3100
-    },
-    {
-      "path": "tests/test_historical_price_workbooks.py",
-      "sha256": "6329d4f6212400d3e71a13513108fdfc1f2487c6454d3ec921ecad68a20fef35",
-      "bytes": 2925
-    },
-    {
-      "path": "tests/test_import_history_filenames.py",
-      "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa",
-      "bytes": 3775
-    },
-    {
-      "path": "tests/test_module_a_top5.py",
-      "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d",
-      "bytes": 3278
-    },
-    {
-      "path": "tests/test_module_b_accounts.py",
-      "sha256": "a42e840401961d1e9bbb497de97b7f5ade429b897896b93ee145d1e3990e8895",
-      "bytes": 6557
-    },
-    {
-      "path": "tests/test_module_c_futures.py",
-      "sha256": "c4c454354592b15d91e945f66791124103ab8198df77d395385fe83cee168d71",
-      "bytes": 4288
-    },
-    {
-      "path": "tests/test_module_d_and_system.py",
-      "sha256": "489af8c3f60c92be6d1e855c8923ac158ffdf46d1fcca01f8a357a62d73ddf27",
-      "bytes": 6784
-    },
-    {
-      "path": "tests/test_release_safety.py",
-      "sha256": "e7e2db01b531301094fc098ce553cad552671a2ca6b888ed0e50d9059567750a",
-      "bytes": 18979
-    },
-    {
-      "path": "tests/test_turso_remote.py",
-      "sha256": "ddd2cf65c72346131274d852b0ba992ab603566c17c3fc955f1c68ee4ad87803",
-      "bytes": 18869
-    },
-    {
-      "path": "tests/test_v1310_coverage.py",
-      "sha256": "b52b290afb6545259f52997a4d317437bbda48d7f5536c93e8a3d325af12e42c",
-      "bytes": 9236
-    },
-    {
-      "path": "tests/test_v1311_plain_language.py",
-      "sha256": "30d4b65328a520b8deae8d4a1907986bf7b15ed765e25cf44299c2610f779a5e",
-      "bytes": 9300
-    },
-    {
-      "path": "tests/test_v1312_market_layout.py",
-      "sha256": "c04afd25e668bfb8e7f186b462c2cbb88e62a01e6e304013e021926f5af5e097",
-      "bytes": 2086
-    },
-    {
-      "path": "tests/test_v1313_startup_recovery.py",
-      "sha256": "29c3e11353b1259070071da5ebbb62715e058baf75668f18a26b1d11a6f106b6",
-      "bytes": 6929
-    },
-    {
-      "path": "tests/test_v133_import_and_latest.py",
-      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1",
-      "bytes": 5448
-    },
-    {
-      "path": "tests/test_v134_freshness_and_history.py",
-      "sha256": "60552b2a8c1ee02f0b3e09e983932d229239eb548e24525ffaebf27d32af3f03",
-      "bytes": 6309
-    },
-    {
-      "path": "tests/test_v137_reliability.py",
-      "sha256": "c502df448cda48a0bd545d597fd70e0d3065f4660f480561207937a69ffd7229",
-      "bytes": 10968
-    },
-    {
-      "path": "tests/test_v138_tables.py",
-      "sha256": "5d250fde288bb07a3221290aeb51fc8dedac6a2428481e37de8cf1b8d61b8f6f",
-      "bytes": 3523
-    },
-    {
-      "path": "tests/test_v139_accountability.py",
-      "sha256": "7c53d808e2af83dbdcb1438aaa3b25826048ee2ecea02100cc437759450e64f1",
-      "bytes": 4601
-    },
-    {
-      "path": "tools/refresh_learning.py",
-      "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f",
-      "bytes": 984
-    },
-    {
-      "path": "vercel.json",
-      "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf",
-      "bytes": 158
+  "version": "1.3.14",
+  "release": "Aiven PostgreSQL / GitHub / Vercel",
+  "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
+  "contains_trading_database": false,
+  "contains_live_credentials": false,
+  "tests": {
+    "passed": 205,
+    "skipped": 34,
+    "warnings": 1,
+    "live_aiven_tested": false,
+    "browser_test": "desktop/mobile PostgreSQL synthetic-data test passed"
+  },
+  "files": {
+    ".github/workflows/import-existing-snapshot.yml": {
+      "bytes": 1774,
+      "sha256": "87b20125563b2150082949fe4f0e5f655a57293322d15a0235087bbb2fd5b051"
+    },
+    ".gitignore": {
+      "bytes": 120,
+      "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
+    },
+    "README.md": {
+      "bytes": 16561,
+      "sha256": "c168d2d56b38a3888cc9650013ee9acc1b6bed2dd9f40542635e3d48b76310fa"
+    },
+    "api/index.py": {
+      "bytes": 29,
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+    },
+    "main.py": {
+      "bytes": 29,
+      "sha256": "d2a40df79f7a261d4b13d662f5665eb1238196b07d36ccd128216940fe07adfc"
+    },
+    "psx_app/__init__.py": {
+      "bytes": 80,
+      "sha256": "1005840650a76f1dcb2d72617ad32ca50b6771cf71f54daa7da721df4dfa0f7e"
+    },
+    "psx_app/config.py": {
+      "bytes": 4401,
+      "sha256": "71d91001c215c7808673ffee05aec8ec3ad07ab8f32111b5dd02e9b395c216c4"
+    },
+    "psx_app/database/__init__.py": {
+      "bytes": 44,
+      "sha256": "52d8511e0f1121ec66e0c96b75a7285c3a3bbc7c91415bd9c3c24f5d6fd06917"
+    },
+    "psx_app/database/availability.py": {
+      "bytes": 6044,
+      "sha256": "bb7886acfb2b8e212a4c5955890d0dfc14daecf34b4fac99a6e04792054ee37c"
+    },
+    "psx_app/database/postgres.py": {
+      "bytes": 12464,
+      "sha256": "4319d436bfa05241a7111a84ec6c4478f73c101cdbee8e0bf12e773d3fa7456f"
+    },
+    "psx_app/database/repository.py": {
+      "bytes": 8462,
+      "sha256": "0ebb57b536b85fee4e52c754cf98fa0395b086b044a7e410fc2b186a51106185"
+    },
+    "psx_app/database/schema.py": {
+      "bytes": 11647,
+      "sha256": "1b168d0c38dbf2d48f77be1004a020dded02918200eab80f0d9dfe62dc4cd3d8"
+    },
+    "psx_app/database/selected_rows.py": {
+      "bytes": 667,
+      "sha256": "bb7c4879a82271149115e5764269dccded4f9faaefe303f190993be8f1718766"
+    },
+    "psx_app/database/turso.py": {
+      "bytes": 7885,
+      "sha256": "39fc7a80b44695c016a3ecd857ec8c732ee86a15fa5d680e7abb067ddc9f0c5e"
+    },
+    "psx_app/main.py": {
+      "bytes": 45843,
+      "sha256": "c3bd38405e17356cc99b478c5593966d1786493685b2b606ba452f792429cbb9"
+    },
+    "psx_app/parsers/__init__.py": {
+      "bytes": 58,
+      "sha256": "4d2bcdff8f16e29bec64c6d7b8590067e5812582c0bf9701f69a7299b478c743"
+    },
+    "psx_app/parsers/detector.py": {
+      "bytes": 5882,
+      "sha256": "4eecbc16c31ebb712a10498b3b61af5ab7352ba53c25c87de9972aa73b5d64ad"
+    },
+    "psx_app/parsers/ohlcv_parser.py": {
+      "bytes": 13030,
+      "sha256": "4fa4ffa31bc9cf580d2b03dc5f79f30c523d76877f86c6e58b43b49d013125c5"
+    },
+    "psx_app/parsers/top5_parser.py": {
+      "bytes": 9005,
+      "sha256": "4343d184d95215b481f6f5d02a2256a650960c10f99572857e3be05f86de3a1f"
+    },
+    "psx_app/parsers/tradelog_parser.py": {
+      "bytes": 20339,
+      "sha256": "4321a0c6afcecef68ed7265afb647adc7639ac6b545c4942d921dec26b94ea17"
+    },
+    "psx_app/reference/sectors.json": {
+      "bytes": 85384,
+      "sha256": "05969baffedca5fd5919fcaa8aaf74348c051e3b1d0c2ac0ac1ec5a27fc04f1e"
+    },
+    "psx_app/security.py": {
+      "bytes": 1527,
+      "sha256": "a663e0db1e168f6fd416d4e855b522d21c497bb513e61470c9507b5fb759f04a"
+    },
+    "psx_app/services/__init__.py": {
+      "bytes": 97,
+      "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221"
+    },
+    "psx_app/services/account_service.py": {
+      "bytes": 22083,
+      "sha256": "d7e812b8e3ed148c03975643d5da3733386420720e04601fdbfe3553e475ab63"
+    },
+    "psx_app/services/backup_service.py": {
+      "bytes": 8328,
+      "sha256": "92481fbce0f591429a1d292d9125227eed7323f4133e43f93da2879f1dd110b0"
+    },
+    "psx_app/services/cloud_sync_service.py": {
+      "bytes": 21055,
+      "sha256": "45296bf0cc7968cbc802ee112d91be1e3f60bf481c776988b585bd37d4eac046"
+    },
+    "psx_app/services/data_coverage.py": {
+      "bytes": 6421,
+      "sha256": "bb4d5aa1ac118bcb0ed82f5cf50c5ea20b36e962b50610d9c4b79e0d4c5be9fd"
+    },
+    "psx_app/services/data_guard.py": {
+      "bytes": 1566,
+      "sha256": "0bc5994e490ce0beaab0840d31d252542c59422131b58b4a0c83f0f510dbfeca"
+    },
+    "psx_app/services/date_repair_service.py": {
+      "bytes": 17337,
+      "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593"
+    },
+    "psx_app/services/export_service.py": {
+      "bytes": 55600,
+      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5"
+    },
+    "psx_app/services/forecast_ledger.py": {
+      "bytes": 10213,
+      "sha256": "e189bd3dffd2d25b8056334ed45de7e575132b197c013b80673e9e8c1f666ea5"
+    },
+    "psx_app/services/freshness_service.py": {
+      "bytes": 1966,
+      "sha256": "7ec595f9faed4d6f2f0e7bb8c49cfcc0ed4f58c562fa46c7680035684c80e63d"
+    },
+    "psx_app/services/futures_service.py": {
+      "bytes": 21551,
+      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2"
+    },
+    "psx_app/services/historical_validation.py": {
+      "bytes": 7608,
+      "sha256": "8e4c3452440fc390f769f4970c55b2a1728faf12fac9424113f7b8969a478b40"
+    },
+    "psx_app/services/import_orchestrator.py": {
+      "bytes": 49643,
+      "sha256": "3ca150a02e1c689d75d792a52e61bb3ed869740c182e0839cee8eebdee34049c"
+    },
+    "psx_app/services/intelligence_service.py": {
+      "bytes": 31481,
+      "sha256": "93ab947be1412866d6ad0ab33f3f364b1b7dd3ccdff6d271b01e5f66e11a9b00"
+    },
+    "psx_app/services/learning_research.py": {
+      "bytes": 4365,
+      "sha256": "040489a9ac136ad0aac27fd002a2ac26b56a777f2c1bbe489b03ecde74e5c242"
+    },
+    "psx_app/services/market_explorer.py": {
+      "bytes": 5641,
+      "sha256": "f338be5f2c29feaf5d8bb0001a786420d0c9c6b5bc0a64624c4fe47c0c85bdd0"
+    },
+    "psx_app/services/migration_service.py": {
+      "bytes": 5753,
+      "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68"
+    },
+    "psx_app/services/plain_language.py": {
+      "bytes": 9990,
+      "sha256": "800505fea777b5853b9493708cf4010cc4febc6d5f7c3f964c24a7df354066c1"
+    },
+    "psx_app/services/reconciliation_service.py": {
+      "bytes": 17534,
+      "sha256": "b968a0df35e6fe9f1e7f07e3c5fad1ea70c2cabab57eecfa9f65b53869f67a22"
+    },
+    "psx_app/services/remote_staging.py": {
+      "bytes": 2621,
+      "sha256": "f60f69fe74312ef561c142fbd7da0f9bb53e4c2e4b3235eaa200ed4371d90306"
+    },
+    "psx_app/services/result_cache.py": {
+      "bytes": 2578,
+      "sha256": "58758a1491308caf48c9cdd3bf26b197bb377e2e932e1f9ade6325eee0286590"
+    },
+    "psx_app/services/sector_reference.py": {
+      "bytes": 5072,
+      "sha256": "e001d01ae64a3e527e7481389197ee974c6afee62321988b4880b1a8274f2486"
+    },
+    "psx_app/services/signal_reliability.py": {
+      "bytes": 3130,
+      "sha256": "713457b035fc32a98580a7c346713f3af034117afb43c197164bc238000bd03e"
+    },
+    "psx_app/services/technical_service.py": {
+      "bytes": 39821,
+      "sha256": "b535c95909669d31a554af65ae751ffba731e57e01fa14700f2d190c8a8fd3fe"
+    },
+    "psx_app/services/top5_service.py": {
+      "bytes": 5039,
+      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec"
+    },
+    "psx_app/services/verified_source_repair.py": {
+      "bytes": 2507,
+      "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75"
+    },
+    "psx_app/static/app.js": {
+      "bytes": 176936,
+      "sha256": "3edf5cf3c3369f91abc0cd10fcc537491ba3f4618adcc5ac53126581681276a7"
+    },
+    "psx_app/static/display1311.js": {
+      "bytes": 3187,
+      "sha256": "8d27a221492667e187e96c2f7f6716e268d9a8eeb3b25e497f2be8251b41be64"
+    },
+    "psx_app/static/index.html": {
+      "bytes": 5235,
+      "sha256": "f6f73b37881eb88d5c7f7496a1c5fc9219b4a8625a006ca93fd1a99ccbb58699"
+    },
+    "psx_app/static/styles.css": {
+      "bytes": 35019,
+      "sha256": "1df3b67951c90233ce0d524aab258f9b50211f44249a00f2c016ed124e63a333"
+    },
+    "psx_app/static/table_display.js": {
+      "bytes": 1793,
+      "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
+    },
+    "psx_app/static/upgrade139.js": {
+      "bytes": 37832,
+      "sha256": "0544e9f7431f3668fe9c8126ede4cdc7195dbd0c3a27c5ba05c609c010fee6c6"
+    },
+    "psx_app/upgrade_routes.py": {
+      "bytes": 3327,
+      "sha256": "544a8c4a250b8b6db7965aa90dd151a14a6eb597fa558d79cbd970625011b5a6"
+    },
+    "pytest.ini": {
+      "bytes": 42,
+      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada"
+    },
+    "requirements.txt": {
+      "bytes": 143,
+      "sha256": "93cd609421064b71052759d5b5f158d8c21b60216bd4068e2ecbbfc58e8bda43"
+    },
+    "tests/conftest.py": {
+      "bytes": 2474,
+      "sha256": "0766e9ddba42420947f1812c5d8535de55814a1a4855894f1dfe75358d13bb2c"
+    },
+    "tests/test_chunked_upload.py": {
+      "bytes": 3381,
+      "sha256": "47139fc284cd7760ae76c698f3bdd128b994a1cbc7ce5f64eeb819230705e02b"
+    },
+    "tests/test_cloud_sync_state.py": {
+      "bytes": 2293,
+      "sha256": "ab2925fed8e86b57e77bced182f49d5d4267232529789276a22a4718b924729a"
+    },
+    "tests/test_date_integrity.py": {
+      "bytes": 10884,
+      "sha256": "4e53b0891249cd4db3f8697a14e35f8a391ec4156b6c45fd3920a9d8f2bdc9ed"
+    },
+    "tests/test_futures_date_resolution_and_intelligence.py": {
+      "bytes": 3100,
+      "sha256": "82279d962492945ddc6f0aca98bc0cbe37049b9a9ac54ec2683b6d5d39ed810d"
+    },
+    "tests/test_historical_price_workbooks.py": {
+      "bytes": 2925,
+      "sha256": "6329d4f6212400d3e71a13513108fdfc1f2487c6454d3ec921ecad68a20fef35"
+    },
+    "tests/test_import_history_filenames.py": {
+      "bytes": 3775,
+      "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa"
+    },
+    "tests/test_module_a_top5.py": {
+      "bytes": 3278,
+      "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d"
+    },
+    "tests/test_module_b_accounts.py": {
+      "bytes": 6557,
+      "sha256": "a42e840401961d1e9bbb497de97b7f5ade429b897896b93ee145d1e3990e8895"
+    },
+    "tests/test_module_c_futures.py": {
+      "bytes": 4288,
+      "sha256": "c4c454354592b15d91e945f66791124103ab8198df77d395385fe83cee168d71"
+    },
+    "tests/test_module_d_and_system.py": {
+      "bytes": 6784,
+      "sha256": "489af8c3f60c92be6d1e855c8923ac158ffdf46d1fcca01f8a357a62d73ddf27"
+    },
+    "tests/test_release_safety.py": {
+      "bytes": 18979,
+      "sha256": "e7e2db01b531301094fc098ce553cad552671a2ca6b888ed0e50d9059567750a"
+    },
+    "tests/test_turso_remote.py": {
+      "bytes": 18872,
+      "sha256": "c706a744fadea485fbdfd6db8eab3fa25278b70ae12162cba89677ed345138fe"
+    },
+    "tests/test_v1310_coverage.py": {
+      "bytes": 9236,
+      "sha256": "6a1da5d6d45d6aca93ae916a42439a5f5599ebf28196fc4ce105a4455e5cf0fc"
+    },
+    "tests/test_v1311_plain_language.py": {
+      "bytes": 9300,
+      "sha256": "62a5788f5fc23a0e706d7d1f8ecaa7957a0360cd440a071d2af5455cc24bcf8a"
+    },
+    "tests/test_v1312_market_layout.py": {
+      "bytes": 2086,
+      "sha256": "5c0c5bafbd98157c4686b006dbaf4b7bb3dd1d392957f07fdd86c7798adf6536"
+    },
+    "tests/test_v1313_startup_recovery.py": {
+      "bytes": 6929,
+      "sha256": "aedcedc7e7d630e2d5987cac80ce17985969ef57a1e833ebf3e343768fd06d17"
+    },
+    "tests/test_v1314_configuration.py": {
+      "bytes": 3337,
+      "sha256": "acad6b08eb53fb71b72c335d1e045abc14ed55415fbc88dd9da078925d2378b2"
+    },
+    "tests/test_v1314_postgres.py": {
+      "bytes": 23603,
+      "sha256": "fd4f8a0445c3b477ab201b81d6bfb3b5351d9d2bfa6019391d24ad8ee9cd9e76"
+    },
+    "tests/test_v133_import_and_latest.py": {
+      "bytes": 5448,
+      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1"
+    },
+    "tests/test_v134_freshness_and_history.py": {
+      "bytes": 6309,
+      "sha256": "60552b2a8c1ee02f0b3e09e983932d229239eb548e24525ffaebf27d32af3f03"
+    },
+    "tests/test_v137_reliability.py": {
+      "bytes": 10968,
+      "sha256": "c502df448cda48a0bd545d597fd70e0d3065f4660f480561207937a69ffd7229"
+    },
+    "tests/test_v138_tables.py": {
+      "bytes": 3523,
+      "sha256": "5d250fde288bb07a3221290aeb51fc8dedac6a2428481e37de8cf1b8d61b8f6f"
+    },
+    "tests/test_v139_accountability.py": {
+      "bytes": 4601,
+      "sha256": "7c53d808e2af83dbdcb1438aaa3b25826048ee2ecea02100cc437759450e64f1"
+    },
+    "tools/import_sqlite_to_postgres.py": {
+      "bytes": 6599,
+      "sha256": "bf5e06a843863a78b71a30e67e565fdd9bd1a48900c8433d271b4cbfe46de6a1"
+    },
+    "tools/refresh_learning.py": {
+      "bytes": 984,
+      "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f"
+    },
+    "vercel.json": {
+      "bytes": 158,
+      "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
-  ]
+  }
 }

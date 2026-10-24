@@ -41,4 +41,4 @@ REFERENCE_TESTS = {
 def pytest_collection_modifyitems(items):
     for item in items:
         if item.name in REFERENCE_TESTS and not (REFERENCE_DB and REFERENCE_DIR):
-            item.add_marker(pytest.mark.skip(reason='Private historical reference fixtures not supplied; see docs/TESTING_1_3.md'))
+            item.add_marker(pytest.mark.skip(reason='Private historical reference fixtures not supplied; see the verification section of README.md'))
