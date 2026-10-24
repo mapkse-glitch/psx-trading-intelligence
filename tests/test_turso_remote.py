@@ -318,3 +318,15 @@ def test_remote_complete_bundled_reference_workbook_is_batched(remote,monkeypatc
     assert result['new_records']==903
     assert 1 <= len(writes) <= 8
     with get_connection() as c:assert c.execute('SELECT COUNT(*) FROM company_reference').fetchone()[0]==903
+
+
+def test_remote_market_volume_derived_sum_matches_cash_universe(remote):
+    from psx_app.database.schema import get_connection
+    from psx_app.services.market_explorer import MarketExplorer
+    with get_connection() as c:
+        c.executemany('INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES (?,?,?,?)', [('2026-10-23','ATRL',100,1000),('2026-10-23','PRL',50,2000)])
+        c.execute('INSERT INTO index_ohlcv(trade_date,close) VALUES (?,?)',('2026-10-23',100000))
+    r=MarketExplorer().symbol('ATRL',1,'2026-10-23')
+    assert r['index_rows'][0]['volume']==3000
+    assert r['index_rows'][0]['volume_symbols']==2
+    assert MarketExplorer().volume('2026-10-23')['total']==3000

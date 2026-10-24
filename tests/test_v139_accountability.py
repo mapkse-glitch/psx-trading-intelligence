@@ -24,7 +24,8 @@ def test_market_extrema_and_exact_baselines(db139):
     s=MarketExplorer(db139);r=s.symbol('ATRL',5)
     assert len(r['rows'])==5 and r['rows'][0]['trade_date']>r['rows'][-1]['trade_date']
     assert r['baseline_date']<r['first']
-    assert all(x['volume'] is None for x in r['index_rows'])
+    assert all(x['volume'] == 3*(1000+419-i) for i,x in enumerate(r['index_rows']))
+    assert all(x['volume_symbols']==3 for x in r['index_rows'])
     assert len(r['extrema'])==7
     v=s.volume(top_n=1);assert abs(sum(x['pct'] for x in v['parts'])-100)<1e-9
     assert v['parts'][-1]['symbol']=='Others'

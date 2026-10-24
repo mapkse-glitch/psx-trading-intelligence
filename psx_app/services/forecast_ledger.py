@@ -103,4 +103,5 @@ class ForecastLedger:
     def list(self):
         with get_connection(self.db_path) as c:
             rows=[dict(r) for r in c.execute('SELECT * FROM forecast_ledger ORDER BY as_of DESC,created_at DESC LIMIT 200')]
-        return {'items':[{'id':r['forecast_id'],**json.loads(r['payload_json']),'outcome':json.loads(r['outcome_json'] or '{"status":"PENDING"}')} for r in rows],'note':'Forward-recorded snapshots only. Creation timestamp proves when recorded, not exchange-time data availability. Outcome observations are retained separately when source data changes.'}
+        from psx_app.services.plain_language import forecast_display
+        return {'items':[{'id':r['forecast_id'],**json.loads(r['payload_json']),'outcome':json.loads(r['outcome_json'] or '{"status":"PENDING"}'), 'display':forecast_display(json.loads(r['outcome_json'] or '{"status":"PENDING"}'))} for r in rows],'note':'Forward-recorded snapshots only. Creation timestamp proves when recorded, not exchange-time data availability. Outcome observations are retained separately when source data changes.'}

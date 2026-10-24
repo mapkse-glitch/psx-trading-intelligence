@@ -130,7 +130,7 @@ def test_build_detection_uses_html_build_metadata_not_old_literal():
     js=(root/'psx_app/static/app.js').read_text()
     main=(root/'psx_app/main.py').read_text()
     build=re.search(r'name="psx-build-version" content="([^"]+)"',html)[1]
-    assert build=='1.3.10' and f'version="{build}"' in main
+    assert build=='1.3.11' and f'version="{build}"' in main
     assert "document.querySelector('meta[name=\"psx-build-version\"]')?.content" in js
     assert "result.version !== '1.3.9'" not in js
 

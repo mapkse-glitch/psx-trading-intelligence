@@ -100,7 +100,7 @@ const VIEW_TITLES = {
 };
 
 function fmtNum(v, decimals = 2) {
-  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "N/A";
+  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "Not available";
   return Number(v).toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -126,12 +126,12 @@ function fmtDate(v) {
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
 function fmtInt(v) {
-  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "N/A";
+  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "Not available";
   return Math.round(Number(v)).toLocaleString("en-US");
 }
 
 function fmtPct(v, isFraction = true) {
-  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "N/A";
+  if (v === null || v === undefined || v === "N/A" || Number.isNaN(Number(v))) return "Not available";
   const pct = isFraction ? Number(v) * 100 : Number(v);
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(2)}%`;
@@ -237,7 +237,7 @@ function buildQuickSelectBarHtml(activeSymbol, onClickFnName) {
   return quickItems.map((item) => {
     const isAct = item.symbol === activeSymbol;
     const countBadge = "";
-    return `<button type="button" class="quick-pill ${isAct ? "active" : ""}" onclick="${onClickFnName}('${item.symbol}')" title="${item.count > 0 ? `Searched ${item.count} time(s)` : "Click to analyze"}">${item.symbol}${countBadge}</button>`;
+    return `<button type="button" class="quick-pill ${isAct ? "active" : ""}" onclick="${onClickFnName}('${item.symbol}')" title="Click to analyze">${item.symbol}${countBadge}</button>`;
   }).join("");
 }
 
@@ -254,9 +254,9 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <div>
           <div class="card-title">
             <span class="badge badge-blue">CARD 1</span>
-            1. Trading Ideas Generator — Rule-scored candidates
+            1. Trading Ideas Generator — possible trades, not promises
           </div>
-          <div class="card-subtitle">Cash symbols examined before direction/plan filters: ${ideasRes.candidates_scanned}. Full stored history is used, combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
+          <div class="card-subtitle">Stocks checked: ${ideasRes.candidates_scanned}. Uses the full stored price history, plus available trading-volume and same-day futures context. A checked stock does not automatically qualify for a trade.</div>
         </div>
         <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${fmtDate(ideasRes.market_latest_date || (ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data"))}</span>
       </div>
@@ -287,7 +287,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
         <button class="btn btn-primary" onclick="runTradingIdeasGenerator()">⚡ Scan for Qualified Setups</button>
       </div>
 
-      <p class="score-disclaimer">${escapeHtml(ideasRes.screening_note || "Scores rank deterministic rules, not a probability of profit. Historical data only; no order is placed.")}</p>${ideasRes.setups.length === 0 ? '<p class="card">No qualifying current-session setup passed the safeguards. No trade is a valid result.</p>' : ""}
+      <p class="score-disclaimer">${escapeHtml(ideasRes.screening_note || "Scores rank deterministic rules, not a probability of profit. Historical data only; no order is placed.")}</p>${ideasRes.setups.length === 0 ? '<p class="card">No safe new-trade setup passed the current checks. Wait rather than forcing a buy or short. See each stock’s reason below.</p>' : ""}
       <div class="setup-grid">
         ${ideasRes.setups.map((st) => {
           const isLong = st.direction.includes("BUY");
@@ -300,7 +300,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
                   <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${escapeHtml(st.sector)})</span>
                 </div>
                 <div style="text-align:right;">
-                  <span class="badge badge-blue">Rule strength ${st.setup_score}/100</span>
+                  <span class="badge badge-blue">Ranking points: ${st.setup_score}/100 — not a win %</span>
                 </div>
               </div>
 
@@ -309,21 +309,22 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
               </div>
 
               <div class="setup-price-grid">
-                <div class="setup-price-cell"><span>Entry</span><b style="color:var(--accent-blue);">${fmtNum(st.entry_price)}</b></div>
-                <div class="setup-price-cell"><span>Target 1</span><b class="pos">${fmtNum(st.target_1)}</b></div>
-                <div class="setup-price-cell"><span>Target 2</span><b class="pos">${fmtNum(st.target_2)}</b></div>
-                <div class="setup-price-cell"><span>Stop-Loss</span><b class="neg">${fmtNum(st.stop_loss)}</b></div>
-                <div class="setup-price-cell"><span>R/R (T2)</span><b>${st.risk_reward_t2}</b></div>
+                <div class="setup-price-cell"><span>Reference entry (PKR)</span><b style="color:var(--accent-blue);">${fmtNum(st.entry_price)}</b></div>
+                <div class="setup-price-cell"><span>First take-profit price</span><b class="pos">${fmtNum(st.target_1)}</b></div>
+                <div class="setup-price-cell"><span>Second reference target</span><b class="pos">${fmtNum(st.target_2)}</b></div>
+                <div class="setup-price-cell"><span>Stop-loss / loss limit</span><b class="neg">${fmtNum(st.stop_loss)}</b></div>
+                <div class="setup-price-cell"><span>Potential gain / loss (first target)</span><b>${st.risk_reward_t1}</b></div>
               </div>
 
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+              <p><b>When:</b> Next trading day’s opening price only, between ${fmtNum(st.entry_price*.9975)} and ${fmtNum(st.entry_price*1.0025)} PKR. Skip an opening price outside that range; do not chase a later intraday entry.</p><p>${isLong?'Buy only if the price and cost checks still pass. Exit if price falls to the loss limit, or take profit at the first target.':'Short only with confirmed broker permission. Buy back at the loss limit if price rises, or take profit at the first target if price falls.'} Recheck that the possible gain is at least 1.5 times the possible loss and stays positive after costs.</p>
+              <details><summary>Detailed indicators (optional)</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
                 <span class="badge badge-blue" title="Wilder RSI(14)">RSI ${st.rsi14}</span>
                 <span class="badge badge-blue" title="Average Directional Index — trend strength">ADX ${st.adx14}</span>
                 <span class="badge ${st.trend_state.startsWith("Bullish") ? "badge-green" : (st.trend_state.startsWith("Bearish") ? "badge-red" : "badge-blue")}" title="EMA 9 / 21 / 50 alignment">${st.trend_state}</span>
                 <span class="badge ${st.momentum_state.startsWith("Rising") ? "badge-green" : "badge-red"}" title="MACD histogram momentum">${st.momentum_state}</span>
                 <span class="badge badge-blue" title="Session volume vs 20-day average">Vol ${st.volume_ratio}× avg</span>
-              </div>
-              <div style="font-size:11.4px;color:var(--warn-amber);background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;"><b>⚠ Invalidation:</b> ${st.invalidation}</div>
+              </div></details>
+              <div style="font-size:11.4px;color:var(--warn-amber);background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;"><b>⚠ Do not enter / exit warning:</b> ${st.invalidation}</div>
 
               <details class="setup-details"><summary>View rationale &amp; background</summary><div style="font-size:12px;color:var(--text-main);">
                 <b style="color:var(--accent-blue);">Technical rationale</b>
@@ -346,7 +347,7 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
   `;
 }
 
-function buildAutomatedAnalystCardHtml(analystRes) {
+function buildDetailedAnalystCardHtml(analystRes) {
   if (analystRes.status === "BLOCKED" || analystRes.status === "NO_DATA") return `<section class="card notice" id="automatedAnalystCard"><h3>Analysis unavailable</h3><p>${escapeHtml(analystRes.message)}</p></section>`;
   const anState = state.analyst;
   const lat = analystRes.latest || {};
@@ -1146,9 +1147,9 @@ function renderTop5SvgChart(trend) {
   return `
     <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:190px;background:#070c18;border-radius:7px;border:1px solid var(--border-color);">
       ${bars}
-      <polyline fill="none" stroke="#10b981" stroke-width="2.2" points="${pts}" />
+      <polyline fill="none" stroke="#03D815" stroke-width="2.2" points="${pts}" />
       <text x="${padL}" y="14" fill="#38bdf8" font-size="10">Bars: Top 5 Total Volume (Max ${fmtInt(maxVol)})</text>
-      <text x="${w - 230}" y="14" fill="#10b981" font-size="10">Line: Rank 1 Rate (${fmtNum(minRate)} – ${fmtNum(maxRate)} PKR)</text>
+      <text x="${w - 230}" y="14" fill="#03D815" font-size="10">Line: Rank 1 Rate (${fmtNum(minRate)} – ${fmtNum(maxRate)} PKR)</text>
       <text x="${padL}" y="${h - 8}" fill="#94a3b8" font-size="10">${fmtDate(trend[0].trade_date)}</text>
       <text x="${w - padR - 55}" y="${h - 8}" fill="#94a3b8" font-size="10">${fmtDate(trend[trend.length - 1].trade_date)}</text>
     </svg>
@@ -1308,9 +1309,7 @@ async function renderAccountView(container, accountId) {
           </div>
           <div class="filter-group">
             <label>Select Trading Date:</label>
-            <select onchange="openAccountDateDetail('${accountId}', this.value)">
-              ${tDates.map((d) => `<option value="${d}" ${d === det.trade_date ? "selected" : ""}>${fmtDate(d)}</option>`).join("")}
-            </select>
+            <input type="date" value="${det.trade_date}" min="${[...tDates].sort()[0]}" max="${[...tDates].sort().at(-1)}" onchange="accountCalendar1311('${accountId}',this.value,${escapeHtml(JSON.stringify(tDates))})"/>
           </div>
         </div>
         <div class="table-wrap">
@@ -1645,7 +1644,7 @@ async function renderAccountView(container, accountId) {
         <a class="btn btn-secondary" href="/api/exports/generate/csv_${accountId}" download>CSV</a>
       </div>
     </div>
-    <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[0])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
+    <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[0])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="clearCalendarNotice1311();state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
     ${bodyHtml}
   `;
 }
@@ -1709,13 +1708,13 @@ async function renderFuturesView(container) {
       <div class="filter-group" title="Worksheet date filter — select an imported trading date, matching the Excel ListDates dropdown. Dates are displayed as DD-MM-YYYY; no browser-locale month/day ambiguity.">
         <label>Selected Date:</label>
         <span class="date-readout">${isAll ? "All dates" : fmtDate(shown)}</span>
-        <select aria-label="Selected date for this worksheet" ${isAll ? "disabled" : ""} onchange="state.futures.${tabKey}.date_manual=true;state.futures.${tabKey}.selected_date=this.value;renderFuturesView(document.getElementById('viewContainer'))">${availDates.map(d=>`<option value="${d}" ${d===shown?'selected':''}>${fmtDate(d)}</option>`).join('')}</select>
+        <input type="date" aria-label="Selected date for this worksheet" value="${shown}" min="${[...availDates].sort()[0]}" max="${[...availDates].sort().at(-1)}" ${isAll ? "disabled" : ""} onchange="futuresCalendar1311('${tabKey}',this.value,${escapeHtml(JSON.stringify(availDates))})"/>
         <span class="badge ${st.date_manual ? 'badge-amber' : 'badge-green'}">${isAll ? 'All retained dates · Latest:' : (st.date_manual ? 'Pinned · Latest:' : 'Auto → Latest:')} ${fmtDate(latestDate)}</span>
-        ${st.date_manual ? `<button class="btn btn-secondary" onclick="state.futures.${tabKey}.date_manual=false;state.futures.${tabKey}.selected_date=null;renderFuturesView(document.getElementById('viewContainer'))">Reset to Latest</button>` : ''}
+        ${st.date_manual ? `<button class="btn btn-secondary" onclick="clearCalendarNotice1311();state.futures.${tabKey}.date_manual=false;state.futures.${tabKey}.selected_date=null;renderFuturesView(document.getElementById('viewContainer'))">Reset to Latest</button>` : ''}
       </div>
       <div class="filter-group">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;" title="The Excel sheets show the single selected date; tick this only if you want the full 2-month retained window returned instead.">
-          <input type="checkbox" ${isAll ? "checked" : ""} onchange="state.futures.${tabKey}.date_manual=this.checked;state.futures.${tabKey}.selected_date=this.checked?'ALL':'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
+          <input type="checkbox" ${isAll ? "checked" : ""} onchange="clearCalendarNotice1311();state.futures.${tabKey}.date_manual=this.checked;state.futures.${tabKey}.selected_date=this.checked?'ALL':'${latestDate}';renderFuturesView(document.getElementById('viewContainer'))" />
           All retained 2-month dates
         </label>
       </div>
@@ -1995,7 +1994,7 @@ async function renderFuturesView(container) {
   container.innerHTML = `
     <div class="subtabs">
       ${subtabs.map(([k, lbl]) => `
-        <button class="subtab-btn ${f.subtab === k ? "active" : ""}" onclick="state.futures.subtab='${k}';renderFuturesView(document.getElementById('viewContainer'))">${lbl}</button>
+        <button class="subtab-btn ${f.subtab === k ? "active" : ""}" onclick="clearCalendarNotice1311();state.futures.subtab='${k}';renderFuturesView(document.getElementById('viewContainer'))">${lbl}</button>
       `).join("")}
     </div>
     ${filterBarHtml}
@@ -2052,7 +2051,7 @@ function renderFuturesComparisonTableCard(title, subtitle, rows) {
 // 07. MODULE D: TECHNICAL ANALYSIS, SETUP GENERATOR & 36-TICKER DASHBOARD
 // ============================================================================
 function formatCompactIndicatorValue(indName, valStr) {
-  if (!valStr) return "N/A";
+  if (!valStr) return "Not available";
   if (indName.includes("EMA 200") && valStr.includes(";")) {
     return valStr.replace("; ", "<br><span style='color:var(--text-muted);font-size:10.5px;'>") + "</span>";
   }
@@ -2378,8 +2377,8 @@ function renderTechnicalSvgChart(series) {
 
       <line x1="${padL}" y1="${yRsi(70)}" x2="${w - padR}" y2="${yRsi(70)}" stroke="rgba(244,63,94,0.4)" stroke-dasharray="3,3" />
       <line x1="${padL}" y1="${yRsi(30)}" x2="${w - padR}" y2="${yRsi(30)}" stroke="rgba(16,185,129,0.4)" stroke-dasharray="3,3" />
-      <polyline fill="none" stroke="#10b981" stroke-width="1.8" points="${rsiPts}" />
-      <text x="${padL}" y="${rsiTop + 10}" fill="#10b981" font-size="10">Wilder RSI(14) — Overbought 70 / Oversold 30</text>
+      <polyline fill="none" stroke="#03D815" stroke-width="1.8" points="${rsiPts}" />
+      <text x="${padL}" y="${rsiTop + 10}" fill="#03D815" font-size="10">Wilder RSI(14) — Overbought 70 / Oversold 30</text>
     </svg>
   `;
 }
@@ -2828,6 +2827,7 @@ function enhanceWorkspace() {
     }
   }
   edits.forEach(([n,text])=>n.nodeValue=text);
+  if (typeof enhanceDisplay1311==='function') enhanceDisplay1311(root);
 }
 
 async function renderLatestBadge(view) {
