@@ -8,7 +8,7 @@ from psx_app.database.repository import Repository
 from psx_app.database.schema import get_connection
 
 
-ENGINE_VERSION = "1.3.9"
+ENGINE_VERSION = "1.3.9"  # Indicator mathematics unchanged; retain compatible caches.
 
 
 class TechnicalService:
@@ -798,6 +798,7 @@ class TechnicalService:
         scope: str = "core36",
         search: Optional[str] = None,
         signal_filter: Optional[str] = None,
+        symbols: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Return searchable summary table for either the 36 core tickers (scope='core36')
@@ -818,6 +819,10 @@ class TechnicalService:
                     for r in c.execute("SELECT DISTINCT symbol FROM equity_ohlcv ORDER BY symbol ASC").fetchall()
                 ]
 
+            if symbols is not None:
+                selected = set(symbols)
+                target_syms = [s for s in target_syms if s in selected]
+
             if search and search.strip():
                 q = self.resolve_ticker(search.strip())
                 target_syms = [s for s in target_syms if q in s or s in search.strip().upper()]
@@ -825,13 +830,11 @@ class TechnicalService:
             market_date = c.execute("SELECT MAX(trade_date) FROM equity_ohlcv").fetchone()[0]
             fut_bases = {r[0] for r in c.execute("SELECT DISTINCT base_symbol FROM futures_ohlcv WHERE trade_date = ?", (market_date,)).fetchall()}
 
-            cached_rows = {
-                r["symbol"]: json.loads(r["payload_json"])
-                for r in c.execute(
-                    "SELECT symbol, payload_json FROM indicator_cache WHERE rule_version = ?",
-                    (rule_ver,),
-                ).fetchall()
-            }
+            cached_rows = {}
+            for offset in range(0, len(target_syms), 300):
+                group = target_syms[offset:offset+300]
+                for r in c.execute("SELECT symbol, payload_json FROM indicator_cache WHERE rule_version=? AND symbol IN (" + ",".join("?" for _ in group) + ")", (rule_ver, *group)):
+                    cached_rows[r["symbol"]] = json.loads(r["payload_json"])
 
             summaries: List[Dict[str, Any]] = []
             new_cache_entries = []
@@ -839,7 +842,7 @@ class TechnicalService:
             for sym in target_syms:
                 if sym in cached_rows:
                     item = cached_rows[sym]
-                    if item.get("engine_version") != ENGINE_VERSION:
+                    if item.get("engine_version") != ENGINE_VERSION or bool(item.get("is_futures_eligible")) != (sym in fut_bases):
                         item = None
                 else:
                     item = None

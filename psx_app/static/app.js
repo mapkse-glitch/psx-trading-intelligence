@@ -1,4 +1,4 @@
-// PSX Trading Intelligence Dashboard v1.3.9 — Frontend Application
+// PSX Trading Intelligence Dashboard v1.3.10 — Frontend Application
 const DEFAULT_QUICK_SYMBOLS = [
   "ATRL", "OGDC", "PPL", "PSO", "LUCK", "MLCF", "UBL", "HBL", "SYS", "TRG", "SAZEW", "FFC", "HUBC", "ENGROH"
 ];
@@ -256,9 +256,9 @@ function buildTradingIdeasCardHtml(ideasRes, filtersMeta) {
             <span class="badge badge-blue">CARD 1</span>
             1. Trading Ideas Generator — Rule-scored candidates
           </div>
-          <div class="card-subtitle">Scans imported historical prices (${ideasRes.candidates_scanned} candidates analyzed) combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
+          <div class="card-subtitle">Cash symbols examined before direction/plan filters: ${ideasRes.candidates_scanned}. Full stored history is used, combining 9-Factor Technicals, Module A Top 5 Volume &amp; Module C Futures Basis</div>
         </div>
-        <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${fmtDate(ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data")}</span>
+        <span class="badge badge-green" title="Every number below is computed directly from the canonical SQLite database — 9-Factor Technicals (Module D), Module A Top 5 Volume Register and Module C Futures basis. No external AI/prompts involved.">Pure Data &amp; Analysis • As of ${fmtDate(ideasRes.market_latest_date || (ideasRes.setups[0] ? ideasRes.setups[0].trade_date : "latest data"))}</span>
       </div>
 
       <div class="filter-bar" style="margin-bottom:14px;">
@@ -2176,7 +2176,7 @@ async function renderTechnicalLegacy(container) {
     bodyHtml = `
       <div class="filter-bar">
         <div class="filter-group">
-          <label>Type Any PSX Ticker (531 Symbols):</label>
+          <label>Type Any Imported Cash Ticker:</label>
           <input type="text" id="deepDiveSymbolInput" value="${t.selectedSymbol}" style="width:110px;font-weight:700;" onkeydown="if(event.key==='Enter')openTickerDeepDive(this.value)" />
           <button class="btn btn-primary" onclick="openTickerDeepDive(document.getElementById('deepDiveSymbolInput').value)">Load</button>
         </div>
@@ -2854,7 +2854,7 @@ async function verifyWorkspaceFreshness(force=false) {
     if (result.snapshot_id) state.lastSnapshotId = result.snapshot_id;
     state.freshnessStatus = result.status;
     const notice = document.getElementById('dataFreshnessNotice');
-    const versionChanged = result.version && result.version !== '1.3.9';
+    const versionChanged = result.version && result.version !== document.querySelector('meta[name="psx-build-version"]')?.content;
     if (notice) {
       notice.classList.toggle('hidden', ['CURRENT','LOCAL'].includes(result.status) && !versionChanged);
       notice.textContent = versionChanged ? 'A newer dashboard build is deployed. Reload this page to update the interface.' : (result.message || '');

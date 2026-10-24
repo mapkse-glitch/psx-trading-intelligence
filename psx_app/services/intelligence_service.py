@@ -30,9 +30,9 @@ class IntelligenceService:
         return {
             "presets": [
                 {"id": "CORE36", "label": "Core 36 Institutional Watchlist"},
-                {"id": "TOP5_VOL", "label": "Top 5 Volume Register Leaders (23 Tickers)"},
-                {"id": "FUTURES", "label": "Deliverable Futures Eligible Universe"},
-                {"id": "ALL_MARKET", "label": "All PSX Cash Equities (531 Tickers)"},
+                {"id": "TOP5_VOL", "label": "Top 5 Volume Register Symbols"},
+                {"id": "FUTURES", "label": "Same-session Futures-observed Symbols (eligibility unverified)"},
+                {"id": "ALL_MARKET", "label": "All Imported Cash Symbols (includes historical/inactive symbols)"},
             ],
             "sectors": sectors,
             "reference_lists": list(self.reference.lists()),
@@ -56,58 +56,84 @@ class IntelligenceService:
         if not integrity["ok"]:
             return {"status": "BLOCKED", "message": integrity["message"], "date_integrity": integrity,
                     "target_label": custom_query or scope_or_sector, "candidates_scanned": 0, "setups_count": 0, "setups": []}
-        uni_scope = "core36" if scope_or_sector == "CORE36" and not custom_query.strip() else "all"
-        uni = self.tech_service.get_universe_summary(scope=uni_scope)
-        items = uni["items"]
-
-        # Enrich with Top 5 Volume Register & Futures spread context from DB
+        # Compute available indicators before filtering; a rejected symbol was still examined.
+        direction_filter = direction_filter.strip().upper()
+        if direction_filter not in ("ALL", "LONG", "SHORT"):
+            raise ValueError("Direction must be ALL, LONG or SHORT.")
+        limit = max(1, min(5, int(limit)))
         with get_connection(self.db_path) as c:
+            cash_symbols = {r[0] for r in c.execute("SELECT DISTINCT symbol FROM equity_ohlcv")}
+            market_date = c.execute("SELECT MAX(trade_date) FROM equity_ohlcv").fetchone()[0]
             top5_tickers = {(r["ticker"], r["trade_date"]): r["top_vol"] for r in c.execute(
-                "SELECT ticker, trade_date, SUM(volume) AS top_vol FROM top5_volume_records GROUP BY ticker, trade_date").fetchall()}
+                "SELECT ticker, trade_date, SUM(volume) AS top_vol FROM top5_volume_records GROUP BY ticker, trade_date")}
             fut_map = {}
             for row in c.execute("SELECT base_symbol, trade_date, close, contract_symbol, volume FROM futures_ohlcv ORDER BY volume DESC, contract_symbol ASC"):
                 fut_map.setdefault((row["base_symbol"], row["trade_date"]), dict(row))
 
         q_clean = self.tech_service.resolve_ticker(custom_query.strip()) if custom_query.strip() else ""
-        filtered: List[Dict[str, Any]] = []
-
-        rejected = []
+        exact_query = q_clean in cash_symbols
+        filtered, rejected, diagnostics, outside_scope = [], [], [], []
+        counts = dict(universe_total=len(cash_symbols), query_matches=0, matched=0, analyzed=0,
+                      data_ready=0, direction_eligible=0, structurally_qualified=0, displayed=0)
         ref_lists = self.reference.lists()
         membership = {r['symbol'] for r in ref_lists.get(scope_or_sector, [])}
+        core = set(CORE_36_TICKERS)
+        if q_clean:
+            selected = {sym for sym in cash_symbols if (sym == q_clean if exact_query else q_clean in sym or q_clean in self.sector_map.get(sym, {}).get("sector", "").upper())}
+        elif scope_or_sector in ref_lists: selected = cash_symbols & membership
+        elif scope_or_sector == "CORE36": selected = cash_symbols & core
+        elif scope_or_sector == "TOP5_VOL": selected = cash_symbols & {sym for sym, _ in top5_tickers}
+        elif scope_or_sector == "FUTURES": selected = cash_symbols & {sym for sym, dt in fut_map if dt == market_date}
+        elif scope_or_sector == "ALL_MARKET": selected = cash_symbols
+        else: selected = {sym for sym in cash_symbols if self.sector_map.get(sym, {}).get("sector", "").casefold() == scope_or_sector.casefold()}
+        # Never calculate unrelated symbols when scanning a single ticker/watchlist.
+        items = self.tech_service.get_universe_summary(scope="all", symbols=sorted(selected))["items"]
         for it in items:
             sym = it["symbol"]
-            if scope_or_sector in ref_lists and sym not in membership: continue
-            sec_info = self.sector_map.get(sym, {
-                "sector": "PSX Listed Equity",
-                "fundamental": "Active PSX equity with institutional price-volume participation and technical structure.",
-            })
-            if q_clean:
-                if q_clean not in sym and q_clean not in sec_info["sector"].upper():
-                    continue
-            elif scope_or_sector == "TOP5_VOL":
-                if (sym, it["latest_date"]) not in top5_tickers:
-                    continue
-            elif scope_or_sector == "FUTURES":
-                if not it.get("is_futures_eligible"):
-                    continue
-            elif scope_or_sector not in ("CORE36", "ALL_MARKET") and scope_or_sector not in ref_lists:
-                if sec_info["sector"].lower() != scope_or_sector.lower():
-                    continue
-
-            if it.get("data_freshness", {}).get("status") == "STALE" or float(it.get("volume") or 0) <= 0:
+            sector = self.sector_map.get(sym, {}).get("sector", "Unclassified")
+            if q_clean and not (sym == q_clean if exact_query else q_clean in sym or q_clean in sector.upper()):
                 continue
-            if it["bars_count"] < 26 or it.get("rsi14") is None:
+            counts["query_matches"] += 1
+            in_scope = (
+                sym in membership if scope_or_sector in ref_lists else
+                sym in core if scope_or_sector == "CORE36" else
+                (sym, it["latest_date"]) in top5_tickers if scope_or_sector == "TOP5_VOL" else
+                bool(it.get("is_futures_eligible")) if scope_or_sector == "FUTURES" else
+                True if scope_or_sector == "ALL_MARKET" else sector.casefold() == scope_or_sector.casefold())
+            if not in_scope:
+                if q_clean:
+                    outside_scope.append(dict(symbol=sym, code="OUTSIDE_SCOPE", reason="Cash history exists, but symbol is outside the selected scope. Select All imported cash symbols to inspect it.", bars_count=it["bars_count"]))
                 continue
-
-            sig_score = it["signal"]["score"]
-            act = it["signal"]["combined_signal"].upper()
-
-            if direction_filter == "LONG" and sig_score < 1:
-                continue
-            if direction_filter == "SHORT" and sig_score > -1:
-                continue
-
-            filtered.append(it)
+            counts["matched"] += 1
+            counts["analyzed"] += 1
+            sig = it.get("signal") or {}
+            score = int(sig.get("score") or 0)
+            plan = sig.get("trade_plan") or {}
+            reasons = []
+            if it.get("data_freshness", {}).get("status") == "STALE":
+                reasons.append(dict(code="STALE_DATA", reason=f"Last cash session {it['latest_date']} is behind the latest imported cash session. Historical data exists; no current-session entry."))
+            if float(it.get("volume") or 0) <= 0:
+                reasons.append(dict(code="ZERO_VOLUME", reason="No positive reported volume in the symbol's last cash session."))
+            if it["bars_count"] < 26 or it.get("rsi14") is None or sig.get("combined_signal") == "INSUFFICIENT DATA":
+                reasons.append(dict(code="INSUFFICIENT_HISTORY", reason=f"{it['bars_count']} stored cash sessions; available indicators do not meet signal readiness. No synthetic history is substituted."))
+            ready = not reasons
+            counts["data_ready"] += int(ready)
+            direction_ok = not ((direction_filter == "LONG" and score < 1) or (direction_filter == "SHORT" and score > -1))
+            if not direction_ok:
+                reasons.append(dict(code="DIRECTION_FILTER", reason=f"Raw signal {sig.get('combined_signal', 'unavailable')} ({score:+d}/9) is excluded by {direction_filter}. This is a filter rejection, not missing data."))
+            counts["direction_eligible"] += int(ready and direction_ok)
+            if plan.get("status") != "VALID":
+                reasons.append(dict(code="NO_VALID_PLAN", reason=plan.get("reason") or "No validated structural entry/stop/target plan."))
+            elif direction_filter in ("LONG", "SHORT") and plan.get("side") != direction_filter:
+                reasons.append(dict(code="PLAN_DIRECTION", reason="Structural plan is opposite to the selected direction."))
+            row = dict(symbol=sym, sector=sector, score=score, raw_signal=sig.get("combined_signal"),
+                       first_date=it["first_date"], latest_date=it["latest_date"], bars_count=it["bars_count"],
+                       reasons=reasons, status="REJECTED" if reasons else "QUALIFIED",
+                       reason="; ".join(r["reason"] for r in reasons) if reasons else "Passed data, direction and structural safeguards.")
+            diagnostics.append(row)
+            if reasons: rejected.append(row)
+            else: filtered.append(it)
+        counts["structurally_qualified"] = len(filtered)
 
         # Rank setups by composite conviction: |score|*10 + ADX strength + volume ratio + R/R quality
         scored_setups: List[Dict[str, Any]] = []
@@ -159,7 +185,7 @@ class IntelligenceService:
 
             sec_info = self.sector_map.get(sym, {
                 "sector": "PSX Listed Equity",
-                "fundamental": "Active PSX equity with institutional price-volume participation.",
+                "fundamental": "Fundamentals unavailable; no verified financial/news input supplied.",
             })
 
             macd_v = it.get("macd") or 0.0
@@ -248,11 +274,18 @@ class IntelligenceService:
 
         return {
             "target_label": target_label,
-            "candidates_scanned": len(filtered),
+            "market_latest_date": market_date,
+            "candidates_scanned": counts["analyzed"],
+            "scan_counts": dict(counts, displayed=len(top_setups)),
+            "diagnostics": diagnostics,
+            "outside_scope": outside_scope,
+            "query_interpretation": "Exact stored ticker" if exact_query else "Case-insensitive ticker/sector text",
+            "scope_note": "Scope and query are intersected. Direction is applied after examining the matched history. Use All imported cash symbols to search outside a watchlist.",
+            "message": ("No cash symbols matched this scope/query. Check the coverage tab; reference membership, futures and account trades are not cash OHLCV." if not counts["matched"] else "Every matched symbol is accounted for below, including data-readiness and direction exclusions."),
             "setups_count": len(top_setups),
             "screening_note": "Only current imported-session, positive-volume candidates with a valid structural plan and gross R/R >= 1.5 are returned. Fewer than five or zero is valid. Rule scores are not win probabilities.",
             "setups": top_setups,
-            "rejected": sorted(rejected,key=lambda r:abs(r["score"]),reverse=True)[:10],
+            "rejected": sorted(rejected, key=lambda r: (-abs(r["score"]), r["symbol"])),
         }
 
     def run_automated_technical_analyst(
@@ -284,6 +317,14 @@ class IntelligenceService:
                 "status": "NO_DATA",
                 "message": f"No historical OHLCV records found for '{sym}'.",
             }
+
+        if lat["signal"]["combined_signal"] == "INSUFFICIENT DATA":
+            return {"symbol": sym, "status": "INSUFFICIENT_DATA", "latest": lat,
+                    "message": f"{sym}: {lat['bars_count']} cash sessions stored from {lat['first_date']} through {lat['latest_date']}. Available indicators are insufficient for a multi-indicator signal (minimum 26 sessions). Missing indicators are unavailable, not zero."}
+
+        def shown(value, decimals=2, signed=False):
+            if value is None: return "N/A"
+            return format(value, ("+" if signed else "") + f".{decimals}f")
 
         # 1. Build Weekly Chart Candles from Daily Bars
         weeks_map: Dict[str, Dict[str, Any]] = {}
@@ -320,9 +361,9 @@ class IntelligenceService:
         if unfinished_week_excluded:
             weekly_candles = weekly_candles[:-1]
         w_closes = [w["close"] for w in weekly_candles]
-        w_sma4 = sum(w_closes[-4:]) / 4 if len(w_closes) >= 4 else 0.0
-        w_sma10 = sum(w_closes[-10:]) / 10 if len(w_closes) >= 10 else 0.0
-        w_chg_4w = ((w_closes[-1] - w_closes[-min(5, len(w_closes))]) / w_closes[-min(5, len(w_closes))] * 100.0) if len(w_closes) >= 5 else 0.0
+        w_sma4 = sum(w_closes[-4:]) / 4 if len(w_closes) >= 4 else None
+        w_sma10 = sum(w_closes[-10:]) / 10 if len(w_closes) >= 10 else None
+        w_chg_4w = ((w_closes[-1] - w_closes[-min(5, len(w_closes))]) / w_closes[-min(5, len(w_closes))] * 100.0) if len(w_closes) >= 5 else None
         weekly_trend = "INSUFFICIENT COMPLETED WEEKS (<10)"
         if len(w_closes) >= 10:
             weekly_trend = "BULLISH (Above 4W & 10W SMA)" if (w_closes[-1] >= w_sma4 and w_sma4 >= w_sma10) else (
@@ -374,7 +415,7 @@ class IntelligenceService:
         wp = (lat.get("weekly_pivots") or {}).get("pivots") or {}
         sec_info = self.sector_map.get(sym, {
             "sector": "PSX Listed Equity",
-            "fundamental": "Active PSX equity with institutional price-volume participation.",
+            "fundamental": "Fundamentals unavailable; no verified financial/news input supplied.",
         })
 
         steps = [
@@ -383,7 +424,7 @@ class IntelligenceService:
                 "verdict": weekly_trend,
                 "detail": (
                     f"On the Daily chart ({lat['latest_date']}), {sym} closed at {c_val:.2f} PKR ({lat['change_pct']:+.2f}%). "
-                    f"Completed-week context ({len(weekly_candles)} weeks; through {weekly_candles[-1]['end_date'] if weekly_candles else 'N/A'}): completed-week close change {w_chg_4w:+.2f}% over 4 weeks; SMA(4)={w_sma4:.2f}, SMA(10)={w_sma10:.2f}. This can differ from the latest daily close."
+                    f"Completed-week context ({len(weekly_candles)} weeks; through {weekly_candles[-1]['end_date'] if weekly_candles else 'N/A'}): completed-week close change {shown(w_chg_4w, signed=True)}% over 4 weeks; SMA(4)={shown(w_sma4)}, SMA(10)={shown(w_sma10)}. This can differ from the latest daily close."
                 ),
             },
             {
@@ -399,22 +440,22 @@ class IntelligenceService:
                 "step": "Step 3 • Moving Averages Alignment",
                 "verdict": f"{sum(1 for m in ma_list if 'Above' in m['status'])}/{len(ma_list)} MAs Bullish",
                 "detail": (
-                    f"EMA(9)={lat.get('ema9') or 0:.2f}, EMA(21)={lat.get('ema21') or 0:.2f}, EMA(50)={lat.get('ema50') or 0:.2f}, "
-                    f"SMA(20)={lat.get('sma20') or 0:.2f}. "
+                    f"EMA(9)={shown(lat.get('ema9'))}, EMA(21)={shown(lat.get('ema21'))}, EMA(50)={shown(lat.get('ema50'))}, "
+                    f"SMA(20)={shown(lat.get('sma20'))}. "
                     + (
                         "Bullish short-to-medium EMA stack (EMA 9 > EMA 21 > EMA 50)."
-                        if (lat.get("ema9") or 0) >= (lat.get("ema21") or 0) >= (lat.get("ema50") or 0)
-                        else "Mixed/consolidating moving average alignment; monitor EMA 21 as pivot trigger."
+                        if all(lat.get(k) is not None for k in ("ema9", "ema21", "ema50")) and lat["ema9"] >= lat["ema21"] >= lat["ema50"]
+                        else ("EMA stack unavailable: not all EMA periods initialized." if any(lat.get(k) is None for k in ("ema9", "ema21", "ema50")) else "Mixed/consolidating moving average alignment; monitor EMA 21 as pivot trigger.")
                     )
                 ),
             },
             {
                 "step": "Step 4 • Momentum, Volatility & Volume Confirmation",
-                "verdict": f"RSI {lat.get('rsi14') or 0:.1f} ({lat['rsi_zone']}) | ADX {lat.get('adx14') or 0:.1f}",
+                "verdict": f"RSI {shown(lat.get('rsi14'), 1)} ({lat['rsi_zone']}) | ADX {shown(lat.get('adx14'), 1)}",
                 "detail": (
-                    f"Wilder RSI(14)={lat.get('rsi14') or 0:.2f} (YTD range {lat['rsi_ytd_low']['value'] or 0:.1f}–{lat['rsi_ytd_high']['value'] or 0:.1f}). "
-                    f"MACD(12,26,9)={lat.get('macd') or 0:.2f} vs Signal {lat.get('macd_sig') or 0:.2f} (Hist {lat.get('macd_hist') or 0:+.2f}). "
-                    f"Bollinger %B={(lat.get('pct_b') or 0)*100:.1f}%, ADX(14)={lat.get('adx14') or 0:.2f} (+DI={lat.get('plus_di') or 0:.1f}, -DI={lat.get('minus_di') or 0:.1f})."
+                    f"Wilder RSI(14)={shown(lat.get('rsi14'))} (YTD range {shown(lat['rsi_ytd_low']['value'], 1)}–{shown(lat['rsi_ytd_high']['value'], 1)}). "
+                    f"MACD(12,26,9)={shown(lat.get('macd'))} vs Signal {shown(lat.get('macd_sig'))} (Hist {shown(lat.get('macd_hist'), signed=True)}). "
+                    f"Bollinger %B={shown(lat['pct_b']*100 if lat.get('pct_b') is not None else None, 1)}%, ADX(14)={shown(lat.get('adx14'))} (+DI={shown(lat.get('plus_di'), 1)}, -DI={shown(lat.get('minus_di'), 1)})."
                 ),
             },
             {
@@ -434,9 +475,9 @@ class IntelligenceService:
             "weekly_trend": weekly_trend,
             "price_vs_daily_pivot": "ABOVE Daily Pivot" if c_val >= dp["P"] else "BELOW Daily Pivot",
             "ma_alignment": f"{bullish_mas}/{len(ma_list)} MAs Bullish",
-            "rsi_zone": f"RSI {float(lat.get('rsi14') or 0):.1f} — {lat['rsi_zone']}",
-            "adx_strength": f"ADX {float(lat.get('adx14') or 0):.1f} ({'Trending' if float(lat.get('adx14') or 0) >= 20 else 'Weak/Range'})",
-            "macd_momentum": f"{'Rising' if macd_h2 > 0 else 'Fading'} (Hist {macd_h2:+.3f})",
+            "rsi_zone": f"RSI {shown(lat.get('rsi14'), 1)} — {lat['rsi_zone']}",
+            "adx_strength": f"ADX {shown(lat.get('adx14'), 1)} ({'Unavailable' if lat.get('adx14') is None else 'Trending' if lat['adx14'] >= 20 else 'Weak/Range'})",
+            "macd_momentum": "Unavailable (MACD signal not initialized)" if lat.get("macd_hist") is None else f"{'Rising' if macd_h2 > 0 else 'Fading'} (Hist {macd_h2:+.3f})",
         }
 
         key_levels = {
@@ -447,7 +488,7 @@ class IntelligenceService:
             "s1": round(float(dp["S1"]), 2),
             "s2": round(float(dp["S2"]), 2),
             "s3": round(float(dp["S3"]), 2) if dp.get("S3") is not None else None,
-            "weekly_pivot": round(float(wp.get("P") or 0.0), 2),
+            "weekly_pivot": round(float(wp["P"]), 2) if wp.get("P") is not None else None,
             "swing_high_20d": round(swing_high_20, 2),
             "swing_low_20d": round(swing_low_20, 2),
             "regression_center": round(reg_now, 2),
@@ -478,9 +519,9 @@ class IntelligenceService:
                 "last_completed_week_end": weekly_candles[-1]["end_date"] if weekly_candles else None,
                 "unfinished_week_excluded": unfinished_week_excluded,
                 "method": "Completed imported weeks; no exchange holiday calendar is available. Unfinished latest week is excluded conservatively.",
-                "weekly_sma4": round(w_sma4, 2),
-                "weekly_sma10": round(w_sma10, 2),
-                "change_4w_pct": round(w_chg_4w, 2),
+                "weekly_sma4": round(w_sma4, 2) if w_sma4 is not None else None,
+                "weekly_sma10": round(w_sma10, 2) if w_sma10 is not None else None,
+                "change_4w_pct": round(w_chg_4w, 2) if w_chg_4w is not None else None,
                 "weekly_trend": weekly_trend,
                 "recent_weeks": weekly_candles[-8:],
             },

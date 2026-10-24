@@ -8,8 +8,13 @@ async function post139(path,data) {
  const res=await fetch('/api/v139/'+path,{method:'POST',headers:data instanceof FormData?{}:{'Content-Type':'application/json'},body:data instanceof FormData?data:JSON.stringify(data||{})});
  const out=await res.json();if(!res.ok)throw new Error(out.detail||'Request not confirmed');return out;
 }
-function smallTable(headers,rows){const numeric=headers.map(v=>/^(Rule score|Volume|Share|Symbol rows|Added\/changed|High|Low|Average|Close|Change|Net return|Test samples|Model accuracy|Baseline accuracy|Model Brier|Baseline Brier)/.test(v));return `<div class="table-wrap"><table class="data-table"><thead><tr>${headers.map((v,i)=>`<th class="${numeric[i]?'num':''}">${h(v)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr>${row.map((v,i)=>`<td class="${numeric[i]?'num':''}">${v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}">No matching data.</td></tr>`}</tbody></table></div>`;}
-function techNav139(tab){return `<div class="subtabs">${[['ideas','1. Trading Ideas Generator'],['analyst','2. Automated Technical Analyst'],['forecasts','Forecasts & Results'],['core36','Core 36 watchlist'],['deep_dive','Detailed chart & historical audit'],['all531','All-symbol screener']].map(([id,label])=>`<button class="subtab-btn ${tab===id?'active':''}" onclick="state.technical.subtab='${id}';renderTechnicalView(document.getElementById('viewContainer')).catch(e=>showToast(e.message,true))">${label}</button>`).join('')}</div>`;}
+function smallTable(headers,rows){
+ const numeric=headers.map(v=>/^(Rule score|Volume|Share|Cash sessions|Engine sessions|Symbol rows|Added\/changed|High|Low|Average|Close|Change|Net return|Test samples|Model accuracy|Baseline accuracy|Model Brier|Baseline Brier)/.test(v));
+ const wrap=headers.map(v=>/Reason|Evidence|Decision|Accounts|Reference lists|Sector/.test(v));
+ const cls=i=>[numeric[i]?'num':'',wrap[i]?'cell-wrap':''].filter(Boolean).join(' ');
+ return `<div class="table-wrap"><table class="data-table"><thead><tr>${headers.map((v,i)=>`<th class="${cls(i)}">${h(v)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr>${row.map((v,i)=>`<td class="${cls(i)}">${v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}">No matching data.</td></tr>`}</tbody></table></div>`;
+}
+function techNav139(tab){return `<div class="subtabs">${[['ideas','1. Trading Ideas Generator'],['analyst','2. Automated Technical Analyst'],['forecasts','Forecasts & Results'],['coverage','Data coverage & exclusions'],['core36','Core 36 watchlist'],['deep_dive','Detailed chart & historical audit'],['all531','All-symbol screener']].map(([id,label])=>`<button class="subtab-btn ${tab===id?'active':''}" onclick="state.technical.subtab='${id}';renderTechnicalView(document.getElementById('viewContainer')).catch(e=>showToast(e.message,true))">${label}</button>`).join('')}</div>`;}
 function skeleton139(){return '<div class="card loading139" role="status"><span></span><span></span><span></span><p>Analysing imported data…</p></div>';}
 function contractCard139(result){
  const p=result.contract,lat=result.latest;
@@ -29,7 +34,7 @@ async function saveForecast139(symbol){
 }
 async function renderTechnicalView(container){
  const tab=state.technical.subtab;
- if(!['ideas','analyst','forecasts','ideas_and_analyst'].includes(tab)){await renderTechnicalLegacy(container);if(container.isConnected){const nav=container.querySelector('.subtabs');if(nav)nav.outerHTML=techNav139(tab);}return;}
+ if(!['ideas','analyst','forecasts','coverage','ideas_and_analyst'].includes(tab)){await renderTechnicalLegacy(container);if(container.isConnected){const nav=container.querySelector('.subtabs');if(nav)nav.outerHTML=techNav139(tab);}return;}
  const ticket=beginViewRender(container);container.setAttribute('aria-busy','true');
  if(!container.querySelector('.card'))container.innerHTML=techNav139(tab)+skeleton139();
  else container.classList.add('refreshing139');
@@ -39,18 +44,29 @@ async function renderTechnicalView(container){
    const gen=++ideasGeneration;const qs=new URLSearchParams({scope_or_sector:state.ideas.scope_or_sector,direction:state.ideas.direction,query:state.ideas.query,limit:5});
    const [r,meta]=await Promise.all([apiGet('/api/intelligence/trading-ideas?'+qs,false),apiGet('/api/intelligence/filters',false)]);
    if(gen!==ideasGeneration)return;
-   body=buildTradingIdeasCardHtml(r,meta)+`<section class="card"><h3>Why other candidates were rejected</h3>${smallTable(['Symbol','Rule score','Reason'],(r.rejected||[]).map(x=>[h(x.symbol),h(x.score),h(x.reason)]))}<p>Insufficient/stale/zero-volume data and direction-filter exclusions are screened out before structural ranking. Not all exclusions are listed here.</p></section>`;
+   body=buildTradingIdeasCardHtml(r,meta)+scanDiagnostics140(r);
    if(r.setups?.length){body+=`<section class="card"><h3>Entry timing & saved forecasts</h3><p>Conditional next-session OPEN within ±0.25% of the reference entry, subject to actual-fill gross R/R ≥ 1.5 and positive net reward. Entry expires after that session; swing horizon is at most 10 sessions. Short eligibility is unverified. Fundamentals unavailable.</p><p id="ideaSave139">Saving forecasts for the displayed candidates…</p></section>`;}
    if(!currentViewRender(container,ticket))return;
    container.innerHTML=techNav139('ideas')+body;
    // Candidate snapshots are saved only after the displayed scan is accepted as current.
    if(r.setups?.length)Promise.allSettled(r.setups.map(x=>post139('forecasts/record',{symbol:x.symbol}))).then(results=>{const el=document.getElementById('ideaSave139');if(el)el.textContent=`Forecast saves confirmed: ${results.filter(x=>x.status==='fulfilled').length}/${results.length}. ${results.some(x=>x.status==='rejected')?'Open Forecasts & Results to verify; failed saves are not claimed successful.':''}`;});
+ } else if(tab==='coverage'){
+   const r=await apiGet('/api/v139/coverage',false);
+   if(!currentViewRender(container,ticket))return;
+   coverage140=r;
+   container.innerHTML=techNav139(tab)+coveragePanel140(r);
+   filterCoverage140();
  } else if(tab==='analyst'){
    const sym=state.analyst.symbol;const gen=++analystGeneration;
    const [an,contract,learning]=await Promise.all([apiGet('/api/intelligence/automated-analyst/'+encodeURIComponent(sym)+'?action='+encodeURIComponent(state.analyst.action),false),apiGet('/api/v139/contract/'+encodeURIComponent(sym),false),apiGet('/api/v139/learning/'+encodeURIComponent(sym),false)]);
    if(gen!==analystGeneration||!currentViewRender(container,ticket))return;
-   body=buildAutomatedAnalystCardHtml(an)+contractCard139(contract)+weeklyChart139(an.weekly_summary)+learningCard139(learning);
-   container.innerHTML=techNav139(tab)+body;saveForecast139(sym);
+   if(an.status==='INSUFFICIENT_DATA') {
+     body=`<section class="card"><h3>Cash history exists — insufficient signal history</h3><p>${h(an.message)}</p><p>No opening trade or automatic forecast is produced from incomplete indicators.</p><label>Ticker <input id="analystTickerInput" value="${h(sym)}" oninput="scheduleAnalyst139()" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()" /></label><button class="btn btn-primary" onclick="runAutomatedAnalyst()">Analyze selected ticker</button></section>`;
+     container.innerHTML=techNav139(tab)+body;
+   } else {
+     body=buildAutomatedAnalystCardHtml(an)+contractCard139(contract)+weeklyChart139(an.weekly_summary)+learningCard139(learning);
+     container.innerHTML=techNav139(tab)+body;saveForecast139(sym);
+   }
  } else {
    const r=await apiGet('/api/v139/forecasts',false);if(!currentViewRender(container,ticket))return;
    body=`<section class="card"><h3>Forecasts & Results — immutable forward-recorded snapshots</h3><button class="btn btn-primary" onclick="evaluateForecasts139()">Evaluate saved forecasts</button><button class="btn btn-secondary" onclick="downloadForecasts139()">Download JSON</button><p>${h(r.note)}</p><p>Next-session direction and simulated trade outcome are different measures. No-trade is not a win. Daily-bar ambiguous cases receive no profit credit. Fees/slippage are assumptions, not verified broker charges.</p>${smallTable(['As of','Symbol','Horizon','Saved at','Expected','Next-session direction','Trade outcome','Net return','Evidence'],r.items.map(x=>[fmtDate(x.as_of),h(x.symbol),x.horizon===1?'Next session':'10 sessions',fmtDate(x.recorded_at),x.score>0?'UP':x.score<0?'DOWN':'NEUTRAL',h(x.outcome.directional_result||'PENDING'),h(x.outcome.status),fmtPct(x.outcome.net_return_pct,false),h(x.outcome.explanation||'Awaiting evaluation')]))}</section>`;
@@ -79,7 +95,7 @@ async function downloadForecasts139(){const r=await apiGet('/api/v139/forecasts'
 function downloadJson139(r,name){const url=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 
 // Dedicated reference import has explicit preview/commit, never writes OHLC tables.
-function referencePanel139(){return `<section class="card"><h3>Company, sector & constituent-list reference import</h3><p>Your supplied SECTOR_WISE lists are bundled as reference defaults. To replace them, upload a workbook with SYMBOL, COMPANY NAME and SECTOR headers. Extra unlabelled fields are ignored; aliases and historical prices are never rewritten.</p><input type="file" accept=".xlsx" aria-label="Sector reference workbook" onchange="previewReference139(this.files[0])"/><div id="referencePreview139"></div><details><summary>Custom file format</summary><p>Unknown formats are not guessed. Rename/map your reference columns to SYMBOL, COMPANY NAME, SECTOR; use COMP_LIST as the company directory sheet. Price files continue to use the existing staging centre.</p></details></section>`;}
+function referencePanel139(){return `<section class="card"><h3>Company, sector & constituent-list reference import</h3><p>Your supplied SECTOR_WISE lists are bundled as reference defaults. To replace them, upload a workbook with SYMBOL, COMPANY NAME and SECTOR headers. Extra unlabelled fields are ignored; aliases and historical prices are never rewritten.</p><input type="file" accept=".xlsx" aria-label="Sector reference workbook" onchange="previewReference139(this.files[0])"/><div id="referencePreview139"></div><details><summary>Custom file format</summary><p>Unknown formats are not guessed. Rename/map your reference columns to SYMBOL, COMPANY NAME, SECTOR; use COMP_LIST as the company directory sheet. The main staging centre also accepts reference workbooks by these headers (merge-only); this dedicated preview replaces the lists present in the workbook.</p></details></section>`;}
 let referenceToken139=null;
 async function previewReference139(file){if(!file)return;const el=document.getElementById('referencePreview139');el.innerHTML='<p role="status">Validating reference workbook…</p>';try{const fd=new FormData();fd.append('file',file);const r=await post139('reference/preview',fd);referenceToken139=r.token;el.innerHTML=`<h4>Preview — no company data changed yet</h4>${smallTable(['List','Symbol rows','Added/changed'],Object.entries(r.counts).map(([k,v])=>[h(k),fmtInt(v),fmtInt(r.changes[k])]))}<ul>${r.warnings.map(x=>`<li>${h(x)}</li>`).join('')}</ul><details><summary>Symbols without stored cash prices (${r.unmatched_symbols.length})</summary><p>${h(r.unmatched_symbols.join(', '))}</p></details><button class="btn btn-primary" onclick="commitReference139(this)">Confirm reference import</button>`;}catch(e){el.textContent=e.message;}}
 async function commitReference139(button){if(!referenceToken139)return;button.disabled=true;try{const r=await post139('reference/commit',{token:referenceToken139});referenceToken139=null;clearClientCache();document.getElementById('referencePreview139').textContent='Reference import committed. '+r.warnings.join(' ');}catch(e){showToast(e.message,true);button.disabled=false;}}
@@ -124,4 +140,28 @@ function weeklyChart139(ws){
  const values=weeks.map(w=>w.close);let lo=Math.min(...values),hi=Math.max(...values);if(hi===lo){lo-=1;hi+=1;}
  const x=i=>65+i/(weeks.length-1)*600,y=v=>210-(v-lo)/(hi-lo)*170;
  return `<section class="card"><h3>Completed weekly closes</h3><p>${h(ws.method)} Current incomplete week is excluded.</p><svg class="market-svg" viewBox="0 0 740 265" role="img" aria-label="Completed weekly close chart"><rect width="740" height="265" fill="#080e1b"/><text x="5" y="40" fill="#cbd5e1" font-size="12">${fmtNum(hi)}</text><text x="5" y="210" fill="#cbd5e1" font-size="12">${fmtNum(lo)}</text><path d="${weeks.map((w,i)=>`${i?'L':'M'}${x(i)},${y(w.close)}`).join(' ')}" fill="none" stroke="#a78bfa" stroke-width="3"/>${weeks.map((w,i)=>`<text x="${x(i)}" y="240" text-anchor="middle" fill="#cbd5e1" font-size="10">${fmtDate(w.end_date)}</text>`).join('')}</svg></section>`;
+}
+
+// 1.3.10: distinguish data coverage, scope filters, signal readiness and valid trades.
+let coverage140=null;
+function scanDiagnostics140(r){
+ const c=r.scan_counts||{};
+ const counters=[['Matched & examined',c.analyzed],['Current data ready',c.data_ready],['Direction eligible',c.direction_eligible],['Valid structural plans',c.structurally_qualified],['Displayed',c.displayed]];
+ return `<section class="card"><h3>Scan accounting — no silent exclusions</h3><div class="grid-4">${counters.map(([label,n])=>`<div class="kpi-box"><b>${h(label)}</b><p>${fmtInt(n||0)}</p></div>`).join('')}</div><p>${h(r.message||'')}</p><p>${h(r.scope_note||'')}</p><p>Query interpretation: ${h(r.query_interpretation||'none')}. Examined means the stored cash history and available indicators were checked; it does not mean a trade qualified. Rule scores are not win probabilities.</p>${(r.outside_scope||[]).length?`<h4>Matching cash symbols outside scope</h4>${smallTable(['Symbol','Cash sessions','Reason'],r.outside_scope.map(x=>[h(x.symbol),fmtInt(x.bars_count),h(x.reason)]))}`:''}<h4>Every matched symbol: history, signal and decision</h4>${(r.diagnostics||[]).length?smallTable(['Symbol','Cash sessions','First cash date','Latest cash date','Raw signal','Rule score','Decision / reasons'],r.diagnostics.map(x=>[h(x.symbol),fmtInt(x.bars_count),fmtDate(x.first_date),fmtDate(x.latest_date),h(x.raw_signal),h(x.score),h(x.status+': '+x.reason)])):'<p>No cash history matched this scope/query. This is not evidence that the symbol has no data elsewhere. Open Data coverage & exclusions to inspect references, futures, Top5 and accounts.</p>'}<button class="btn btn-secondary" onclick="state.technical.subtab='coverage';renderTechnicalView(document.getElementById('viewContainer'))">Inspect cross-module data coverage</button><button class="btn btn-secondary" onclick="downloadLastScan140()">Download scan diagnostics</button></section>`;
+}
+let lastScan140=null;
+const originalScanDiagnostics140=scanDiagnostics140;
+scanDiagnostics140=function(r){lastScan140=r;return originalScanDiagnostics140(r);};
+function downloadLastScan140(){if(lastScan140)downloadJson139(lastScan140,'scan-diagnostics.json');}
+function coveragePanel140(r){
+ const s=r.summary;
+ return `<section class="card"><h3>Cross-module symbol coverage</h3><p>${h(r.note)}</p><div class="grid-4">${[['Cash / engine symbols',s.cash_symbols+' / '+s.technical_symbols],['Current / historical-stale',s.current_cash_symbols+' / '+s.stale_cash_symbols],['Futures bases / Top5 symbols',s.futures_base_symbols+' / '+s.top5_symbols],['Cash missing in engine',s.cash_missing_in_engine.length]].map(([label,value])=>`<div class="kpi-box"><b>${h(label)}</b><p>${h(value)}</p></div>`).join('')}</div><p>Latest cash: ${fmtDate(s.latest_cash_date)} · Latest imported INDEX: ${fmtDate(s.index.latest)}. Different source dates are not silently filled.</p><p>Signals with insufficient history: ${fmtInt(s.insufficient_signal_symbols)} (including stale symbols). Missing cash: Core36 ${s.core_missing_cash.length}; futures bases ${s.futures_missing_cash.length}; Top5 ${s.top5_missing_cash.length}; account bases ${s.account_missing_cash.length}.</p><label>Filter symbol or sector <input id="coverageSearch140" placeholder="e.g. TRG, MLCF, CEMENT" oninput="filterCoverage140()" /></label><button class="btn btn-secondary" onclick="downloadJson139(coverage140,'cross-module-coverage.json')">Download complete coverage report</button><p id="coverageCount140"></p><div id="coverageRows140"></div></section>`;
+}
+function filterCoverage140(){
+ if(!coverage140)return;
+ const q=(document.getElementById('coverageSearch140')?.value||'').trim().toUpperCase();
+ const rows=coverage140.items.filter(x=>x.symbol.includes(q)||x.sector.toUpperCase().includes(q));
+ document.getElementById('coverageCount140').textContent=`${rows.length} matching instruments / reference members. Dates show source coverage; missing does not mean zero price.`;
+ document.getElementById('coverageRows140').innerHTML=smallTable(['Symbol','Sector','Cash sessions','Engine sessions','First cash','Latest cash','Freshness / signal','Futures rows / latest','Top5 rows / latest','Accounts / instruments','Reference lists','Decision evidence'],rows.map(x=>[h(x.symbol),h(x.sector),fmtInt(x.cash_rows),fmtInt(x.engine_bars),fmtDate(x.first_cash_date),fmtDate(x.latest_cash_date),h(x.freshness+' / '+x.signal),h(x.futures_rows+' / '+(x.latest_futures_date||'—')),h(x.top5_rows+' / '+(x.latest_top5_date||'—')),h(x.accounts.join(', ')+' / '+x.account_symbols.join(', ')),h(x.reference_lists.join(', ')),h(x.notes.join(' ')||'Structural plan passes; direction/scope/entry conditions still apply.')]));
+ enhanceWorkspace();
 }

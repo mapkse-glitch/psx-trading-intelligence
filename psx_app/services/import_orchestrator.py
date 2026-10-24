@@ -152,6 +152,9 @@ class ImportOrchestrator:
                 for r in (c.execute("SELECT trade_date, close FROM index_ohlcv").fetchall() if types.intersection({'INDEX_OHLCV'}) else [])
             }
 
+        with get_connection(self.db_path) as c:
+            existing_reference_keys = {(r['list_name'], r['symbol']): (r['company'], r['sector']) for r in c.execute('SELECT * FROM company_reference')} if 'SECTOR_REFERENCE' in types else {}
+
         loaded_dates = {"CASH": set(), "FUTURES": set()}
         for fname, fbytes in expanded_files:
             sha256 = hashlib.sha256(fbytes).hexdigest()
@@ -286,6 +289,26 @@ class ImportOrchestrator:
                 f_symbols = sorted({r["symbol"] for r in res["symbol_rows"]})
                 f_new = f_rows_read
                 parsed_payload = {"legacy_account_rows": res["symbol_rows"], "account_id": res["account_id"]}
+
+            elif ftype == "SECTOR_REFERENCE":
+                from psx_app.services.sector_reference import parse_reference_workbook
+                try:
+                    result = parse_reference_workbook(fbytes)
+                    reference_rows = [dict(list_name=name, **row) for name, rows in result["lists"].items() for row in rows]
+                    previous = existing_reference_keys
+                    for r in reference_rows:
+                        key, value = (r["list_name"], r["symbol"]), (r["company"], r["sector"])
+                        if key not in previous: f_new += 1
+                        elif previous[key] == value: f_dups += 1
+                        else: f_revs += 1
+                        previous[key] = value
+                    f_rows_read = f_accepted = len(reference_rows)
+                    f_symbols = sorted({r["symbol"] for r in reference_rows})
+                    parsed_payload = {"reference_rows": reference_rows}
+                    for note in result["warnings"] + ["Reference-only merge: no prices, aliases or existing list members are deleted. Use the dedicated reference replacement preview to remove list members."]:
+                        f_issues.append(dict(severity="INFO", issue_type="REFERENCE_IMPORT", message=note))
+                except ValueError as exc:
+                    f_issues.append(dict(severity="ERROR", issue_type="INVALID_REFERENCE", message=str(exc)))
 
             else:
                 f_issues.append({
@@ -463,6 +486,10 @@ class ImportOrchestrator:
             top5_existing = {(r['trade_date'],r['ticker'],r['rank']): dict(r) for r in conn.execute('SELECT trade_date,ticker,rank,rate,volume,trades FROM top5_volume_records')} if needs_top5 else {}
             exec_existing = {(r['account_id'],r['unique_trade_key']): dict(r) for r in conn.execute('SELECT account_id,unique_trade_key,quantity,price,trade_value FROM trade_executions')} if needs_exec else {}
 
+            needs_reference = any('reference_rows' in i.get('payload', {}) for i in staged_items)
+            reference_existing = {(r['list_name'], r['symbol']): (r['company'], r['sector']) for r in conn.execute('SELECT * FROM company_reference')} if needs_reference else {}
+            persisted_reference_lists = {name for name, _ in reference_existing}
+
             for item in staged_items:
                 meta = item["meta"]
                 t_path = Path(item["temp_path"])
@@ -506,6 +533,40 @@ class ImportOrchestrator:
 
                 payload = item.get("payload", {})
                 ftype = meta["file_type"]
+
+                if "reference_rows" in payload:
+                    from psx_app.services.sector_reference import BUNDLED
+                    defaults = json.loads(BUNDLED.read_text())
+                    incoming_keys = {(r['list_name'], r['symbol']) for r in payload['reference_rows']}
+                    upsert_reference = 'INSERT OR REPLACE INTO company_reference(list_name,symbol,company,sector) VALUES (?,?,?,?)'
+                    for name in {r['list_name'] for r in payload['reference_rows']}:
+                        if name not in persisted_reference_lists:
+                            for r in defaults.get(name, []):
+                                key = (name, r['symbol'])
+                                if key not in incoming_keys:
+                                    value = (r['company'], r['sector'])
+                                    queue_write(upsert_reference, (*key, *value))
+                                    reference_existing[key] = value
+                            persisted_reference_lists.add(name)
+                    # Count incoming rows only. Bulk writes avoid thousands of remote round trips.
+                    for r in payload["reference_rows"]:
+                        key = (r["list_name"], r["symbol"])
+                        old = reference_existing.get(key)
+                        value = (r["company"], r["sector"])
+                        if old is None:
+                            queue_write(upsert_reference, (*key, *value))
+                            reference_existing[key] = value
+                            actual_new += 1
+                        elif old == value:
+                            actual_dups += 1
+                        elif allow_revisions:
+                            queue_write("INSERT INTO source_revisions(batch_id,table_name,business_key,old_value_json,new_value_json,reason,recorded_at) VALUES (?,?,?,?,?,?,?)",
+                                        (batch_id, "company_reference", "|".join(key), json.dumps(dict(company=old[0], sector=old[1])), json.dumps(r), "Reference source revision", now))
+                            queue_write(upsert_reference, (*key, *value))
+                            reference_existing[key] = value
+                            actual_revs += 1
+                        else:
+                            actual_dups += 1
 
                 # 1. Top 5 records
                 if "top5" in payload:

@@ -88,6 +88,12 @@ def detect_file_type(file_path: Path, original_filename: Optional[str] = None) -
             wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
             sheets = wb.sheetnames
             price_type = _detect_price_sheet(wb.active)
+            reference_sheets = []
+            for sheet in wb:
+                header = next(sheet.iter_rows(max_row=1, values_only=True), ())
+                names = {str(v or '').strip().upper() for v in header}
+                if {'SYMBOL', 'COMPANY NAME', 'SECTOR'} <= names:
+                    reference_sheets.append(sheet.title)
             wb.close()
         except Exception as e:
             return {"file_type": "UNKNOWN", "filename": fname, "error": str(e)}
@@ -107,6 +113,8 @@ def detect_file_type(file_path: Path, original_filename: Optional[str] = None) -
                     "module": "MODULE_C" if price_type == "OHLCV_FUTURES" else "MODULE_C_D",
                     "filename": fname, "sheets": sheets}
 
+        if reference_sheets:
+            return {"file_type": "SECTOR_REFERENCE", "module": "REFERENCE", "filename": fname, "sheets": sheets}
         return {"file_type": "CUSTOM_XLSX", "module": "CUSTOM", "filename": fname, "sheets": sheets}
 
     return {"file_type": "UNKNOWN", "module": "UNKNOWN", "filename": fname}

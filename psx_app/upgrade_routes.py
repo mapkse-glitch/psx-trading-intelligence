@@ -51,3 +51,8 @@ def learning(symbol:str):
     from psx_app.services.learning_research import VERSION
     result['stale']=bool(row and result.get('run_id')!=hashlib.sha256((VERSION+json.dumps(current,sort_keys=True)).encode()).hexdigest())
     return result
+
+@router.get('/coverage')
+def coverage(search: str = Query('', max_length=150)):
+    from psx_app.services.data_coverage import DataCoverage
+    return DataCoverage(DB_PATH).report(search)
