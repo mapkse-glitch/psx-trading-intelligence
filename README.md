@@ -1,8 +1,12 @@
-# Current release: v1.3.10
+# Current release: v1.3.11
+
+Start with [UPGRADE_1_3_11.md](UPGRADE_1_3_11.md). Plain-language trading actions, calendar filters, exact positive/negative colours, contextual forecast results and calculated cash-market volume. Keep the existing Turso database and server-only credentials; no re-import is needed. This source ZIP must still be deployed.
+
+# Previous release: v1.3.10
 
 Start with [UPGRADE_1_3_10.md](UPGRADE_1_3_10.md) for deployment, audit findings and verification. No database re-import is required for existing Turso deployments.
 
-# Current release: PSX Intelligence 1.3.9
+# Historical release: PSX Intelligence 1.3.9
 
 **Start with [UPGRADE_1_3_9.md](UPGRADE_1_3_9.md)** for deployment, new forecast/sector/Market Explorer features, optional external research learning, and material limitations. Keep the existing Vercel Turso credentials private. No database is bundled.
 
