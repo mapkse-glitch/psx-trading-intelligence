@@ -39,5 +39,5 @@ def test_removed_prose_and_index_title():
 def test_release_build_matches():
     html=(ROOT/'psx_app/static/index.html').read_text()
     main=(ROOT/'psx_app/main.py').read_text()
-    assert 'content="1.3.14"' in html and 'version="1.3.14"' in main
-    assert set(re.findall(r'\.js\?v=([^"\s]+)',html))=={'1.3.14'}
+    assert 'content="1.3.15"' in html and 'version="1.3.15"' in main
+    assert set(re.findall(r'\.js\?v=([^"\s]+)',html))=={'1.3.15'}

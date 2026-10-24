@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -12,6 +13,7 @@ class Top5Service:
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path
 
+    @persisted_result
     def get_metadata(self) -> Dict[str, Any]:
         with get_connection(self.db_path) as c:
             dates = [
@@ -34,6 +36,7 @@ class Top5Service:
             "total_records": total_rows,
         }
 
+    @persisted_result
     def get_register(
         self,
         ticker: Optional[str] = None,
@@ -102,6 +105,7 @@ class Top5Service:
             "date_blocks": date_blocks,
         }
 
+    @persisted_result
     def get_ticker_trend(self, ticker: str) -> Dict[str, Any]:
         norm = normalize_ticker(ticker)
         with get_connection(self.db_path) as c:

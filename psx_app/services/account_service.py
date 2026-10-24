@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -211,6 +212,7 @@ class AccountService:
             "note": "",
         }
 
+    @persisted_result
     def get_account_report(self, account_id: str, selected_date: Optional[str] = None) -> Dict[str, Any]:
         """
         Return full isolated report for a single account (91404 or 91269):

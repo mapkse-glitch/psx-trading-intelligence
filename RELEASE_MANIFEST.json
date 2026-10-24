@@ -1,28 +1,28 @@
 {
-  "version": "1.3.14",
+  "version": "1.3.15",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 205,
+    "passed": 209,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
-    "browser_test": "desktop/mobile PostgreSQL synthetic-data test passed"
+    "browser_test": "v1.3.14 desktop/mobile smoke passed; v1.3.15 production verification pending"
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
-      "bytes": 1774,
-      "sha256": "87b20125563b2150082949fe4f0e5f655a57293322d15a0235087bbb2fd5b051"
+      "bytes": 2820,
+      "sha256": "b81078e83f7b0c643b58afd665e00eb14fc6f308fcb3d0129874d6700ab65a9a"
     },
     ".gitignore": {
       "bytes": 120,
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 16561,
-      "sha256": "c168d2d56b38a3888cc9650013ee9acc1b6bed2dd9f40542635e3d48b76310fa"
+      "bytes": 24554,
+      "sha256": "0f7a15bbdd2ddf1a448aa6575a4b0de7a4918805beb0aa5de3ae5afe5108c5bf"
     },
     "api/index.py": {
       "bytes": 29,
@@ -50,11 +50,11 @@
     },
     "psx_app/database/postgres.py": {
       "bytes": 12464,
-      "sha256": "4319d436bfa05241a7111a84ec6c4478f73c101cdbee8e0bf12e773d3fa7456f"
+      "sha256": "3a0fa2627403d597d59b29ba3b86d5ec5e816b399400285784810548e46d78df"
     },
     "psx_app/database/repository.py": {
-      "bytes": 8462,
-      "sha256": "0ebb57b536b85fee4e52c754cf98fa0395b086b044a7e410fc2b186a51106185"
+      "bytes": 8543,
+      "sha256": "728b567e6b2e5bf30907aeb4e941600bac54996346523abd07ec42e73f667f7e"
     },
     "psx_app/database/schema.py": {
       "bytes": 11647,
@@ -70,7 +70,7 @@
     },
     "psx_app/main.py": {
       "bytes": 45843,
-      "sha256": "c3bd38405e17356cc99b478c5593966d1786493685b2b606ba452f792429cbb9"
+      "sha256": "e865378e97de3d14a4f1c85b452c0fa5b185fbce542bfcc119faf0fa1c35c79d"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -105,8 +105,8 @@
       "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221"
     },
     "psx_app/services/account_service.py": {
-      "bytes": 22083,
-      "sha256": "d7e812b8e3ed148c03975643d5da3733386420720e04601fdbfe3553e475ab63"
+      "bytes": 22164,
+      "sha256": "0e34350599c169bed9e0f967d91f798d77ffa0744722f51efe56774cc573e400"
     },
     "psx_app/services/backup_service.py": {
       "bytes": 8328,
@@ -141,8 +141,8 @@
       "sha256": "7ec595f9faed4d6f2f0e7bb8c49cfcc0ed4f58c562fa46c7680035684c80e63d"
     },
     "psx_app/services/futures_service.py": {
-      "bytes": 21551,
-      "sha256": "ecfbb7e87f8592b62de62c599840056d6ebca7f0929c2c951956f48ff9915cd2"
+      "bytes": 21698,
+      "sha256": "24f30aa1b283083f8e8f0082a799980d414d6a0bf54690a479fbe351ce8b96a5"
     },
     "psx_app/services/historical_validation.py": {
       "bytes": 7608,
@@ -182,7 +182,7 @@
     },
     "psx_app/services/result_cache.py": {
       "bytes": 2578,
-      "sha256": "58758a1491308caf48c9cdd3bf26b197bb377e2e932e1f9ade6325eee0286590"
+      "sha256": "9a197910e8a4370905f58eb7a537eb3fd32725bd464d752c9ddd9d6a48ecf330"
     },
     "psx_app/services/sector_reference.py": {
       "bytes": 5072,
@@ -193,12 +193,12 @@
       "sha256": "713457b035fc32a98580a7c346713f3af034117afb43c197164bc238000bd03e"
     },
     "psx_app/services/technical_service.py": {
-      "bytes": 39821,
-      "sha256": "b535c95909669d31a554af65ae751ffba731e57e01fa14700f2d190c8a8fd3fe"
+      "bytes": 40092,
+      "sha256": "f544f196e252ddf67adba714ce46a1c51e55d070278e965df99843e6058e4147"
     },
     "psx_app/services/top5_service.py": {
-      "bytes": 5039,
-      "sha256": "717ba30005204c9ac6f64d2356c6292f8752aaa485c7006ca7d9db691be113ec"
+      "bytes": 5164,
+      "sha256": "907ad14e6a3ff168bece725677b6b3c9b76ddd9a9f5c3213033fff8a68fd2268"
     },
     "psx_app/services/verified_source_repair.py": {
       "bytes": 2507,
@@ -214,7 +214,7 @@
     },
     "psx_app/static/index.html": {
       "bytes": 5235,
-      "sha256": "f6f73b37881eb88d5c7f7496a1c5fc9219b4a8625a006ca93fd1a99ccbb58699"
+      "sha256": "4928021b9159e6b2250a9aa44221a91ec73187f97396c5ac244739bd2d220625"
     },
     "psx_app/static/styles.css": {
       "bytes": 35019,
@@ -294,27 +294,27 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "6a1da5d6d45d6aca93ae916a42439a5f5599ebf28196fc4ce105a4455e5cf0fc"
+      "sha256": "54ad932631a33df6281d93b6bd9f9c20101c20a7e3b26e8c9f70134dfa4ad61c"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "62a5788f5fc23a0e706d7d1f8ecaa7957a0360cd440a071d2af5455cc24bcf8a"
+      "sha256": "bf0b25e80df0b58f6df1b8c6a8d3eb3a372bfda1ad7609b310514f5d817be4be"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "5c0c5bafbd98157c4686b006dbaf4b7bb3dd1d392957f07fdd86c7798adf6536"
+      "sha256": "5623b343d52ca17d83c168f586c55b6beed512d73c556fe7e3def6c783ce34cb"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "aedcedc7e7d630e2d5987cac80ce17985969ef57a1e833ebf3e343768fd06d17"
+      "sha256": "f55481ad1b45b731889c2cc21786c3d3ce0001f03ad6cab8ddb6a13316d15a19"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
       "sha256": "acad6b08eb53fb71b72c335d1e045abc14ed55415fbc88dd9da078925d2378b2"
     },
     "tests/test_v1314_postgres.py": {
-      "bytes": 23603,
-      "sha256": "fd4f8a0445c3b477ab201b81d6bfb3b5351d9d2bfa6019391d24ad8ee9cd9e76"
+      "bytes": 27281,
+      "sha256": "b879dc286015365f6a0ff686b0635aaa1daad6c6ddab7a55341bddbe8ce44e37"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -337,12 +337,20 @@
       "sha256": "7c53d808e2af83dbdcb1438aaa3b25826048ee2ecea02100cc437759450e64f1"
     },
     "tools/import_sqlite_to_postgres.py": {
-      "bytes": 6599,
-      "sha256": "bf5e06a843863a78b71a30e67e565fdd9bd1a48900c8433d271b4cbfe46de6a1"
+      "bytes": 8395,
+      "sha256": "4c31b5a041a1877a3de64bfebb2f785f74ddfa30243a500ab70ce3573f7ba106"
+    },
+    "tools/migrate_staged_snapshot.py": {
+      "bytes": 2832,
+      "sha256": "9f5b68c8f7093bb656e7306342126639595cf13a765e104bdf9b027ad7afefe8"
     },
     "tools/refresh_learning.py": {
       "bytes": 984,
       "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f"
+    },
+    "tools/stage_sqlite_snapshot.py": {
+      "bytes": 2379,
+      "sha256": "0923edfd09c3ac67b1124f708963227cbcf8988d7b676776d661ab1ee8e958f4"
     },
     "vercel.json": {
       "bytes": 158,

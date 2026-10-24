@@ -2,12 +2,25 @@ name: Import existing SQLite snapshot into empty PostgreSQL
 on:
   workflow_dispatch:
     inputs:
+      upload_id:
+        description: Private dashboard upload ID (preferred; do not commit financial snapshots)
+        required: false
+        type: string
+      total_chunks:
+        description: Number of private staged upload chunks
+        required: false
+        default: '0'
+        type: string
+      expected_sha256:
+        description: SHA256 of the compressed snapshot (required for private staged uploads)
+        required: false
+        type: string
       snapshot_path:
-        description: Existing repository path to your trusted .db or .db.gz snapshot
-        required: true
+        description: Alternative trusted snapshot ALREADY in repository; never publish private data for this
+        required: false
         type: string
       confirm:
-        description: Type IMPORT_INTO_EMPTY_DATABASE to permit the one-time import
+        description: Type IMPORT_INTO_EMPTY_DATABASE to authorize the one-time copy
         required: true
         type: string
 permissions:
@@ -24,27 +37,35 @@ jobs:
       PSX_DATABASE_BACKEND: postgres
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+      UPLOAD_ID: ${{ inputs.upload_id }}
+      TOTAL_CHUNKS: ${{ inputs.total_chunks }}
+      EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
       SNAPSHOT_PATH: ${{ inputs.snapshot_path }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install database driver
+      - name: Install pinned database driver
         run: pip install 'psycopg[binary]==3.2.12'
-      - name: Validate path and migrate
+      - name: Verify source and migrate into empty target
         run: |
           python - <<'PY'
-          import os
+          import os, json
           from pathlib import Path
-          from tools.import_sqlite_to_postgres import migrate
-          import json
-          root=Path.cwd().resolve()
-          path=(root/os.environ['SNAPSHOT_PATH']).resolve()
-          if not path.is_relative_to(root) or not path.is_file():
-              raise SystemExit('Snapshot must already exist inside this checked-out repository.')
           try:
-              print(json.dumps(migrate(path,confirm=True)))
+              if os.environ.get('UPLOAD_ID'):
+                  from tools.migrate_staged_snapshot import migrate_staged
+                  result=migrate_staged(os.environ['UPLOAD_ID'],int(os.environ['TOTAL_CHUNKS']),os.environ['EXPECTED_SHA256'])
+              else:
+                  from tools.import_sqlite_to_postgres import migrate
+                  root=Path.cwd().resolve()
+                  name=os.environ.get('SNAPSHOT_PATH','').strip()
+                  path=(root/name).resolve()
+                  if not name or not path.is_relative_to(root) or not path.is_file():
+                      raise ValueError('Select a private staged upload or an existing trusted repository snapshot.')
+                  result=migrate(path,confirm=True)
+              print(json.dumps(result))
           except Exception:
-              raise SystemExit('Migration did not report success. Verify target counts before retrying. Credentials are not printed.') from None
+              raise SystemExit('Migration did not report success. Check target counts before retrying; credentials are not printed.') from None
           PY

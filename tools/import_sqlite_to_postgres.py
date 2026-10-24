@@ -5,6 +5,7 @@ No credentials in flags, output, repository or snapshot. All copies commit toget
 import argparse
 import gzip
 import json
+import math
 import sqlite3
 import tempfile
 import uuid
@@ -47,6 +48,7 @@ def migrate(source, confirm=False):
             ensure_ready()
             with connect() as c:
                 with c.raw.transaction():
+                    c.raw.execute("SET LOCAL statement_timeout='10min'")
                     c.raw.execute('SELECT pg_advisory_xact_lock(%s)',(731314,))
                     # Freeze application tables during the snapshot migration. Do
                     # not import files through the dashboard until it completes.
@@ -76,9 +78,30 @@ def migrate(source, confirm=False):
                             if seq:
                                 maximum=c.raw.execute(sql.SQL('SELECT MAX(id) FROM {}').format(sql.Identifier(table))).fetchone()[0]
                                 c.raw.execute('SELECT setval(%s,%s,%s)',(seq,max(maximum or 0,1),bool(maximum)))
+                    checks = {}
+                    for table, metrics in {
+                        'equity_ohlcv': ['volume'], 'futures_ohlcv': ['volume'],
+                        'trade_executions': ['quantity', 'trade_value'],
+                        'account_daily_symbol_summary': ['gross_pnl', 'net_pnl', 'buy_value', 'sell_value'],
+                    }.items():
+                        if table not in available: continue
+                        cols = {r[1] for r in src.execute('PRAGMA table_info('+table+')')}
+                        metrics = [x for x in metrics if x in cols]
+                        if not metrics: continue
+                        expr = ','.join('COALESCE(SUM("'+x+'"),0)' for x in metrics)
+                        before = src.execute('SELECT '+expr+' FROM '+table).fetchone()
+                        after = c.raw.execute('SELECT '+expr+' FROM '+table).fetchone()
+                        for key, left, right in zip(metrics, before, after):
+                            # Account sums use binary doubles; compare within 0.01 PKR absolute tolerance.
+                            if key == 'volume': valid = int(left) == int(right)
+                            else: valid = math.isclose(float(left),float(right),rel_tol=1e-12,abs_tol=0.01)
+                            if not valid: raise ValueError('Migration aggregate mismatch; transaction aborted.')
+                        checks[table] = {'metrics': metrics, 'matched': True}
+                    for table in copied:
+                        c.raw.execute(sql.SQL('ANALYZE {}').format(sql.Identifier(table)))
                     c.raw.execute('DELETE FROM indicator_cache');c.raw.execute('DELETE FROM analysis_cache')
                     c.raw.execute("UPDATE psx_runtime SET value=%s WHERE key='revision'",(uuid.uuid4().hex,))
-                return {'status':'COMMITTED','copied':copied,'date_ranges':ranges,'note':'Counts verified. Compare key reports and latest dates before relying on this snapshot. Staging and derived caches were not migrated.'}
+                return {'status':'COMMITTED','copied':copied,'aggregate_checks':checks,'database_bytes':c.raw.execute('SELECT pg_database_size(current_database())').fetchone()[0],'date_ranges':ranges,'note':'Counts verified. Compare key reports and latest dates before relying on this snapshot. Staging and derived caches were not migrated.'}
 
 
 def main():

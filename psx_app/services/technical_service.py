@@ -846,30 +846,31 @@ class TechnicalService:
             summaries: List[Dict[str, Any]] = []
             new_cache_entries = []
 
+            # Bound history transfer and remove one remote round trip per ticker.
+            ready = {}
+            missing = []
             for sym in target_syms:
-                if sym in cached_rows:
-                    item = cached_rows[sym]
-                    if item.get("engine_version") != ENGINE_VERSION or bool(item.get("is_futures_eligible")) != (sym in fut_bases):
-                        item = None
+                item = cached_rows.get(sym)
+                if item and item.get("engine_version") == ENGINE_VERSION and bool(item.get("is_futures_eligible")) == (sym in fut_bases):
+                    ready[sym] = item
                 else:
-                    item = None
-                if item is None:
-                    bars = [
-                        dict(r)
-                        for r in c.execute(
-                            """
-                            SELECT trade_date, open, high, low, close, pr_close, avg_price, volume
-                            FROM equity_ohlcv
-                            WHERE symbol = ?
-                            ORDER BY trade_date ASC
-                            """,
-                            (sym,),
-                        ).fetchall()
-                    ]
-                    calc = self.calculate_series_for_bars(sym, bars, settings=cfg, is_futures_eligible=(sym in fut_bases))
+                    missing.append(sym)
+            for offset in range(0, len(missing), 100):
+                group = missing[offset:offset+100]
+                histories = {sym: [] for sym in group}
+                query = "SELECT symbol,trade_date,open,high,low,close,pr_close,avg_price,volume FROM equity_ohlcv WHERE symbol IN (" + ",".join("?" for _ in group) + ") ORDER BY symbol,trade_date"
+                for row in c.execute(query, tuple(group)):
+                    bar = dict(row)
+                    histories[bar.pop("symbol")].append(bar)
+                for sym in group:
+                    calc = self.calculate_series_for_bars(sym, histories[sym], settings=cfg, is_futures_eligible=(sym in fut_bases))
                     item = calc["latest"]
                     if item:
+                        ready[sym] = item
                         new_cache_entries.append((sym, item["latest_date"], rule_ver, json.dumps(item), now))
+                del histories
+            for sym in target_syms:
+                item = ready.get(sym)
                 if item:
                     from psx_app.services.signal_reliability import annotate_freshness
                     annotate_freshness(item, market_date)

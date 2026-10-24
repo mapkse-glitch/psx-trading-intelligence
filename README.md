@@ -1,8 +1,21 @@
-# PSX Intelligence v1.3.14
+# PSX Intelligence v1.3.15
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
 Drive, credentials or user trading database is included in the release archive.
+
+## Contents
+
+- [Setup and deployment](#your-setup-three-variables-then-deploy)
+- [Imports and private snapshot migration](#add-old-data-now-new-usb-files-later)
+- [Performance design](#what-changed-to-reduce-repeated-reads)
+- [Limits and security](#limits-and-security--important)
+- [USB backup and restore](#usb-backup--restore)
+- [Troubleshooting](#troubleshooting)
+- [Daily workflow and modules](#daily-workflow-and-modules)
+- [Calculation boundaries](#calculation-and-data-boundaries)
+- [Verification and performance](#verification-and-performance)
+- [Rollback](#deployment-rollback-versus-data-restore)
 
 ## Repository layout
 
@@ -27,8 +40,8 @@ Existing data snapshots in your repository are not deleted by this cleanup.
 Your application stays password-free, as before. No Google Drive is required.
 Your own USB remains your backup. No credentials or user database are in this ZIP.
 
-1. Extract this ZIP. Upload its **contents** to the root of your existing GitHub
-   repository. Keep `main.py`, `requirements.txt`, `vercel.json` and `psx_app/`
+1. Keep the current source on the GitHub `main` branch. If using a release ZIP,
+   extract it and upload its **contents** to the repository root. Keep `main.py`, `requirements.txt`, `vercel.json` and `psx_app/`
    together at that root. Do not put them inside an extra nested folder.
 2. In Vercel → Project → Settings → Environment Variables, use:
 
@@ -50,7 +63,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.14`. An empty database is expected before you import your data.
+   version `1.3.15`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -72,41 +85,61 @@ file, then manageable yearly/monthly batches. Serverless time/memory limits stil
 apply. Split a batch if parsing or commit reaches the function time limit. A lost
 write response is not proof of rollback: inspect import history before retrying.
 
-### If your old GitHub data is a `.db` / `.db.gz` snapshot instead
+### Initial SQLite snapshot migration — private, hosted, empty target only
 
-Do not upload a SQLite database into Aiven's SQL editor or the price-file importer.
-It needs a one-time conversion. The optional `tools/import_sqlite_to_postgres.py`
-converts a trusted PSX SQLite snapshot into an **empty** application database. It
-checks source integrity, copies reviewed canonical/config/audit/forecast tables,
-verifies counts, resets ID sequences and commits atomically. It refuses to merge
-into a database already containing imported data. Staging, source-file binary
-archives and derived indicator/result caches are not migrated.
+A `.db.gz` snapshot is not an OHLCV workbook. Do **not** send it to Aiven's SQL
+editor or the ordinary price-file parser. Use the one-time migration below.
+Keep the original snapshot and source files on your USB.
 
-**Hosted option; no localhost required:**
-1. Use this only for a trusted snapshot **already in your repository**. Do not
-   publish personal account data in a public GitHub repository just to migrate it.
-2. In GitHub repository → Settings → Secrets and variables → Actions, add repository
-   secrets `DATABASE_URL` and `DATABASE_CA_CERT` (same private values as Vercel).
-   Vercel's variables are not automatically available to GitHub Actions.
-3. Open Actions → **Import existing SQLite snapshot into empty PostgreSQL** →
-   Run workflow. Enter the existing repository path, e.g. `latest_cloud_sync.db.gz`.
-4. Enter `IMPORT_INTO_EMPTY_DATABASE` as the confirmation and run it. Do not use
-   the dashboard importer while the workflow is running.
-5. Review its count/date-range summary. Verify key reports and latest dates.
-   This workflow is supplied, but was **not run against your GitHub/Aiven account**.
+1. Configure GitHub repository → Settings → Secrets and variables → Actions:
+   add encrypted repository secrets `DATABASE_URL` and `DATABASE_CA_CERT` with
+   the same private values as Vercel. Vercel variables do not transfer automatically.
+2. Stage the trusted snapshot through the dashboard's existing chunk-upload API.
+   The helper uploads 1 MiB requests into PostgreSQL temporary staging; the data
+   is **not committed to GitHub or attached to a release**:
 
-A snapshot may be older than your final Turso data. Reimport newer source files
-through the normal importer afterward. No missing history or predictions are invented.
+   ```bash
+   python tools/stage_sqlite_snapshot.py /path/to/latest_cloud_sync.db.gz \
+     --dashboard https://your-dashboard.vercel.app
+   ```
 
-For a trusted snapshot on your USB, an optional one-time conversion can run from
-an environment with Python and the same three variables set (this is not hosting
-an app on localhost):
+   This is a one-time file-transfer client, **not** hosting an app on localhost.
+   It returns `upload_id`, `total_chunks`, and `expected_sha256`. Preserve those
+   identifiers. Staging expires after 24 hours; run the migration before expiry.
+3. GitHub → Actions → **Import existing SQLite snapshot into empty PostgreSQL**
+   → Run workflow on `main`. Fill those three fields; leave `snapshot_path` empty.
+   Enter `IMPORT_INTO_EMPTY_DATABASE` in `confirm`.
+4. Do not import files or change settings while it runs. The runner retrieves the
+   private staged pieces with TLS-verified database credentials, verifies SHA256,
+   checks SQLite integrity, and refuses a target already containing imported data.
+5. It copies reviewed canonical/config/audit/forecast tables atomically, verifies
+   row counts, compares volume and financial aggregates, resets ID sequences,
+   updates the shared revision, and runs ANALYZE for useful query-planner statistics.
+   Financial comparisons allow at most 0.01 PKR absolute / 1e-12 relative rounding
+   tolerance; no trade values or financial formulas are recalculated during copy.
+6. Review the workflow's `COMMITTED`, table counts, aggregate `matched` flags and
+   date ranges. Check dashboard totals and a representative ticker/index date.
+   Successful runs remove **only that upload's temporary chunks**. The original
+   USB snapshot and copied canonical data are never deleted as cleanup.
+7. Add newer TXT/CSV/XLSX source files through the normal importer afterward.
+   No missing history or saved forecasts are invented. A failed/uncertain response
+   is not proof of rollback: inspect target counts before any retry.
 
-```bash
-pip install 'psycopg[binary]==3.2.12'
-python -m tools.import_sqlite_to_postgres path/to/app.db         # dry run; no DB writes
-python -m tools.import_sqlite_to_postgres path/to/app.db --confirm-empty-target
-```
+The optional `snapshot_path` workflow input is only for a trusted snapshot **already**
+in the repository. Do not publish private account data just to use it. The workflow
+uses read-only repository permissions and does not push code or publish releases.
+GitHub Actions logs must never print connection URIs, certificate/private key
+material, source-file contents or individual financial rows.
+
+The migration preserves IDs, account separation, recorded totals, source metadata
+and available audit/forecast history. It skips derived caches, pending upload
+staging and raw source-file binary archives. Old local file paths are metadata,
+not proof that original files are archived online. Keep your USB originals.
+
+For an already-populated PostgreSQL database use the normal source-file importer;
+this is not a merge/overwrite/rollback utility. For a trusted local snapshot a
+one-time operator can also run `python -m tools.import_sqlite_to_postgres file.db`
+for a read-only dry run, followed by `--confirm-empty-target` only after review.
 
 ## What changed to reduce repeated reads
 
@@ -115,7 +148,12 @@ python -m tools.import_sqlite_to_postgres path/to/app.db --confirm-empty-target
 - PostgreSQL advisory locks coordinate import commits across Vercel workers.
 - A bounded persistent result cache shares analysis across cold workers. Price
   changes, corrections, settings and reference changes invalidate it by revision.
-- Full ticker calculations are reused across chart/analyst/forecast consumers.
+- Full ticker calculations are reused across chart/analyst/forecast consumers when
+  they fit the bounded cache. Oversized results are computed, not silently truncated.
+- Overview, account, Top5 and futures read-only reports now share revision-keyed
+  PostgreSQL caches across Vercel workers, not just one worker's memory.
+- Cold universe scans fetch missing histories in batches of at most 100 tickers
+  instead of one remote history query per ticker. Indicator mathematics are unchanged.
 - Price imports invalidate only affected symbols' indicator caches; historical
   corrections invalidate the whole affected symbol, not just one date.
 - Unchanged indicator calculations are reused. Calculations remain on demand;
@@ -208,86 +246,155 @@ Provider plan details can change; the package does not remove these limits.
 
 Run `python tools/refresh_learning.py --help` for the supported research refresh options. Research does not automatically replace the production trading rules.
 
-## Verification report
+## Daily workflow and modules
 
-## Tested environment
+| Module | What it does / what to check |
+|---|---|
+| 01 Overview | Latest imported dates, separate account summaries, source counts and shortcuts |
+| 02 Import and Update Center | Upload → inspect staged counts/rejections/revisions → commit; review import history |
+| 03 Top 5 Volume & Rate Register | Ranked source trades/volume and ticker trends; not a full exchange feed |
+| 04 Account 91404 | Isolated ledger, daily/monthly/yearly reports, commissions, tax, audit and exports |
+| 05 Account 91269 | Same reporting, strictly separate account; never combine its positions with 91404 |
+| 06 Futures Comparison | Same-date cash/futures basis, days-to-expiry and annualized comparison; worksheet filters retained |
+| 07 Technical Analysis | Trading ideas, plain-language stock analysis, saved predictions/results, data coverage, charts and screener |
+| 08 Data Quality | Coverage, duplicate/revision and reconciliation checks; date repair requires dry-run evidence and confirmation |
+| 09 Market Explorer | Calendar + Top N volume charts; last N stored symbol records versus exact-date imported index records |
+| 10 Settings and Backup | Rule parameters/version history, database diagnostics and independent USB export/restore guidance |
 
-- Application baseline: retained v1.3.13 Startup Recovery / Turso Diagnostics ZIP.
-- Python 3.13 test environment; FastAPI/Starlette using pinned requirements.
-- psycopg / psycopg-binary 3.2.12.
-- Real disposable PostgreSQL 15.18 bound only to loopback, empty isolated `psx_test`.
-- Remote TLS is mandatory in deployed configuration. An explicit loopback-only
-  test switch permits unencrypted connections solely to the disposable test DB.
-- Chromium/Playwright desktop 1440×1000 and mobile 390×844, actual running backend
-  and synthetic OHLCV data. No mocked API results in these browser checks.
+**Every import:** keep originals → stage manageable batches → inspect warnings and
+source dates → commit once → compare counts/latest dates/account totals. Exact
+duplicates are skipped. Source corrections are visible revisions, not an excuse
+to silently replace unrelated records. If a request times out, inspect its saved
+status before retrying. Old snapshots can end earlier than the files on your USB.
 
-## Automated regression suite
+**Every trading session:** import completed-session data, verify the displayed
+as-of date and ticker's coverage, then review the action/entry/exit explanation.
+A data filter rejection is not missing data. Fewer than five setups, or WAIT / no
+new trade, is a legitimate result; safeguards are not loosened to fill five cards.
+Short signals are not broker approval to short. Existing-holding sell warnings
+are distinct from opening a short. No order is placed by this dashboard.
 
-Command (test database is destructive; never supply production credentials):
+**Saved predictions:** the prediction period means the next stored session or up
+to ten subsequent stored sessions, not calendar days. Original snapshots remain
+immutable. Evaluate after importing new records. Pending results are not wins;
+ambiguous daily stop/target order gets no unjustified profit credit. Rule scores
+are indicator votes, **not** calibrated win probabilities or fundamental evidence.
 
-```
+**Sector/company files:** normal reference preview detects supported workbooks;
+inspect detected sheet/columns/membership before commit. Unknown schemas require
+custom mapping rather than fabricated rows. Use exact stored symbols; the legacy
+`MLF` alias resolves to `MLCF` only for compatibility, not as a new instrument.
+
+**Market Explorer:** Top N (1–10) is ranked by the selected date's positive cash
+volume; Others contains the remainder. Index-table volume is the sum of imported
+cash-symbol volumes for that date, not an index-member-verified exchange total.
+One requested record means one stored symbol observation. Missing benchmark dates
+are reported, not forward-filled. Maxima are green `#03D815`, minima red `#F63131`.
+The Symbol vs Index tab uses the latest available imported records, without a
+separate calendar; date-range cards show the actual minimum and maximum dates.
+
+## Calculation and data boundaries
+
+- Price change = close minus stored previous close; percent = change / previous
+  close × 100 where a valid positive baseline exists. One-record period change
+  uses the preceding stored observation, not close minus itself.
+- Account net P&L = recorded gross P&L minus recorded charges. Aggregated prices
+  are quantity-weighted from totals. Settings determine commission slabs and SST;
+  source snapshot migration preserves recorded totals rather than repricing them.
+- Futures basis = futures minus same-date cash; basis percent uses cash as base.
+  Annualized simple basis uses 365 / configured positive days to expiry, not a
+  guaranteed realized return. Calendar-date resolution and each worksheet's
+  retained filters must be checked before comparison.
+- Indicators use stored cash OHLCV only. Top5 trades, futures and account fills
+  do not manufacture missing cash candles. EMA/SMA, Wilder RSI/ADX, MACD,
+  Bollinger bands, pivots and trend fits retain the existing engine mathematics.
+- Full history feeds indicators; chart trimming only trims presentation. Completed
+  weeks exclude unfinished weeks conservatively; no verified exchange-holiday
+  calendar or corporate-action adjustment assurance is supplied.
+- Risk/reward uses a valid structural target and loss limit. Invalid or too-small
+  reward-versus-risk plans are rejected. Fees/slippage are assumptions unless
+  verified with your broker. OHLCV alone cannot identify intraday execution order.
+- No verified fundamental statements, live news feed or broker execution data are
+  bundled. Optional learning research is an experiment and never silently replaces
+  production rules. There is no promise of perfect forecasts or profitability.
+
+## Verification and performance
+
+Current regression suite: **209 passed, 34 skipped, 1 deprecation warning**.
+Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
+tests from retained repository snapshots. Twenty private historical-fixture tests
+and fourteen optional legacy libSQL-server tests are skipped, not passed.
+Run only against an expendable loopback database named with `_test` suffix:
+
+```bash
+pip install -r requirements.txt
 PSX_TEST_POSTGRES_URL=postgresql://postgres@127.0.0.1:55432/psx_test pytest -q
 ```
 
-Result: **205 passed, 34 skipped, 1 warning**.
+The fixture drops/recreates the test schema. **Never use production credentials.**
+These are developer tests; running them does not require local hosting for users.
 
-Skipped: 20 private historical-reference fixture tests not supplied; 14 optional
-legacy loopback libSQL server tests not supplied. PostgreSQL was actually exercised;
-those PostgreSQL integration scenarios were not skipped. The warning is Starlette's
-httpx TestClient deprecation, not a database/test failure.
+Full-snapshot isolated pilot: 731,806 cash rows, 6,668 futures rows and 2,425 index
+rows migrated and reconciled, with roughly 259 MB PostgreSQL database size in the
+pilot. This is not a prediction of total Aiven disk usage including WAL/staging.
+The inspected source's cash history starts 2019-01-01 and ends 2026-10-22; index
+history starts 2017-01-03. This describes that source file, not a hardcoded runtime
+date range. New imports change the dashboard's dates dynamically.
 
-Covered:
-- Configuration validation and no serverless SQLite fallback.
-- TLS verification selected even if URI asks for weaker SSL settings.
-- Loopback test bypass cannot disable verification on a remote host.
-- Sanitized configuration/authentication/TLS/network/capacity error messages.
-- No automatic retry of uncertain writes.
-- Actual PostgreSQL schema initialization and compatible row/index/name access.
-- Transactional bulk inserts, upserts, commit/rollback and shared data revision.
-- Cross-worker durable blob staging, chunk assembly, expiry and cleanup.
-- Import staging/commit, repeat-commit idempotency, exact duplicates and corrections.
-- Account execution rollup rollback and strict account separation.
-- Sector reference preview, direct upload, batched commit and atomic rejection.
-- Immutable forecast save/evaluation and learning metadata persistence.
-- Cash-derived index-table volume and Market Explorer queries.
-- Values above signed 32-bit volume range; JSON-friendly aggregate numeric types.
-- Same full ticker calculation reused for 1/120/all-bar chart/forecast consumers.
-- Revision-aware cache reuse; correction/new import invalidates changed symbols
-  while preserving unchanged indicator-cache entries.
-- Overview, account, volume, futures, technical, coverage, reconciliation,
-  settings and status APIs against PostgreSQL; XLSX and CSV export endpoints.
-- Optional SQLite snapshot conversion: source integrity check, dry run, preserved
-  IDs/values, ID-sequence reset and refusal to overwrite a nonempty database.
-- ASGI/static UI stays available during a failed database connection.
+Illustrative isolated service timings (seconds, cold / repeated call):
 
-## Browser checks
+| Operation | Before this optimization | After |
+|---|---:|---:|
+| Overview summary | 0.245 / 0.236 | 0.246 / 0.003 |
+| Market date/symbol metadata | 0.139 / 0.003 | 0.135 / 0.003 |
+| Latest-date volume | 0.011 / 0.003 | 0.010 / 0.002 |
+| Core 36 summary | 2.121 / 0.006 | 2.086 / 0.006 |
 
-Passed using the actual PostgreSQL-backed test server:
+These are single-process loopback PostgreSQL measurements, **not live Aiven or
+browser latency guarantees**. CPU-heavy cold indicator work still costs time.
+Remote batching reduces network round trips; caches accelerate unchanged reads.
+A first request, cache eviction, midnight cache-key change or new import may be
+slower. Compare the same data, endpoint, filters and cold/warm state when measuring.
+Do not claim a speedup merely because an empty database loads quickly.
 
-- Overview sidebar: `Database: connected`.
-- Settings identifies PostgreSQL direct persistence.
-- Market volume calendar selected a populated synthetic trading date and rendered
-  the volume charts. A zero-volume latest test date correctly had no positive-volume
-  chart; the test explicitly selected a populated date rather than inventing data.
-- Symbol vs Index renders `Index record` and has zero date-calendar inputs.
-- Automated Analyst renders the plain-language action/explanation panels.
-- Mobile document width 390 px at a 390 px viewport (no whole-page overflow).
-- Zero JavaScript page errors and zero HTTP 5xx API responses in the successful run.
+Production acceptance after each deployment/migration:
+1. Verify GitHub `main` commit and Vercel Production Ready refer to the same release.
+2. Check `/api/health` HTTP 200 and current version, Settings backend PostgreSQL ACTIVE,
+   and `/api/system/freshness` HTTP 200; read connectivity is not a full integrity scan.
+3. Compare imported row counts/date ranges, both isolated account totals and a
+   representative symbol/index date with the trusted source.
+4. Open Overview, Import Center, both accounts, futures, Technical Analysis,
+   Data Quality and Market Explorer. Inspect console/API failures and exports.
+5. Measure cold and repeated calls sequentially before testing modest concurrency.
+   Do not saturate Aiven's 20-connection limit or treat the per-process limit as global.
+6. Check Aiven disk/CPU/memory and a tested USB-native export/restore process.
 
-Screenshots were generated during checks. These use synthetic data and are not
-proof of your real account totals or real production performance.
+Prior live v1.3.14 checks verified Vercel deployment and PostgreSQL connectivity
+with an empty application database. A later migration is successful only when its
+workflow reports COMMITTED and the full-data acceptance checks pass. This README
+is an operating guide, not an assertion that every future environment is verified.
+No payment/plan upgrade, blanket overwrite, global pool or profit guarantee is made.
 
-## Not verified / not performed
+## Deployment rollback versus data restore
 
-- No live Aiven credentials were provided or used.
-- No production Vercel deployment or production PostgreSQL connection test.
-- No performance/load/latency benchmark against Aiven Free's real CPU/RAM/disk.
-- No full user's historical dataset imported or reconciled.
-- No assertion that the entire PostgreSQL footprint fits inside 1 GB until measured.
-- No global connection-pool guarantee across autoscaled Vercel workers.
-- No production backup restore test or Turso snapshot completeness check.
-- Optional GitHub Actions workflow supplied, not executed in the user's account.
-- No paid plan changes, service purchases, database deletion or production writes.
+Code and data are separate. Revert an identified code commit (or use Vercel's
+previous deployment) only if it is compatible with the current schema and PostgreSQL
+backend. Do not blindly roll back to Turso-only v1.3.13 or set backend=sqlite on Vercel.
+A code rollback does **not** undo database writes. For data recovery, restore a verified
+PostgreSQL dump into a separate empty target, reconcile, then deliberately switch
+credentials. Keep original data intact until the replacement is independently checked.
 
-The application remains password-free as requested. Request hygiene is not
-identity/access control. Provider quotas and public-access risks remain real.
+## Repository maintenance
+
+Keep one current README rather than generating another upgrade-note/docs tree.
+Retain active source, tests, `.github/workflows`, `requirements.txt`, `vercel.json`
+and the release manifest. Versioned UI filenames still contain active code.
+Do not commit `.env`, connection URIs, passwords, private keys, raw financial
+snapshots, temporary uploads, caches, virtual environments or database journals.
+An already tracked legacy snapshot is not made private merely by adding `.gitignore`;
+repository history may retain it. Review your repository visibility/access if it
+contains account records; do not assume a public repository is a private backup.
+
+Normal pushes to `main` can automatically deploy Vercel. Review tests and saved
+Production variables first; Preview needs its own configured variable scopes.
+The one-time migration workflow never runs automatically on push.

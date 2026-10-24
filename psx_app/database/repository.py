@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -107,6 +108,7 @@ class Repository:
             )
             c.commit()
 
+    @persisted_result
     def get_system_overview(self) -> Dict[str, Any]:
         with self.conn() as c:
             top5_cnt = c.execute("SELECT COUNT(*) FROM top5_volume_records").fetchone()[0]

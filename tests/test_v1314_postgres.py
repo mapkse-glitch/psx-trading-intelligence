@@ -415,3 +415,70 @@ def test_pg_snapshot_migration_preserves_ids_and_refuses_nonempty(remote,tmp_pat
         c.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close) VALUES ('2025-01-02','ATRL',124)")
         assert c.execute("SELECT MAX(id) FROM equity_ohlcv").fetchone()[0]==43
     with pytest.raises(ValueError,match='already contains'):migrate(source,True)
+
+
+def test_overview_shared_cache_invalidates_with_canonical_revision(remote, monkeypatch):
+    from psx_app.database.schema import get_connection
+    from psx_app.database.repository import Repository
+    from psx_app.database.postgres import Connection
+    counts={'overview_queries':0}
+    original=Connection.execute
+    def tracked(self,sql,parameters=()):
+        if 'SELECT COUNT(*) FROM equity_ohlcv' in sql:counts['overview_queries']+=1
+        return original(self,sql,parameters)
+    monkeypatch.setattr(Connection,'execute',tracked)
+    assert Repository().get_system_overview()['equity_ohlcv']['records']==0
+    assert Repository().get_system_overview()['equity_ohlcv']['records']==0
+    assert counts['overview_queries']==1
+    with get_connection() as c:
+        c.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES ('2026-01-01','ATRL',100,10)")
+    assert Repository().get_system_overview()['equity_ohlcv']['records']==1
+    assert counts['overview_queries']==2
+
+
+def test_cold_universe_history_is_bounded_batch_not_one_query_per_symbol(remote,monkeypatch):
+    from psx_app.database.schema import get_connection
+    from psx_app.database.postgres import Connection
+    from psx_app.services.technical_service import TechnicalService
+    symbols=['ATRL','PRL','TRG']
+    with get_connection() as c:
+        for sym in symbols:
+            c.executemany('INSERT INTO equity_ohlcv(trade_date,symbol,close,open,high,low,pr_close,volume) VALUES (?,?,?,?,?,?,?,?)',
+                [(f'2026-01-{i:02d}',sym,100+i,100,103+i,99,99+i,1000) for i in range(1,29)])
+    queries=[];original=Connection.execute
+    def tracked(self,sql,parameters=()):
+        if 'SELECT symbol,trade_date,open,high,low,close,pr_close,avg_price,volume FROM equity_ohlcv WHERE symbol IN' in sql:queries.append(sql)
+        return original(self,sql,parameters)
+    monkeypatch.setattr(Connection,'execute',tracked)
+    result=TechnicalService().get_universe_summary(scope='all')
+    assert result['count']==3 and len(queries)==1
+
+
+def test_private_staged_snapshot_checksum_failure_preserves_chunks(remote):
+    from psx_app.services.remote_staging import put,get
+    from tools.migrate_staged_snapshot import migrate_staged
+    put('chunk:private-checksum-test:0',b'not-a-snapshot')
+    with pytest.raises(ValueError,match='checksum mismatch'):
+        migrate_staged('private-checksum-test',1,'0'*64)
+    assert get('chunk:private-checksum-test:0')==b'not-a-snapshot'
+
+
+def test_private_staged_snapshot_success_copies_and_removes_only_own_chunks(remote,tmp_path):
+    import gzip,hashlib
+    from psx_app.database.schema import DDL_STATEMENTS,get_connection
+    from psx_app.services.remote_staging import put,get
+    from tools.migrate_staged_snapshot import migrate_staged
+    source=tmp_path/'private.db'
+    with sqlite3.connect(source) as c:
+        c.executescript(DDL_STATEMENTS)
+        c.execute("INSERT INTO equity_ohlcv(id,trade_date,symbol,volume,close) VALUES (52,'2025-01-01','ATRL',3000000000,123.45)")
+    c.close()  # Flush any WAL before reading the standalone snapshot bytes.
+    payload=gzip.compress(source.read_bytes())
+    put('chunk:private-success-test:0',payload)
+    put('chunk:unrelated-upload:0',b'retain')
+    result=migrate_staged('private-success-test',1,hashlib.sha256(payload).hexdigest())
+    assert result['status']=='COMMITTED' and result['temporary_chunks_removed']
+    with get_connection() as c:
+        assert tuple(c.execute('SELECT id,close,volume FROM equity_ohlcv').fetchone())==(52,123.45,3000000000)
+    assert get('chunk:unrelated-upload:0')==b'retain'
+    with pytest.raises(Exception):get('chunk:private-success-test:0')

@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 from psx_app.database.availability import DatabaseUnavailable, safe_failure
 from psx_app.database.turso import Row
 
-SCHEMA_VERSION = '1.3.14'
+SCHEMA_VERSION = '1.3.15'
 _READY = False
 _READY_LOCK = threading.Lock()
 _SLOTS = threading.BoundedSemaphore(2)  # process-local ceiling, NOT a global pool
@@ -188,7 +188,7 @@ def connect():
     raw=None
     try:
         import psycopg
-        raw=psycopg.connect(**settings(),autocommit=True,application_name='psx-dashboard-1.3.14',
+        raw=psycopg.connect(**settings(),autocommit=True,application_name='psx-dashboard-1.3.15',
             options='-c client_encoding=UTF8 -c statement_timeout=90000 -c lock_timeout=15000 -c idle_in_transaction_session_timeout=120000',prepare_threshold=None)
         return Connection(raw)
     except Exception as exc:

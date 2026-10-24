@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -34,6 +35,7 @@ class FuturesService:
             year -= 1
         return f"{year:04d}-{month:02d}-01"
 
+    @persisted_result
     def get_metadata(self, apply_rolling: Optional[bool] = None) -> Dict[str, Any]:
         settings = self.repo.get_settings()
         use_rolling = settings.get("futures_apply_rolling_window", True) if apply_rolling is None else apply_rolling
@@ -122,6 +124,7 @@ class FuturesService:
             return le[-1], sel_date, True
         return (pool[0] if pool else None), sel_date, True
 
+    @persisted_result
     def get_comparison_rows(
         self,
         view_name: str = "monthly_comparison",
@@ -292,6 +295,7 @@ class FuturesService:
             "metadata": meta,
         }
 
+    @persisted_result
     def get_future_symbol_summary(
         self,
         contract_symbol: Optional[str] = None,
@@ -360,6 +364,7 @@ class FuturesService:
             "metadata": meta,
         }
 
+    @persisted_result
     def get_date_summary(
         self,
         selected_date: Optional[str] = None,
