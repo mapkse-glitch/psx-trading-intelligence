@@ -1,7 +1,7 @@
 {
-  "release": "1.3.11",
-  "name": "Plain Trading Actions, Calendar Filters & Calculated Cash-Market Volume \u2014 Turso",
-  "previous_release": "1.3.10",
+  "release": "1.3.12",
+  "name": "Clean Market Explorer Layout \u2014 Turso",
+  "previous_release": "1.3.11",
   "technical_engine": "1.3.9 (indicator mathematics retained)",
   "forecast_rule_version": "1.3.9-rules-1 (existing immutable ledger retained)",
   "database_included": false,
@@ -10,11 +10,10 @@
   "database_migration_required": false,
   "live_canonical_price_account_records_modified": false,
   "live_mutation_requests_sent": false,
-  "live_read_note": "Browser/API GET investigation only; GET endpoints can maintain normal analytical caches.",
-  "validation": "165 passed, 20 private-reference fixture skips, 1 dependency warning; real disposable libSQL HTTP and local desktop/mobile Chromium checks",
-  "instructions": "UPGRADE_1_3_11.md",
-  "audit": "docs/LIVE_AUDIT_1_3_11.md",
-  "test_report": "docs/VALIDATION_1_3_11.md",
+  "validation_scope": "Local test-copy browser checks and isolated SQLite/libSQL tests only; not deployed.",
+  "validation": "169 passed, 20 private-reference fixture skips, 1 dependency warning; real disposable libSQL HTTP and local desktop/mobile Chromium checks",
+  "instructions": "UPGRADE_1_3_12.md",
+  "test_report": "docs/VALIDATION_1_3_12.md",
   "files": [
     {
       "path": ".gitignore",
@@ -28,8 +27,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "3870eefef4ebe4fd9c21a62cd674d2de563ef2a3f651b39bee0373de9577dfd5",
-      "bytes": 3611
+      "sha256": "b931c4f225a9d7d93e7b3ddc60f642469f2d5195944186116bb04ea35634072c",
+      "bytes": 4083
     },
     {
       "path": "START_HERE_TURSO.md",
@@ -45,6 +44,11 @@
       "path": "UPGRADE_1_3_11.md",
       "sha256": "f883349895834131b36ef30fc5e41589027970a41bd34d56058214f2183dc2e8",
       "bytes": 7825
+    },
+    {
+      "path": "UPGRADE_1_3_12.md",
+      "sha256": "343bc6d6794a655d40e4023484473f6c85c861fbba87319ba5fa69f46e8e23c8",
+      "bytes": 4121
     },
     {
       "path": "UPGRADE_1_3_7.md",
@@ -257,6 +261,11 @@
       "bytes": 3712
     },
     {
+      "path": "docs/VALIDATION_1_3_12.md",
+      "sha256": "1fd2f8b971048f2f90d50753f90730b7c36c433e334077d78f49b7c797aabb4f",
+      "bytes": 2738
+    },
+    {
       "path": "docs/WORKFLOW_MAPPING.md",
       "sha256": "e3240dbb308afe2914bd0a8b6224f818df9359df87df2428c6ddca3f85e58be5",
       "bytes": 6456
@@ -378,7 +387,7 @@
     },
     {
       "path": "psx_app/main.py",
-      "sha256": "0f53dd7544cc2b0fc180f0b119c65ed13d8857a3756f8d8ef66bc8e1c75d36b0",
+      "sha256": "c489b46d9b2d8a36500cb57b660fd8327893a863aec97ff063b3d5a57f89481d",
       "bytes": 43987
     },
     {
@@ -543,8 +552,8 @@
     },
     {
       "path": "psx_app/static/app.js",
-      "sha256": "2d6b443455091e46e895e2abeab9bc94cca42010ed2da15d06e9b35ab5212060",
-      "bytes": 174911
+      "sha256": "2cd065b08869e6425560c410235997c74f1c7f98491eea5c96de9141f348ccb3",
+      "bytes": 174990
     },
     {
       "path": "psx_app/static/display1311.js",
@@ -553,13 +562,13 @@
     },
     {
       "path": "psx_app/static/index.html",
-      "sha256": "93186fc413576131622577069799911d6be20bab775408bd153a7496ace4d4ec",
+      "sha256": "47b9a8929d3e95f5c8eadfdd999c105f33460dfa167a7ea14ff78bffec0710f0",
       "bytes": 5133
     },
     {
       "path": "psx_app/static/styles.css",
-      "sha256": "67f581adcb919f2ec0b7b1771119ad500565f07847d7322a71762946d5396293",
-      "bytes": 32953
+      "sha256": "acbdd4abe0f2c335bfef5ffb86095e33d537cfe5091ddab770fd380fbea049df",
+      "bytes": 34540
     },
     {
       "path": "psx_app/static/table_display.js",
@@ -568,8 +577,8 @@
     },
     {
       "path": "psx_app/static/upgrade139.js",
-      "sha256": "0b42dd52479941ee12869faf9d9d95d1858e46f6e36eb5d31a76a463d30d9ed2",
-      "bytes": 38778
+      "sha256": "8a495fd3e8dc87c2cdddf655c97b76fad193d64a238cabb58cc85a2e2503bf6c",
+      "bytes": 37806
     },
     {
       "path": "psx_app/upgrade_routes.py",
@@ -673,13 +682,18 @@
     },
     {
       "path": "tests/test_v1310_coverage.py",
-      "sha256": "923de2dc7bd59a31344e6da3d52a2c904860e387caf4d0529d6be86a32e827a4",
+      "sha256": "b4c7261d1717bd6961ffe984afcce77af60c8de3b489c3ada4385f277dafa15b",
       "bytes": 9236
     },
     {
       "path": "tests/test_v1311_plain_language.py",
-      "sha256": "d579d5c4c69a7dcaa8fcc6c07aadf8e50b9778755100a0eeed55b445b64f2d39",
-      "bytes": 9271
+      "sha256": "f88c95bfb2f312ade8a4d0ee6b85317e2bdb6bbcaea0edb425ec8c59b3707a36",
+      "bytes": 9300
+    },
+    {
+      "path": "tests/test_v1312_market_layout.py",
+      "sha256": "5e40617755a5a689b466830250d3eda7eae3bebb976554be64c559e190419272",
+      "bytes": 2086
     },
     {
       "path": "tests/test_v133_import_and_latest.py",

@@ -1,8 +1,12 @@
-# Current release: v1.3.11
+# Current release: v1.3.12
+
+Start with [UPGRADE_1_3_12.md](UPGRADE_1_3_12.md). Market volume has one calendar; Symbol vs Index shows the latest N records without a date filter. Maximum summary values are green, minimum values red, and the date range is prominent. Secondary implementation notes are collapsed; important warnings remain visible. Keep the existing Turso database and credentials. No migration or re-import is needed. This ZIP still requires deployment.
+
+# Previous release: v1.3.11
 
 Start with [UPGRADE_1_3_11.md](UPGRADE_1_3_11.md). Plain-language trading actions, calendar filters, exact positive/negative colours, contextual forecast results and calculated cash-market volume. Keep the existing Turso database and server-only credentials; no re-import is needed. This source ZIP must still be deployed.
 
-# Previous release: v1.3.10
+# Historical release: v1.3.10
 
 Start with [UPGRADE_1_3_10.md](UPGRADE_1_3_10.md) for deployment, audit findings and verification. No database re-import is required for existing Turso deployments.
 
