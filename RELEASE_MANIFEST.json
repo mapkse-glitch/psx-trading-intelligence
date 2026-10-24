@@ -241,8 +241,8 @@
       "sha256": "93cd609421064b71052759d5b5f158d8c21b60216bd4068e2ecbbfc58e8bda43"
     },
     "tests/conftest.py": {
-      "bytes": 2474,
-      "sha256": "0766e9ddba42420947f1812c5d8535de55814a1a4855894f1dfe75358d13bb2c"
+      "bytes": 2720,
+      "sha256": "677a93c0b210b6cab45369abcc4fffbdf945a86541fbb10f59e08e8964a96307"
     },
     "tests/test_chunked_upload.py": {
       "bytes": 3381,
