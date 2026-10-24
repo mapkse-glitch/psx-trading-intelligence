@@ -379,39 +379,39 @@ class LegacyCloudSyncService:
 
 
 class TursoCloudService:
+    """Direct-remote persistence for PostgreSQL and legacy Turso."""
     def __init__(self, db_path=None):
-        self.db_path = db_path
+        from psx_app.database.turso import backend_name
+        self.db_path=db_path;self.backend=backend_name()
+        self.label='PostgreSQL' if self.backend=='postgres' else 'Turso'
     def is_configured(self):
-        from psx_app.database.turso import credentials
-        credentials()
+        if self.backend=='postgres':
+            from psx_app.database.postgres import settings
+            settings()
+        else:
+            from psx_app.database.turso import credentials
+            credentials()
         return True
-    def base_state(self):
-        return {'initialized': True, 'pending': False}
-    def mark_pending(self):
-        pass  # Writes are remote transactions, never pending local snapshots.
+    def base_state(self): return {'initialized':True,'pending':False}
+    def mark_pending(self): pass
     def assert_current_base(self):
         from psx_app.database.turso import revision
         return revision()
     def get_status(self):
         from psx_app.database.turso import revision
-        try:
-            rev = revision()
-            health, error = 'ACTIVE', None
-        except Exception:
-            rev, health, error = None, 'ERROR', 'Turso connection could not be verified.'
-        return {'backend': 'turso', 'enabled': True, 'health': health,
-                'provider': 'Turso — direct remote database (reads and writes)',
-                'pending_local_changes': False, 'verified_baseline': health == 'ACTIVE',
-                'snapshot_id': rev, 'last_error': error, 'local_snapshot_exists': False,
-                'repo': None, 'branch': None, 'last_push': None, 'last_pull': None}
-    def push_db_after_update(self, reason='Update', checked_base=None):
+        try: rev=revision();health,error='ACTIVE',None
+        except Exception: rev,health,error=None,'ERROR',self.label+' connection could not be verified.'
+        return {'backend':self.backend,'enabled':True,'health':health,
+                'provider':self.label+' — direct remote database (reads and writes)',
+                'pending_local_changes':False,'verified_baseline':health=='ACTIVE',
+                'snapshot_id':rev,'last_error':error,'local_snapshot_exists':False,
+                'repo':None,'branch':None,'last_push':None,'last_pull':None}
+    def push_db_after_update(self,reason='Update',checked_base=None):
         from psx_app.database.turso import revision
-        return {'backend': 'turso', 'saved': True, 'pushed': False,
-                'snapshot_id': revision(), 'message': 'Transaction committed directly to Turso; no GitHub snapshot push is required.'}
-    def pull_latest_db_on_startup(self):
-        return {'backend': 'turso', 'pulled': False, 'reason': 'Direct remote reads; no snapshot download.'}
-    def create_local_gzip_snapshot(self):
-        raise ValueError('Use Turso dashboard Download SQLite File or the documented CLI export on your computer. Serverless full-database snapshots are disabled.')
+        return {'backend':self.backend,'saved':True,'pushed':False,'snapshot_id':revision(),
+                'message':'Transaction committed directly to '+self.label+'; no GitHub snapshot push is required.'}
+    def pull_latest_db_on_startup(self): return {'backend':self.backend,'pulled':False,'reason':'Direct remote reads; no snapshot download.'}
+    def create_local_gzip_snapshot(self): raise ValueError('Use a database export for your USB backup. Full-database serverless snapshots are disabled.')
 
 
 class CloudSyncService(LegacyCloudSyncService):

@@ -17,6 +17,10 @@ os.environ.pop('TURSO_AUTH_TOKEN', None)
 os.environ.pop('GITHUB_SYNC_TOKEN', None)
 os.environ.pop('VERCEL', None)
 os.environ.pop('AWS_LAMBDA_FUNCTION_NAME', None)
+# Legacy development hydration must not seed synthetic tests from a tracked snapshot.
+import psx_app.config as _test_config
+_test_config.BASE_DIR = TEST_ROOT / 'isolated-bundle'
+_test_config.BUNDLED_DATA_ROOT = _test_config.BASE_DIR / 'psx_data'
 (TEST_ROOT / 'database').mkdir()
 if REFERENCE_DB:
     with sqlite3.connect(REFERENCE_DB) as src, sqlite3.connect(os.environ['PSX_DB_PATH']) as dst:
@@ -41,4 +45,4 @@ REFERENCE_TESTS = {
 def pytest_collection_modifyitems(items):
     for item in items:
         if item.name in REFERENCE_TESTS and not (REFERENCE_DB and REFERENCE_DIR):
-            item.add_marker(pytest.mark.skip(reason='Private historical reference fixtures not supplied; see docs/TESTING_1_3.md'))
+            item.add_marker(pytest.mark.skip(reason='Private historical reference fixtures not supplied; see the verification section of README.md'))

@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 """Read-only per-instrument coverage; never manufacture cash OHLCV from other modules."""
 import re
 from psx_app.database.schema import get_connection
@@ -11,6 +12,15 @@ class DataCoverage:
     def __init__(self, db_path=None): self.db_path = db_path
 
     def report(self, search=''):
+        result=dict(self._full_report())
+        q=search.strip().upper()
+        if q:
+            result['items']=[r for r in result['items'] if q in r['symbol'] or q in r['sector'].upper()]
+            result['count']=len(result['items'])
+        return result
+
+    @persisted_result
+    def _full_report(self):
         items = {r['symbol']: r for r in TechnicalService(self.db_path).get_universe_summary(scope='all')['items']}
         with get_connection(self.db_path) as c:
             cash = {r['symbol']:dict(r) for r in c.execute('SELECT symbol,COUNT(*) AS rows,MIN(trade_date) AS first,MAX(trade_date) AS latest FROM equity_ohlcv GROUP BY symbol')}
@@ -61,7 +71,5 @@ class DataCoverage:
                      stale_cash_symbols=sum(r['latest']!=latest for r in cash.values()),
                      insufficient_signal_symbols=sum(r.get('signal',{}).get('combined_signal')=='INSUFFICIENT DATA' for r in items.values()),
                      latest_cash_date=latest, index=index)
-        q=search.strip().upper()
-        if q: rows=[r for r in rows if q in r['symbol'] or q in r['sector'].upper()]
         return dict(summary=summary, count=len(rows), items=rows,
                     note='Counts describe imported records, not an exchange-verified active security list. Historical, rights and inactive securities may be included. Only cash OHLCV drives equity indicators. Futures-observed is not broker short eligibility. INDEX identity and volume are unverified/unavailable in the legacy schema. Dates are each source latest, not assumed equal.')

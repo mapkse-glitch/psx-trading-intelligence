@@ -1,3 +1,4 @@
+from psx_app.services.result_cache import persisted_result
 import math
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,7 @@ class IntelligenceService:
             "core_tickers": CORE_36_TICKERS,
         }
 
+    @persisted_result
     def generate_trading_ideas(
         self,
         scope_or_sector: str = "CORE36",
@@ -288,6 +290,7 @@ class IntelligenceService:
             "rejected": sorted(rejected, key=lambda r: (-abs(r["score"]), r["symbol"])),
         }
 
+    @persisted_result
     def run_automated_technical_analyst(
         self,
         symbol: str = "ATRL",

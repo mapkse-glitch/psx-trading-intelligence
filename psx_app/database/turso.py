@@ -7,13 +7,18 @@ from urllib.parse import urlsplit
 from psx_app.database.availability import DatabaseUnavailable, safe_failure
 
 
-def enabled():
-    backend = os.getenv('PSX_DATABASE_BACKEND', 'turso' if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME') else 'sqlite').strip().lower()
-    if backend not in ('sqlite', 'turso'):
-        raise RuntimeError('PSX_DATABASE_BACKEND must be sqlite or turso.')
+def backend_name():
+    backend = os.getenv('PSX_DATABASE_BACKEND', 'postgres' if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME') else 'sqlite').strip().lower()
+    if backend not in ('sqlite','turso','postgres'):
+        raise RuntimeError('PSX_DATABASE_BACKEND must be sqlite, turso or postgres.')
     if backend == 'sqlite' and (os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME')):
-        raise RuntimeError('Serverless deployments require PSX_DATABASE_BACKEND=turso. Local SQLite fallback is disabled.')
-    return backend == 'turso'
+        raise RuntimeError('Serverless deployments require a remote PSX_DATABASE_BACKEND. Local SQLite fallback is disabled.')
+    return backend
+
+
+def enabled():
+    """Legacy name retained: true for either direct remote backend."""
+    return backend_name() != 'sqlite'
 
 
 def credentials():
@@ -132,6 +137,9 @@ class Connection:
 
 
 def connect():
+    if backend_name() == 'postgres':
+        from psx_app.database import postgres
+        return postgres.connect()
     try:
         url, token = credentials()
         import libsql
@@ -143,6 +151,9 @@ def connect():
 
 
 def initialize():
+    if backend_name() == 'postgres':
+        from psx_app.database import postgres
+        return postgres.initialize()
     # The existing imported database is required. Never create an empty canonical replacement.
     with connect() as c:
         required = {'equity_ohlcv', 'futures_ohlcv', 'top5_volume_records', 'trade_executions',
@@ -166,6 +177,9 @@ def initialize():
 
 
 def revision():
+    if backend_name() == 'postgres':
+        from psx_app.database import postgres
+        return postgres.revision()
     with connect() as c:
         return c.execute("SELECT value FROM psx_runtime WHERE key='revision'").fetchone()[0]
 
@@ -175,6 +189,9 @@ import threading
 _READY_LOCK = threading.Lock()
 
 def ensure_ready():
+    if backend_name() == 'postgres':
+        from psx_app.database import postgres
+        return postgres.ensure_ready()
     global _READY
     if not _READY:
         with _READY_LOCK:

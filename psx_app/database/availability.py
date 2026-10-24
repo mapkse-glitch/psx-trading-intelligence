@@ -30,14 +30,18 @@ def safe_failure(exc, stage, uncertain=False):
         return exc
     # Raw text is used ONLY to classify; never emitted, persisted or chained.
     text = str(exc).casefold()
-    if any(x in text for x in ('auth_token is required', 'valid libsql://', 'psx_database_backend', 'local sqlite fallback')):
+    if any(x in text for x in ('auth_token is required', 'valid libsql://', 'psx_database_backend', 'local sqlite fallback', 'database_url must', 'database_ca_cert must')):
         code = 'SERVER_CONFIGURATION'
-    elif any(x in text for x in ('unauthorized', 'unauthenticated', 'invalid token', 'token expired', 'jwt', '401')):
+    elif any(x in text for x in ('unauthorized', 'unauthenticated', 'invalid token', 'token expired', 'jwt', '401', 'password authentication failed')):
         code = 'AUTHENTICATION_REJECTED'
+    elif any(x in text for x in ('too many clients', 'remaining connection slots', 'too many connections')):
+        code = 'CONNECTION_CAPACITY'
     elif any(x in text for x in ('forbidden', 'permission denied', '403', 'read-only', 'readonly')):
         code = 'PERMISSION_DENIED'
     elif 'imported psx schema is missing' in text:
         code = 'REQUIRED_SCHEMA_MISSING'
+    elif 'disk full' in text or 'no space left' in text:
+        code = 'STORAGE_CAPACITY'
     elif any(x in text for x in ('certificate', 'tls', 'ssl')):
         code = 'TLS_CONNECTION_FAILED'
     elif any(x in text for x in ('timed out', 'timeout', 'deadline')):
@@ -90,6 +94,10 @@ def http_read_diagnostic():
     One bounded request; never follows redirects or returns raw response bodies.
     Only the already-configured server URL receives its existing server token.
     """
+    from psx_app.database.turso import backend_name
+    if backend_name() == 'postgres':
+        from psx_app.database.postgres import diagnostic
+        return diagnostic()
     from urllib.parse import urlsplit
     from psx_app.database.turso import credentials
     try:

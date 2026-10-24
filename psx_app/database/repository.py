@@ -35,6 +35,9 @@ class Repository:
     ) -> Dict[str, Any]:
         now = datetime.now(timezone.utc).isoformat()
         with self.conn() as c:
+            from psx_app.database.turso import backend_name
+            if backend_name() == 'postgres':
+                c.execute('BEGIN IMMEDIATE')
             current = self.get_settings()
             rule_keys = {
                 "commission_slab1_upper", "commission_slab1_paisa_per_share",
