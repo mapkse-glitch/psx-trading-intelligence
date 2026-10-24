@@ -1,7 +1,7 @@
 {
-  "release": "1.3.12",
-  "name": "Clean Market Explorer Layout \u2014 Turso",
-  "previous_release": "1.3.11",
+  "release": "1.3.13",
+  "name": "Startup Recovery & Safe Turso Diagnostics",
+  "previous_release": "1.3.12",
   "technical_engine": "1.3.9 (indicator mathematics retained)",
   "forecast_rule_version": "1.3.9-rules-1 (existing immutable ledger retained)",
   "database_included": false,
@@ -11,9 +11,9 @@
   "live_canonical_price_account_records_modified": false,
   "live_mutation_requests_sent": false,
   "validation_scope": "Local test-copy browser checks and isolated SQLite/libSQL tests only; not deployed.",
-  "validation": "169 passed, 20 private-reference fixture skips, 1 dependency warning; real disposable libSQL HTTP and local desktop/mobile Chromium checks",
-  "instructions": "UPGRADE_1_3_12.md",
-  "test_report": "docs/VALIDATION_1_3_12.md",
+  "validation": "191 passed, 20 private-reference fixture skips, 1 dependency warning; real disposable libSQL HTTP and local desktop/mobile Chromium checks",
+  "instructions": "UPGRADE_1_3_13.md",
+  "test_report": "docs/VALIDATION_1_3_13.md",
   "files": [
     {
       "path": ".gitignore",
@@ -27,8 +27,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "b931c4f225a9d7d93e7b3ddc60f642469f2d5195944186116bb04ea35634072c",
-      "bytes": 4083
+      "sha256": "06e321fc9eee3204a00e4361da109cd8aee05506b6105e504d844c7c89fe5de2",
+      "bytes": 4607
     },
     {
       "path": "START_HERE_TURSO.md",
@@ -49,6 +49,11 @@
       "path": "UPGRADE_1_3_12.md",
       "sha256": "343bc6d6794a655d40e4023484473f6c85c861fbba87319ba5fa69f46e8e23c8",
       "bytes": 4121
+    },
+    {
+      "path": "UPGRADE_1_3_13.md",
+      "sha256": "c7c76ace71b0f08c2a384ae055429ab0317d327975d954f1f02bbd3b8ac38138",
+      "bytes": 6111
     },
     {
       "path": "UPGRADE_1_3_7.md",
@@ -266,6 +271,11 @@
       "bytes": 2738
     },
     {
+      "path": "docs/VALIDATION_1_3_13.md",
+      "sha256": "6fd78753f570e0a332472c235aabe60c95b9359b086d853bfce13ea02e8ff245",
+      "bytes": 3416
+    },
+    {
       "path": "docs/WORKFLOW_MAPPING.md",
       "sha256": "e3240dbb308afe2914bd0a8b6224f818df9359df87df2428c6ddca3f85e58be5",
       "bytes": 6456
@@ -366,6 +376,11 @@
       "bytes": 44
     },
     {
+      "path": "psx_app/database/availability.py",
+      "sha256": "bb049b8bf83e9b5a2c61955b6cbcd770e8785fdd66fb27b3abf722777839e0bd",
+      "bytes": 5553
+    },
+    {
       "path": "psx_app/database/repository.py",
       "sha256": "8b42eaa07df01652771ae6ee2372cd091ce6bf1d658d37c9f97a4ddfc4abc578",
       "bytes": 8312
@@ -382,13 +397,13 @@
     },
     {
       "path": "psx_app/database/turso.py",
-      "sha256": "6a43bf2ad95de6dc2404beba41c14b281526e286d461654b55b1cae1b846c140",
-      "bytes": 7347
+      "sha256": "2b1207dc2935553d3561e20afdd19185bc3bc05c3de7c8451487ed717b0a919e",
+      "bytes": 7262
     },
     {
       "path": "psx_app/main.py",
-      "sha256": "c489b46d9b2d8a36500cb57b660fd8327893a863aec97ff063b3d5a57f89481d",
-      "bytes": 43987
+      "sha256": "bdde57ddf4c4646cc1428d78a12b3126fe844c9cf87fb1d26fc814ee37a1d0c4",
+      "bytes": 45850
     },
     {
       "path": "psx_app/parsers/__init__.py",
@@ -552,8 +567,8 @@
     },
     {
       "path": "psx_app/static/app.js",
-      "sha256": "2cd065b08869e6425560c410235997c74f1c7f98491eea5c96de9141f348ccb3",
-      "bytes": 174990
+      "sha256": "f482c8c31808959b3e161182c497e1ccea1a4aa05a518be955f6665f43fc8509",
+      "bytes": 176426
     },
     {
       "path": "psx_app/static/display1311.js",
@@ -562,13 +577,13 @@
     },
     {
       "path": "psx_app/static/index.html",
-      "sha256": "47b9a8929d3e95f5c8eadfdd999c105f33460dfa167a7ea14ff78bffec0710f0",
-      "bytes": 5133
+      "sha256": "5da1a587a398e6b891faa6dd81e2fe746cb8b9061ebea557f49302d0a8e5334d",
+      "bytes": 5235
     },
     {
       "path": "psx_app/static/styles.css",
-      "sha256": "acbdd4abe0f2c335bfef5ffb86095e33d537cfe5091ddab770fd380fbea049df",
-      "bytes": 34540
+      "sha256": "1df3b67951c90233ce0d524aab258f9b50211f44249a00f2c016ed124e63a333",
+      "bytes": 35019
     },
     {
       "path": "psx_app/static/table_display.js",
@@ -677,23 +692,28 @@
     },
     {
       "path": "tests/test_turso_remote.py",
-      "sha256": "89a3591160795495754127556ccaada620b632a7d102dc2db799a8700d860351",
-      "bytes": 18106
+      "sha256": "ddd2cf65c72346131274d852b0ba992ab603566c17c3fc955f1c68ee4ad87803",
+      "bytes": 18869
     },
     {
       "path": "tests/test_v1310_coverage.py",
-      "sha256": "b4c7261d1717bd6961ffe984afcce77af60c8de3b489c3ada4385f277dafa15b",
+      "sha256": "b52b290afb6545259f52997a4d317437bbda48d7f5536c93e8a3d325af12e42c",
       "bytes": 9236
     },
     {
       "path": "tests/test_v1311_plain_language.py",
-      "sha256": "f88c95bfb2f312ade8a4d0ee6b85317e2bdb6bbcaea0edb425ec8c59b3707a36",
+      "sha256": "30d4b65328a520b8deae8d4a1907986bf7b15ed765e25cf44299c2610f779a5e",
       "bytes": 9300
     },
     {
       "path": "tests/test_v1312_market_layout.py",
-      "sha256": "5e40617755a5a689b466830250d3eda7eae3bebb976554be64c559e190419272",
+      "sha256": "c04afd25e668bfb8e7f186b462c2cbb88e62a01e6e304013e021926f5af5e097",
       "bytes": 2086
+    },
+    {
+      "path": "tests/test_v1313_startup_recovery.py",
+      "sha256": "29c3e11353b1259070071da5ebbb62715e058baf75668f18a26b1d11a6f106b6",
+      "bytes": 6929
     },
     {
       "path": "tests/test_v133_import_and_latest.py",

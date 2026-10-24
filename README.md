@@ -1,8 +1,12 @@
-# Current release: v1.3.12
+# Current release: v1.3.13
+
+Start with [UPGRADE_1_3_13.md](UPGRADE_1_3_13.md). Prevents a failed Turso startup read from terminating the whole application; provides fail-closed API readiness, bounded retry cooldown and credential-safe connection diagnostics. Preserves v1.3.12 layouts and existing Turso data. A remote authentication/network/service failure still requires its actual cause to be corrected; serving the shell does not mean database recovery. No database reset or re-import. This ZIP requires deployment.
+
+# Previous release: v1.3.12
 
 Start with [UPGRADE_1_3_12.md](UPGRADE_1_3_12.md). Market volume has one calendar; Symbol vs Index shows the latest N records without a date filter. Maximum summary values are green, minimum values red, and the date range is prominent. Secondary implementation notes are collapsed; important warnings remain visible. Keep the existing Turso database and credentials. No migration or re-import is needed. This ZIP still requires deployment.
 
-# Previous release: v1.3.11
+# Historical release: v1.3.11
 
 Start with [UPGRADE_1_3_11.md](UPGRADE_1_3_11.md). Plain-language trading actions, calendar filters, exact positive/negative colours, contextual forecast results and calculated cash-market volume. Keep the existing Turso database and server-only credentials; no re-import is needed. This source ZIP must still be deployed.
 
