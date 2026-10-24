@@ -642,10 +642,10 @@ async function renderImportLegacy(container) {
           ${renderSyncButtons(cs)}
         </div>
       </div>
-      <div style="font-size:12px;color:var(--text-main);">
+      <details class="secondary-note1312"><summary>Storage details</summary><div>
         <b>Where your uploaded data is saved:</b> ${cs.backend==='turso' ? 'Prices, account records, settings and audit records are committed directly to Turso. Upload pieces and parsed staging are stored temporarily in Turso so another Vercel worker can finish the import. Successful commit removes parsed staging; incomplete uploads expire after 24 hours and are swept during subsequent staging. Original source files are not permanently archived by this dashboard—keep your originals and independent backups. No full database is downloaded to Vercel or pushed to GitHub.' : 'Local SQLite mode: use an independent backup and verify the configured persistence provider.'}
 
-      </div>
+      </div></details>
     </div>
 
     <div class="card">
@@ -2492,9 +2492,9 @@ async function renderSettingsView(container) {
           ${renderSyncButtons(cs)}
         </div>
       </div>
-      <div style="font-size:12px;color:var(--text-main);">
+      <details class="secondary-note1312"><summary>Storage &amp; backup details</summary><div>
         ${cs.backend==='turso' ? 'Direct Turso persistence is enabled. Private connection credentials stay on the server. A successful import or settings response confirms a remote database commit—not a GitHub snapshot upload. For independent backups, open your database in Turso and select Download SQLite File. Keep original uploads separately.' : 'Local SQLite development mode. Serverless deployments require Turso connection settings.'}
-      </div>
+      </div></details>
     </div>
 
     <div class="grid-2">

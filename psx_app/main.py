@@ -62,7 +62,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="Direct Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.11",
+    version="1.3.12",
     lifespan=lifespan,
 )
 
@@ -132,7 +132,7 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "PSX Trading Intelligence Dashboard",
-        "version": "1.3.11",
+        "version": "1.3.12",
         "db_integrity": b_svc.run_integrity_check(),
     }
 
@@ -143,7 +143,7 @@ async def api_system_freshness(force: bool = Query(False)):
     async with MUTATION_LOCK:
         now = time.monotonic()
         if not force and not CloudSyncService(DB_PATH).base_state().get("pending") and _READ_FRESHNESS and now - _READ_FRESHNESS.get("at", 0) < 30:
-            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.11"}
+            return {**_READ_FRESHNESS["result"], "changed": False, "version": "1.3.12"}
         result = await run_in_threadpool(check_cloud_freshness, DB_PATH)
         if result.get("snapshot_id") and _READ_FRESHNESS.get("result", {}).get("snapshot_id") != result["snapshot_id"]:
             result["changed"] = True
@@ -153,7 +153,7 @@ async def api_system_freshness(force: bool = Query(False)):
                 await run_in_threadpool(init_db, DB_PATH)
             invalidate_api_cache()
         _READ_FRESHNESS.update(at=time.monotonic(), result=result)
-        return {**result, "version": "1.3.11"}
+        return {**result, "version": "1.3.12"}
 
 
 @app.middleware("http")
@@ -959,7 +959,7 @@ def api_date_normalization_apply(req: DateRepairApplyRequest) -> Dict[str, Any]:
 @app.get("/api/system/status")
 def api_system_status():
     from psx_app.services.data_guard import date_integrity
-    return {"version": "1.3.11", "dates": date_integrity(DB_PATH),
+    return {"version": "1.3.12", "dates": date_integrity(DB_PATH),
             "cloud_sync": CloudSyncService(DB_PATH).get_status(),
             "database_integrity": BackupService(DB_PATH, DATA_ROOT).run_integrity_check()}
 

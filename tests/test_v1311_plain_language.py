@@ -106,12 +106,13 @@ assert.equal(numericValue1311('0.00'),0);
 def test_build_has_matching_version_exact_colours_and_calendar_controls():
     import re
     html=(ROOT/'psx_app/static/index.html').read_text();css=(ROOT/'psx_app/static/styles.css').read_text()
-    assert 'content="1.3.11"' in html and '/display1311.js?v=1.3.11' in html
+    assert 'content="1.3.12"' in html and '/display1311.js?v=1.3.12' in html
     assert set(re.findall(r'--pos-green:\s*(#[A-Fa-f0-9]{6})',css))=={'#03D815'}
     assert set(re.findall(r'--neg-red:\s*(#[A-Fa-f0-9]{6})',css))=={'#F63131'}
     app=(ROOT/'psx_app/static/app.js').read_text();ui=(ROOT/'psx_app/static/upgrade139.js').read_text()
     assert 'accountCalendar1311' in app and 'futuresCalendar1311' in app
-    assert 'id="marketAsOf1311" type="date"' in ui
+    assert 'id="marketAsOf1311"' not in ui
+    assert 'calendar-only1312' in ui
     assert "['Check after'" not in ui or 'Horizon' in ui
     assert 'What to do now' in ui and 'Why' in ui
     assert 'p.status===\'CONDITIONAL\'?[[\'Entry\'' in ui  # No rejected execution levels on charts.
