@@ -5,11 +5,13 @@
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 209,
+    "passed": 213,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
-    "browser_test": "v1.3.14 desktop/mobile smoke passed; v1.3.15 production verification pending"
+    "browser_test": "v1.3.14 desktop/mobile smoke passed; v1.3.15 production verification pending",
+    "isolated_full_snapshot_restore_tested": true,
+    "production_isolated_restore_tested": false
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -21,8 +23,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 25016,
-      "sha256": "6062fa3397a992fab3d02b1d927a7b94559597b570344f5369881ff02c0491bd"
+      "bytes": 28977,
+      "sha256": "6b54ec243c79813414791d9e82aedc26e3aca4611789489c9c53d3171bed1beb"
     },
     "api/index.py": {
       "bytes": 29,
@@ -49,8 +51,8 @@
       "sha256": "bb7886acfb2b8e212a4c5955890d0dfc14daecf34b4fac99a6e04792054ee37c"
     },
     "psx_app/database/postgres.py": {
-      "bytes": 12464,
-      "sha256": "3a0fa2627403d597d59b29ba3b86d5ec5e816b399400285784810548e46d78df"
+      "bytes": 12768,
+      "sha256": "58fe8213ca39b7fff6346459108a77ea21ff64be5ca7cbc392bfe203680cb282"
     },
     "psx_app/database/repository.py": {
       "bytes": 8543,
@@ -355,6 +357,18 @@
     "vercel.json": {
       "bytes": 158,
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
+    },
+    ".github/workflows/prepare-isolated-restore.yml": {
+      "bytes": 1741,
+      "sha256": "5b06baa3a2e99d75472a42d700a628f4891cc0052f849fbf95ddd240bcfc7441"
+    },
+    "tools/prepare_isolated_restore.py": {
+      "bytes": 11914,
+      "sha256": "60b9709a0cd8168bf25c2dfba16e7826e6c3d0d2b3b38c2eaa5d5ca513ccfdb6"
+    },
+    "tests/test_isolated_restore.py": {
+      "bytes": 5066,
+      "sha256": "c785f4e83c4a2e3092a60ac1f6ca4ec3cb3b69da422b887b7c3b8b3df210203b"
     }
   }
 }

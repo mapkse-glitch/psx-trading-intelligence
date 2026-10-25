@@ -35,8 +35,12 @@ def settings():
         _ = p.port
     except Exception:
         raise RuntimeError('DATABASE_URL must be a valid PostgreSQL connection URI.') from None
+    database = os.getenv('PSX_POSTGRES_DATABASE','').strip()
+    if database and not re.fullmatch(r'[a-z][a-z0-9_]{0,62}', database):
+        raise RuntimeError('PSX_POSTGRES_DATABASE must be a valid lowercase database name.')
+    override = {'dbname':database} if database else {}
     if os.getenv('PSX_PG_LOOPBACK_TEST')=='1' and p.hostname in ('127.0.0.1','localhost','::1'):
-        return {'conninfo':uri,'sslmode':'disable','connect_timeout':5}
+        return {'conninfo':uri,'sslmode':'disable','connect_timeout':5,**override}
     cert = os.getenv('DATABASE_CA_CERT','').strip().replace('\\n','\n')
     if not (cert.startswith('-----BEGIN CERTIFICATE-----') and cert.endswith('-----END CERTIFICATE-----')):
         raise RuntimeError('DATABASE_CA_CERT must contain the complete PEM CA certificate.')
@@ -49,7 +53,7 @@ def settings():
             os.replace(name,target)
         finally:
             if os.path.exists(name): os.unlink(name)
-    return {'conninfo':uri,'sslmode':'verify-full','sslrootcert':str(target),'connect_timeout':5}
+    return {'conninfo':uri,'sslmode':'verify-full','sslrootcert':str(target),'connect_timeout':5,**override}
 
 
 def _bind(sql):

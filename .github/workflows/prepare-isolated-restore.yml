@@ -1,0 +1,53 @@
+name: Verify connection and prepare isolated restore
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Check connection only, or restore and reconcile into a separate database
+        type: choice
+        options: [check_connection, restore_candidate]
+        default: check_connection
+        required: true
+      upload_id:
+        description: Private dashboard staged upload ID (restore only)
+        type: string
+        required: false
+      total_chunks:
+        description: Staged chunk count (restore only)
+        type: string
+        default: '0'
+        required: false
+      expected_sha256:
+        description: Compressed snapshot SHA256 (restore only)
+        type: string
+        required: false
+      confirm:
+        description: For restore, type RESTORE_SEPARATE_DATABASE. No live switch is performed.
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: psx-postgres-migration
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PSX_DATABASE_BACKEND: postgres
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+      RESTORE_MODE: ${{ inputs.mode }}
+      RESTORE_CONFIRM: ${{ inputs.confirm }}
+      UPLOAD_ID: ${{ inputs.upload_id }}
+      TOTAL_CHUNKS: ${{ inputs.total_chunks }}
+      EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'psycopg[binary]==3.2.12'
+      - name: Verify connection or prepare separate verified candidate
+        run: python -m tools.prepare_isolated_restore
