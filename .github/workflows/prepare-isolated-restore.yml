@@ -5,7 +5,7 @@ on:
       mode:
         description: Check connection only, or restore and reconcile into a separate database
         type: choice
-        options: [check_connection, restore_candidate]
+        options: [check_connection, restore_candidate, resume_candidate]
         default: check_connection
         required: true
       upload_id:

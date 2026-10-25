@@ -44,9 +44,8 @@ def connection_check():
 
 
 def merge_live(source, target, tables):
-    """Live business keys win; numeric IDs are newly allocated and FK references mapped.
-    Both connections must already be in caller-managed transactions. No source writes.
-    Canonical monetary values are copied, not recalculated. JSON audit payloads stay verbatim.
+    """Bulk-copy live business keys into candidate; never mutate source.
+    One temporary table and bounded SQL statements per canonical table, not per row.
     """
     from psycopg import sql
     from psycopg.rows import dict_row
@@ -54,56 +53,83 @@ def merge_live(source, target, tables):
     result={}
     for table in tables:
         cols=[r[0] for r in source.execute('SELECT column_name FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=%s ORDER BY ordinal_position',(table,))]
-        if not cols:
-            continue
+        if not cols:continue
         target_cols={r[0] for r in target.execute('SELECT column_name FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=%s',(table,))}
-        if not set(cols)<=target_cols:
-            raise ValueError('RESTORE_SCHEMA_MISMATCH')
+        if not set(cols)<=target_cols:raise ValueError('RESTORE_SCHEMA_MISMATCH')
         count=source.execute(sql.SQL('SELECT COUNT(*) FROM {}').format(sql.Identifier(table))).fetchone()[0]
-        if count>50000:
-            raise ValueError('LIVE_RECONCILIATION_TOO_LARGE_REVIEW_REQUIRED')
+        if count>50000:raise ValueError('LIVE_RECONCILIATION_TOO_LARGE_REVIEW_REQUIRED')
         with source.cursor(row_factory=dict_row) as cursor:
             rows=cursor.execute(sql.SQL('SELECT * FROM {}').format(sql.Identifier(table))).fetchall()
         before=target.execute(sql.SQL('SELECT COUNT(*) FROM {}').format(sql.Identifier(table))).fetchone()[0]
-        inserts=0
-        for original in rows:
-            row=dict(original)
-            old_id=row.pop('id',None)
-            for col,parent in [('batch_id','import_batches'),('source_file_id','source_files')]:
-                if row.get(col) is not None:
-                    if row[col] not in maps[parent]:
-                        raise ValueError('UNRESOLVED_LIVE_PROVENANCE_REFERENCE')
-                    row[col]=maps[parent][row[col]]
-            keys=KEYS.get(table,[])
-            where=sql.SQL(' AND ').join(sql.SQL('{}=%s').format(sql.Identifier(k)) for k in keys)
-            key_values=tuple(row[k] for k in keys)
-            exists=bool(keys and target.execute(sql.SQL('SELECT 1 FROM {} WHERE {}').format(sql.Identifier(table),where),key_values).fetchone())
-            inserts+=not exists
-            names=list(row)
-            stmt=sql.SQL('INSERT INTO {} ({}) VALUES ({})').format(sql.Identifier(table),sql.SQL(',').join(map(sql.Identifier,names)),sql.SQL(',').join(sql.Placeholder() for _ in names))
+        if not rows:
+            result[table]={'live_rows_checked':0,'added':0,'final_rows':before,'all_live_values_matched':True};continue
+        stage=sql.Identifier('psx_restore_live_stage')
+        target.execute(sql.SQL('CREATE TEMP TABLE {} (LIKE {}) ON COMMIT DROP').format(stage,sql.Identifier(table)))
+        with target.cursor().copy(sql.SQL('COPY {} ({}) FROM STDIN').format(stage,sql.SQL(',').join(map(sql.Identifier,cols)))) as copy:
+            for row in rows:
+                for col,parent in [('batch_id','import_batches'),('source_file_id','source_files')]:
+                    if row.get(col) is not None:
+                        if row[col] not in maps[parent]:raise ValueError('UNRESOLVED_LIVE_PROVENANCE_REFERENCE')
+                        row[col]=maps[parent][row[col]]
+                copy.write_row(tuple(row[k] for k in cols))
+        keys=KEYS.get(table,[])
+        match=sql.SQL(' AND ').join(sql.SQL('t.{}=s.{}').format(sql.Identifier(k),sql.Identifier(k)) for k in keys)
+        if keys:
+            overlap=target.execute(sql.SQL('SELECT COUNT(*) FROM {} s WHERE EXISTS (SELECT 1 FROM {} t WHERE {})').format(stage,sql.Identifier(table),match)).fetchone()[0]
+        else:overlap=0
+        if 'id' in cols:
+            target.execute(sql.SQL('ALTER TABLE {} ADD COLUMN restore_source_id BIGINT').format(stage))
+            target.execute(sql.SQL('UPDATE {} SET restore_source_id=id').format(stage))
+            seq=target.execute('SELECT pg_get_serial_sequence(%s,%s)',(table,'id')).fetchone()[0]
+            if not seq:raise ValueError('MISSING_CANDIDATE_ID_SEQUENCE')
             if keys:
-                updates=[k for k in names if k not in keys]
-                stmt+=sql.SQL(' ON CONFLICT ({}) DO UPDATE SET {}').format(sql.SQL(',').join(map(sql.Identifier,keys)),sql.SQL(',').join(sql.SQL('{}=EXCLUDED.{}').format(sql.Identifier(k),sql.Identifier(k)) for k in updates))
-            returning=['id'] if 'id' in cols else keys
-            stmt+=sql.SQL(' RETURNING {}').format(sql.SQL(',').join(map(sql.Identifier,returning)))
-            returned=target.execute(stmt,tuple(row[k] for k in names)).fetchone()
-            if table in maps:
-                maps[table][old_id]=returned[0]
-            if 'id' in cols:
-                select_where=sql.SQL('id=%s');select_args=(returned[0],)
-            else:
-                select_where=where;select_args=key_values
-            got=target.execute(sql.SQL('SELECT {} FROM {} WHERE {}').format(sql.SQL(',').join(map(sql.Identifier,names)),sql.Identifier(table),select_where),select_args).fetchone()
-            if tuple(row[k] for k in names)!=tuple(got):
-                raise ValueError('LIVE_RECORD_RECONCILIATION_FAILED')
+                target.execute(sql.SQL('UPDATE {} s SET id=COALESCE((SELECT t.id FROM {} t WHERE {}),nextval(%s))').format(stage,sql.Identifier(table),match),(seq,))
+            else:target.execute(sql.SQL('UPDATE {} SET id=nextval(%s)').format(stage),(seq,))
+            if table in maps:maps[table]=dict(target.execute(sql.SQL('SELECT restore_source_id,id FROM {}').format(stage)).fetchall())
+        names=sql.SQL(',').join(map(sql.Identifier,cols))
+        statement=sql.SQL('INSERT INTO {} ({}) SELECT {} FROM {} WHERE TRUE').format(sql.Identifier(table),names,names,stage)
+        if keys:
+            updates=[k for k in cols if k not in keys and k!='id']
+            if updates:
+                statement+=sql.SQL(' ON CONFLICT ({}) DO UPDATE SET {}').format(sql.SQL(',').join(map(sql.Identifier,keys)),sql.SQL(',').join(sql.SQL('{}=EXCLUDED.{}').format(sql.Identifier(k),sql.Identifier(k)) for k in updates))
+            else:statement+=sql.SQL(' ON CONFLICT ({}) DO NOTHING').format(sql.SQL(',').join(map(sql.Identifier,keys)))
+        target.execute(statement)
+        identity=sql.SQL('t.id=s.id') if 'id' in cols else match
+        equal=sql.SQL(' AND ').join(sql.SQL('t.{} IS NOT DISTINCT FROM s.{}').format(sql.Identifier(k),sql.Identifier(k)) for k in cols)
+        mismatches=target.execute(sql.SQL('SELECT COUNT(*) FROM {} s WHERE NOT EXISTS (SELECT 1 FROM {} t WHERE {} AND {})').format(stage,sql.Identifier(table),identity,equal)).fetchone()[0]
         after=target.execute(sql.SQL('SELECT COUNT(*) FROM {}').format(sql.Identifier(table))).fetchone()[0]
-        if after!=before+inserts:
-            raise ValueError('LIVE_COUNT_RECONCILIATION_FAILED')
-        result[table]={'live_rows_checked':len(rows),'added':inserts,'final_rows':after,'all_live_values_matched':True}
+        if mismatches or after!=before+len(rows)-overlap:raise ValueError('LIVE_RECONCILIATION_FAILED')
+        result[table]={'live_rows_checked':len(rows),'added':len(rows)-overlap,'final_rows':after,'all_live_values_matched':True}
+        target.execute(sql.SQL('DROP TABLE {}').format(stage))
     return result
 
 
-def prepare(upload_id,total_chunks,expected_sha256):
+def verify_candidate_snapshot(raw, compressed, counts):
+    """Resume only an unmerged candidate whose rows and totals still match the snapshot."""
+    import gzip,sqlite3,math
+    from psycopg import sql
+    with tempfile.TemporaryDirectory(prefix='psx-resume-check-') as tmp:
+        path=Path(tmp)/'snapshot.db'
+        with gzip.open(compressed,'rb') as src,path.open('wb') as out:
+            import shutil
+            shutil.copyfileobj(src,out)
+        with sqlite3.connect(path) as src:
+            for table,n in counts.items():
+                actual=raw.execute(sql.SQL('SELECT COUNT(*) FROM {}').format(sql.Identifier(table))).fetchone()[0]
+                if actual!=n:raise ValueError('RESUME_CANDIDATE_COUNTS_DIFFER_INSPECT_MANUALLY')
+                available={r[1] for r in src.execute('PRAGMA table_info('+table+')')}
+                candidates=['volume','gross_pnl','net_pnl','buy_value','sell_value','quantity','trade_value']
+                metrics=[k for k in candidates if k in available]
+                if metrics:
+                    expr=','.join('COALESCE(SUM("'+k+'"),0)' for k in metrics)
+                    before=src.execute('SELECT '+expr+' FROM '+table).fetchone()
+                    after=raw.execute(sql.SQL('SELECT '+expr+' FROM {}').format(sql.Identifier(table))).fetchone()
+                    if any((int(a)!=int(b) if k=='volume' else not math.isclose(float(a),float(b),rel_tol=1e-12,abs_tol=0.01)) for k,a,b in zip(metrics,before,after)):
+                        raise ValueError('RESUME_CANDIDATE_AGGREGATES_DIFFER_INSPECT_MANUALLY')
+    return {'counts_matched':True,'available_volume_and_financial_sums_matched':True}
+
+
+def prepare(upload_id,total_chunks,expected_sha256,resume=False):
     import psycopg
     from psycopg import sql
     from psx_app.database import postgres
@@ -125,13 +151,15 @@ def prepare(upload_id,total_chunks,expected_sha256):
         with psycopg.connect(**cfg,autocommit=True,options='-c client_encoding=UTF8') as source:
             live_name=source.execute('SELECT current_database()').fetchone()[0]
             if live_name==candidate:raise ValueError('CANDIDATE_CANNOT_BE_LIVE_DATABASE')
-            if source.execute('SELECT 1 FROM pg_database WHERE datname=%s',(candidate,)).fetchone():
+            exists=bool(source.execute('SELECT 1 FROM pg_database WHERE datname=%s',(candidate,)).fetchone())
+            if exists and not resume:
                 raise ValueError('CANDIDATE_ALREADY_EXISTS_INSPECT_BEFORE_RETRY_NO_DATA_OVERWRITTEN')
+            if resume and not exists:raise ValueError('NO_EXISTING_CANDIDATE_TO_RESUME')
             # Conservative service-level headroom estimate; no paid capacity is provisioned.
             current_bytes=source.execute('SELECT COALESCE(SUM(pg_database_size(oid)),0) FROM pg_database WHERE NOT datistemplate').fetchone()[0]
-            if current_bytes+400*1024*1024+200*1024*1024>950*1024*1024:
+            if current_bytes+(50 if resume else 400)*1024*1024+200*1024*1024>950*1024*1024:
                 raise ValueError('INSUFFICIENT_FREE_PLAN_STORAGE_HEADROOM')
-            source.execute(sql.SQL("CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8'").format(sql.Identifier(candidate)))
+            if not exists:source.execute(sql.SQL("CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8'").format(sql.Identifier(candidate)))
         saved_uri=os.environ['DATABASE_URL'];old_ready=postgres._READY
         saved_override=os.environ.pop('PSX_POSTGRES_DATABASE',None)
         try:
@@ -140,7 +168,13 @@ def prepare(upload_id,total_chunks,expected_sha256):
             parsed=urlsplit(saved_uri)
             os.environ['DATABASE_URL']=urlunsplit((parsed.scheme,parsed.netloc,'/'+quote(candidate,safe=''),parsed.query,parsed.fragment))
             postgres._READY=False
-            migrated=migrate(path,True)
+            if resume:
+                from tools.import_sqlite_to_postgres import EMPTY_REQUIRED
+                with psycopg.connect(**postgres.settings(),autocommit=True,options='-c client_encoding=UTF8') as prior:
+                    populated=any(prior.execute(sql.SQL('SELECT EXISTS(SELECT 1 FROM {})').format(sql.Identifier(t))).fetchone()[0] for t in EMPTY_REQUIRED)
+                    verified=verify_candidate_snapshot(prior,path,preview['source_counts']) if populated else None
+                migrated={'copied':preview['source_counts'],'aggregate_checks':{'resume_verification':verified}} if populated else migrate(path,True)
+            else:migrated=migrate(path,True)
             with psycopg.connect(**cfg,autocommit=True,options='-c client_encoding=UTF8') as source, psycopg.connect(**postgres.settings(),autocommit=True,options='-c client_encoding=UTF8') as target:
                 with source.transaction():
                     source.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
@@ -171,9 +205,9 @@ def main():
     try:
         mode=os.getenv('RESTORE_MODE','check_connection')
         result=connection_check()
-        if mode=='restore_candidate':
+        if mode in ('restore_candidate','resume_candidate'):
             if os.getenv('RESTORE_CONFIRM')!='RESTORE_SEPARATE_DATABASE':raise ValueError('EXPLICIT_RESTORE_CONFIRMATION_REQUIRED')
-            result=prepare(os.environ['UPLOAD_ID'],int(os.environ['TOTAL_CHUNKS']),os.environ['EXPECTED_SHA256'])
+            result=prepare(os.environ['UPLOAD_ID'],int(os.environ['TOTAL_CHUNKS']),os.environ['EXPECTED_SHA256'],resume=mode=='resume_candidate')
         elif mode!='check_connection':raise ValueError('INVALID_MODE')
         print(json.dumps(result))
     except ValueError as exc:

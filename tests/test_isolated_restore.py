@@ -73,3 +73,30 @@ def test_explicit_database_override_is_validated_without_weakening_tls(monkeypat
     assert settings()['dbname']=='psx_restore_candidate_test'
     monkeypatch.setenv('PSX_POSTGRES_DATABASE','bad; DROP DATABASE')
     with pytest.raises(RuntimeError,match='valid lowercase'):settings()
+
+
+def test_bulk_merge_uses_bounded_target_statements_for_many_rows(pair):
+    from tools.prepare_isolated_restore import merge_live
+    s,t=pair
+    with s.cursor().copy('COPY equity_ohlcv(trade_date,symbol,close,volume) FROM STDIN') as copy:
+        for i in range(5000):copy.write_row(('2026-10-23','TEST'+str(i),100,10))
+    class Counted:
+        def __init__(self,raw):self.raw=raw;self.calls=0
+        def execute(self,*args,**kw):self.calls+=1;return self.raw.execute(*args,**kw)
+        def cursor(self,*args,**kw):return self.raw.cursor(*args,**kw)
+    counted=Counted(t)
+    with s.transaction(),t.transaction():result=merge_live(s,counted,['equity_ohlcv'])
+    assert result['equity_ohlcv']['final_rows']==5000
+    assert counted.calls<20
+
+
+def test_resume_checks_totals_before_reconciliation(pair,tmp_path):
+    import sqlite3,gzip
+    from tools.prepare_isolated_restore import verify_candidate_snapshot
+    _,target=pair
+    original=tmp_path/'snapshot.db'
+    c=sqlite3.connect(original);c.execute('CREATE TABLE equity_ohlcv(volume INTEGER)');c.execute('INSERT INTO equity_ohlcv VALUES (10)');c.commit();c.close()
+    compressed=tmp_path/'snapshot.db.gz';compressed.write_bytes(gzip.compress(original.read_bytes()))
+    target.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES ('2026-10-23','TEST',100,11)")
+    with pytest.raises(ValueError,match='RESUME_CANDIDATE_AGGREGATES_DIFFER_INSPECT_MANUALLY'):
+        verify_candidate_snapshot(target,compressed,{'equity_ohlcv':1})

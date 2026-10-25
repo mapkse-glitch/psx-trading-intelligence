@@ -5,13 +5,14 @@
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 213,
+    "passed": 215,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
     "browser_test": "v1.3.14 desktop/mobile smoke passed; v1.3.15 production verification pending",
     "isolated_full_snapshot_restore_tested": true,
-    "production_isolated_restore_tested": false
+    "production_isolated_restore_tested": false,
+    "bulk_and_interrupted_restore_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -23,8 +24,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 28977,
-      "sha256": "6b54ec243c79813414791d9e82aedc26e3aca4611789489c9c53d3171bed1beb"
+      "bytes": 29689,
+      "sha256": "7aad4ef8e8f850e896bfc4601b5bde607564dd7cc262099d7f08b001e86e1534"
     },
     "api/index.py": {
       "bytes": 29,
@@ -359,16 +360,16 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     },
     ".github/workflows/prepare-isolated-restore.yml": {
-      "bytes": 1741,
-      "sha256": "5b06baa3a2e99d75472a42d700a628f4891cc0052f849fbf95ddd240bcfc7441"
+      "bytes": 1759,
+      "sha256": "854431c6609386fe6ba789982c745dbd38d45dd68fdea55d2715ea3852fb663a"
     },
     "tools/prepare_isolated_restore.py": {
-      "bytes": 11914,
-      "sha256": "60b9709a0cd8168bf25c2dfba16e7826e6c3d0d2b3b38c2eaa5d5ca513ccfdb6"
+      "bytes": 15352,
+      "sha256": "edb9052e1bc2cfca548d62b5b869a78fcb83fdc10ff0552046dbcc82513f5b5f"
     },
     "tests/test_isolated_restore.py": {
-      "bytes": 5066,
-      "sha256": "c785f4e83c4a2e3092a60ac1f6ca4ec3cb3b69da422b887b7c3b8b3df210203b"
+      "bytes": 6580,
+      "sha256": "0af8ce6950f5d55663ec214fa9beff0d1b5e371cf8a9093d6780366db7c5b47b"
     }
   }
 }
