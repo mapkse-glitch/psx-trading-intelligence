@@ -14,7 +14,8 @@
     "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true,
     "volume_direct_labels_and_read_only_storage_audit_tested": true,
-    "guarded_storage_cleanup_tested": true
+    "guarded_storage_cleanup_tested": true,
+    "production_guarded_storage_cleanup_verified": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -26,8 +27,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 39731,
-      "sha256": "c9621a26956589cab5f6e59cfc7bffae0f60fb7eec6a90f4871fb9c276035334"
+      "bytes": 41094,
+      "sha256": "9d8465542f26d2ff4b1a916e57d0bd0aa930d11cb14352fe79faa86aeff6cd63"
     },
     "api/index.py": {
       "bytes": 29,

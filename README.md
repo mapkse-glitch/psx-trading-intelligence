@@ -471,3 +471,10 @@ The maintenance action is deliberately scoped to the completed snapshot restorat
 6. Extrapolate to the actual remaining historical sessions, reserve at least 25–30% service-disk headroom for staging/WAL/maintenance and daily additions, then decide whether to proceed in small yearly/monthly batches. Keep USB originals; do not sacrifice exact prices or daily resolution to fit a guessed compression ratio.
 
 Maintenance regression suite: **224 passed, 34 skipped**; synthetic tests exercise preview/no-write behavior, exact-index mismatch refusal, preservation of unrelated staging and financial rows, unique-key enforcement after index removal, confirmation gating and repeat safety.
+
+
+#### Completed cleanup baseline
+
+The guarded production cleanup completed successfully: [workflow run 40168863586](https://github.com/mapkse-glitch/psx-trading-intelligence/actions/runs/40168863586). Two full-SHA-verified migration-upload copies (85,919,596 payload bytes across 492 staging pieces) and the exact redundant price index were removed. A normal staging vacuum reclaimed additional table/TOAST overhead. Combined database size fell by **147,857,408 bytes (147.86 MB)**: active database **330,274,495 → 270,980,799 bytes**; retained rollback database **101,643,967 → 13,080,255 bytes**. This is database-size reduction, not a measurement of Aiven service-level WAL/shared-disk usage.
+
+The unique price constraint and reverse-order lookup index were preserved. Canonical counts and account totals matched before/after; independent live API checks also matched complete account-summary-row digests for both accounts. Health, ten-row symbol/index comparison and all 36 watchlist stocks passed after cleanup. No historical prices or account records were deleted and the rollback database remains available. **The one-month 2016–2018 capacity pilot has not been performed: it requires a supplied historical month.** Use the baseline above only while no unrelated imports have intervened; otherwise obtain a fresh audit immediately before the pilot.
