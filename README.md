@@ -320,7 +320,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **220 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **224 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
@@ -448,3 +448,26 @@ Do not forecast retention using raw TXT/XLSX upload sizes. Parsed canonical rows
 Before importing 2016–2018, measure actual daily growth and inspect temporary staging, duplicate indexes and the retained rollback database. **Do not delete the rollback database without explicit approval and a verified recovery path.** Cleanup of deleted rows normally makes space reusable within tables; it does not guarantee that Aiven's disk gauge falls immediately. Avoid a blind `VACUUM FULL`: it locks/rebuilds the table and needs additional free disk. Keep headroom for imports and PostgreSQL maintenance. The free plan remains finite; no compression promise makes 1 GB unlimited.
 
 Official references: [PostgreSQL TOAST](https://www.postgresql.org/docs/current/storage-toast.html), [vacuuming and disk reclamation](https://www.postgresql.org/docs/current/routine-vacuuming.html), [Aiven free-tier limits](https://aiven.io/docs/products/postgresql/concepts/pg-free-tier).
+
+
+### Guarded cleanup and one-month historical capacity test
+
+The maintenance action is deliberately scoped to the completed snapshot restoration, not general deletion. It preserves both the active price/account history and the original rollback database.
+
+1. Pause imports while measuring. In GitHub Actions open **Guarded migration storage cleanup**, choose **main**, select **preview** and run. Review the result before proceeding.
+2. The tool reconnects to the restored candidate using the same existing secret host/CA credentials. It refuses an unexpected source selection or insufficient restored history. In the original staging database it considers only `chunk:migration-...` uploads older than 15 minutes, requires contiguous pieces and verifies the complete bytes against the restored snapshot SHA-256 and byte count. Unrelated, incomplete, recent or nonmatching uploads are preserved.
+3. To apply, run the same action with **cleanup** and confirmation `CLEAN_MIGRATION_UPLOADS_AND_DUPLICATE_INDEX`. No account values or credentials are logged. Only hash-verified upload pieces are deleted. A normal `VACUUM (ANALYZE)` targets the old staging table; `VACUUM FULL`, database deletion and history truncation are not used.
+4. The only index eligible for removal is `public.idx_eq_date_sym`. The action first validates that it is a valid nonunique, nonconstraint, non-replica-identity, nonclustered exact catalog match for the healthy retained unique B-tree `equity_ohlcv_trade_date_symbol_key` on `(trade_date,symbol)`, including ordering, operator classes, collations, predicate and expressions. It uses `DROP INDEX CONCURRENTLY`, outside a transaction. The unique constraint and reverse-order `(symbol,trade_date)` index remain. The PostgreSQL schema generator no longer recreates this redundant index.
+5. The result compares canonical table counts and account financial aggregates before/after, verifies the retained unique constraint, reports database sizes and confirms the rollback database remains. On failure, inspect the result before retrying: staging cleanup and concurrent index removal are separate committed steps, not one cross-database transaction. A rerun safely handles already-removed matching pieces and an absent duplicate index.
+6. Run **Verify connection and prepare isolated restore → inspect_storage** for a fresh read-only report. Aiven's service gauge may lag and includes WAL/shared overhead; reclaimed database bytes are not a promise of an identical immediate gauge change.
+
+**One-month test, before a bulk 2016–2018 import:**
+
+1. Provide one real calendar month of historical cash OHLCV for all available symbols, for example January 2016, with the original headers/symbols/dates and no invented records. If the workbook contains multiple years, extract only that month into a separate import file without changing values. Do not upload it to public GitHub; use the dashboard import center.
+2. Keep the post-cleanup `inspect_storage` result as the baseline. Record active database bytes and equity heap/index/total bytes. Do not use raw upload-file size as database growth.
+3. Stage the month through **Import and Update Center**. Verify detected cash schema, date range, accepted/new/revised/duplicate counts, then commit only that month. Stop on unexpected revisions or other months/modules.
+4. Verify prices for several symbols and account isolation. Re-run `inspect_storage` once the import has completed. Record the new canonical-row count from the committed import report and the number of distinct trading dates actually added.
+5. Calculate `additional_database_MB = (after_bytes - before_bytes) / 1,000,000`. Also compare equity table and index bytes; unrelated ongoing writes can affect whole-database growth. Divide the comparable increase by newly added trading sessions to obtain an observed per-session increment. Existing reusable pages can make an initial delta unusually small; treat one month as a pilot, not a guaranteed linear forecast.
+6. Extrapolate to the actual remaining historical sessions, reserve at least 25–30% service-disk headroom for staging/WAL/maintenance and daily additions, then decide whether to proceed in small yearly/monthly batches. Keep USB originals; do not sacrifice exact prices or daily resolution to fit a guessed compression ratio.
+
+Maintenance regression suite: **224 passed, 34 skipped**; synthetic tests exercise preview/no-write behavior, exact-index mismatch refusal, preservation of unrelated staging and financial rows, unique-key enforcement after index removal, confirmation gating and repeat safety.

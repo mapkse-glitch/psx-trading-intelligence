@@ -121,3 +121,62 @@ def test_storage_audit_is_read_only_and_reports_no_account_values(pair):
             s.execute('SET TRANSACTION READ ONLY')
             s.execute('DELETE FROM equity_ohlcv')
     assert s.execute('SELECT COUNT(*) FROM equity_ohlcv').fetchone()[0]==1
+
+
+def test_exact_duplicate_index_guard_rejects_a_different_index(pair):
+    from tools.maintain_postgres_storage import validate_duplicate
+    s,t=pair
+    t.execute('CREATE INDEX idx_eq_date_sym ON equity_ohlcv(trade_date,symbol)')
+    assert not validate_duplicate(t)['already_absent']
+    t.execute('DROP INDEX idx_eq_date_sym')
+    t.execute('CREATE INDEX idx_eq_date_sym ON equity_ohlcv(symbol,trade_date)')
+    with pytest.raises(ValueError,match='NOT_AN_EXACT_DUPLICATE'):validate_duplicate(t)
+    t.execute('DROP INDEX idx_eq_date_sym')
+    t.execute('CREATE INDEX idx_eq_date_sym ON equity_ohlcv(trade_date,symbol) WHERE volume>0')
+    with pytest.raises(ValueError,match='NOT_AN_EXACT_DUPLICATE'):validate_duplicate(t)
+
+
+def test_verified_cleanup_preserves_unrelated_staging_and_canonical_data(pair,monkeypatch):
+    import hashlib,time
+    from tools import maintain_postgres_storage as m
+    import psycopg
+    s,t=pair
+    s.execute('CREATE TABLE psx_blob_parts(scope TEXT,part BIGINT,data BYTEA,updated_at BIGINT,PRIMARY KEY(scope,part))')
+    payload=b'verified completed snapshot, synthetic fixture'
+    for prefix,body in [('migration-testcase01',payload),('migration-testcase02',payload),('migration-unrelated',b'x'*len(payload))]:
+        for idx,part in enumerate([body[:10],body[10:]]):
+            s.execute('INSERT INTO psx_blob_parts VALUES (%s,0,%s,%s)',(f'chunk:{prefix}:{idx}',part,int(time.time())-3600))
+    s.execute("INSERT INTO psx_blob_parts VALUES ('stage:keep-this-import',0,%s,%s)",(b'unrelated',int(time.time())-3600))
+    t.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES ('2026-10-22','ATRL',123.45,456)")
+    t.execute("INSERT INTO account_daily_symbol_summary(account_id,trade_date,symbol,gross_pnl,net_pnl,total_charges,updated_at) VALUES ('91404','2026-10-22','ATRL',123,120,3,'2026')")
+    t.execute('CREATE INDEX idx_eq_date_sym ON equity_ohlcv(trade_date,symbol)')
+    monkeypatch.setattr(m,'settings',lambda:{'conninfo':s.info.dsn,'sslmode':'disable'})
+    monkeypatch.setattr(m,'CANDIDATE',t.info.dbname)
+    monkeypatch.setattr(m,'SHA',hashlib.sha256(payload).hexdigest());monkeypatch.setattr(m,'SIZE',len(payload));monkeypatch.setattr(m,'MIN_PRICE_ROWS',1)
+    preview=m.maintain()
+    assert preview['status']=='CLEANUP_PREVIEW_ONLY' and preview['matching_completed_migration_uploads']==2
+    assert s.execute('SELECT COUNT(*) FROM psx_blob_parts').fetchone()[0]==7
+    result=m.maintain(True,m.CONFIRM)
+    assert result['staging_pieces_deleted']==4 and result['redundant_index_removed']
+    assert result['canonical_counts_and_account_totals_unchanged'] and result['rollback_database_retained']
+    assert s.execute('SELECT COUNT(*) FROM psx_blob_parts').fetchone()[0]==3
+    assert t.execute('SELECT close FROM equity_ohlcv').fetchone()[0]==123.45
+    assert t.execute('SELECT net_pnl FROM account_daily_symbol_summary').fetchone()[0]==120
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        t.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close) VALUES ('2026-10-22','ATRL',999)")
+    again=m.maintain(True,m.CONFIRM)
+    assert again['staging_pieces_deleted']==0 and not again['redundant_index_removed']
+
+
+def test_cleanup_requires_explicit_confirmation_before_connecting(monkeypatch):
+    from tools import maintain_postgres_storage as m
+    monkeypatch.setattr(m,'settings',lambda:pytest.fail('Should not connect'))
+    with pytest.raises(ValueError,match='EXPLICIT_CLEANUP_CONFIRMATION_REQUIRED'):m.maintain(True,'')
+
+
+def test_postgres_schema_does_not_recreate_duplicate_price_index():
+    from psx_app.database.postgres import schema_sql
+    statements=schema_sql()
+    assert not any('idx_eq_date_sym' in x for x in statements)
+    assert any('UNIQUE(trade_date, symbol)' in x for x in statements)
+    assert any('idx_eq_sym_date' in x for x in statements)

@@ -1,0 +1,37 @@
+name: Guarded migration storage cleanup
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview first; cleanup targets verified migration uploads and one exact duplicate index
+        type: choice
+        options: [preview, cleanup]
+        default: preview
+        required: true
+      confirm:
+        description: For cleanup type CLEAN_MIGRATION_UPLOADS_AND_DUPLICATE_INDEX
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: psx-postgres-migration
+  cancel-in-progress: false
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PSX_DATABASE_BACKEND: postgres
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+      STORAGE_MODE: ${{ inputs.mode }}
+      STORAGE_CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'psycopg[binary]==3.2.12'
+      - name: Verify or clean bounded migration-only storage
+        run: python -m tools.maintain_postgres_storage

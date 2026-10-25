@@ -5,7 +5,7 @@
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 220,
+    "passed": 224,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": true,
@@ -13,7 +13,8 @@
     "isolated_full_snapshot_restore_tested": true,
     "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true,
-    "volume_direct_labels_and_read_only_storage_audit_tested": true
+    "volume_direct_labels_and_read_only_storage_audit_tested": true,
+    "guarded_storage_cleanup_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -25,8 +26,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 35127,
-      "sha256": "c893f2019345d3caca65263f9d653e90b860f8b282d591e04af132761bc34f91"
+      "bytes": 39731,
+      "sha256": "c9621a26956589cab5f6e59cfc7bffae0f60fb7eec6a90f4871fb9c276035334"
     },
     "api/index.py": {
       "bytes": 29,
@@ -53,8 +54,8 @@
       "sha256": "bb7886acfb2b8e212a4c5955890d0dfc14daecf34b4fac99a6e04792054ee37c"
     },
     "psx_app/database/postgres.py": {
-      "bytes": 12768,
-      "sha256": "58fe8213ca39b7fff6346459108a77ea21ff64be5ca7cbc392bfe203680cb282"
+      "bytes": 12934,
+      "sha256": "3521dfdc0882551fab6cc8ce6228ec4c2d28577b893c95c3611c5d7e7b551eff"
     },
     "psx_app/database/repository.py": {
       "bytes": 8543,
@@ -369,8 +370,8 @@
       "sha256": "d390d1838d3908e4f66f58a86d1503b2a684bbb97a9b40f41a9ba3a65d6bc7f2"
     },
     "tests/test_isolated_restore.py": {
-      "bytes": 7570,
-      "sha256": "d7df2cddef2ad30101731b1efa523cdcc69c3f30a7d33c16bbe7da81b7d785b2"
+      "bytes": 11432,
+      "sha256": "6ce90ef6fcc4d6bd4d51927873b0f62c72491f9deba5beeeb1076a05eab240c1"
     },
     "tools/inspect_postgres_storage.py": {
       "bytes": 3320,
@@ -379,6 +380,14 @@
     "tests/test_volume_charts.py": {
       "bytes": 2644,
       "sha256": "2adef94704cd956e7cdc1f8064ae5a05cf0434a8f6e186290cf1529333f8cc91"
+    },
+    "tools/maintain_postgres_storage.py": {
+      "bytes": 9248,
+      "sha256": "fd6c4909cea090e5c68347b38cb95821cfac19156d8f2ba3d43b5a610e5f269e"
+    },
+    ".github/workflows/storage-maintenance.yml": {
+      "bytes": 1148,
+      "sha256": "b4aa5b9293d34026e7875418fe4ed710fc38d69191e8acc71bda2de299fe87f2"
     }
   }
 }
