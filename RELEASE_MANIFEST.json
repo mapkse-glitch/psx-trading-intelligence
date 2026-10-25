@@ -8,10 +8,10 @@
     "passed": 215,
     "skipped": 34,
     "warnings": 1,
-    "live_aiven_tested": false,
-    "browser_test": "v1.3.14 desktop/mobile smoke passed; v1.3.15 production verification pending",
+    "live_aiven_tested": true,
+    "browser_test": "v1.3.15 restored production overview, technical analysis and market explorer smoke passed; targeted live API and account-value acceptance passed",
     "isolated_full_snapshot_restore_tested": true,
-    "production_isolated_restore_tested": false,
+    "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true
   },
   "files": {
@@ -24,8 +24,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 29689,
-      "sha256": "7aad4ef8e8f850e896bfc4601b5bde607564dd7cc262099d7f08b001e86e1534"
+      "bytes": 32524,
+      "sha256": "98a0e8226b062295b0648a2fb39116829761a48e4584dd7fec405f63120876ee"
     },
     "api/index.py": {
       "bytes": 29,

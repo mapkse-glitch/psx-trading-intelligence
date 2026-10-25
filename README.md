@@ -320,7 +320,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **209 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **215 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
@@ -419,3 +419,19 @@ The storage check is a conservative estimate, not a guarantee of provider disk c
 Restore maintenance validation: **215 tests passed, 34 skipped, one dependency deprecation warning**. A complete 731,806-row cash-price snapshot was also restored into a disposable PostgreSQL candidate alongside a synthetic newer live record; final cash count was 731,807 and the source database remained unchanged. These are isolated test results, not a claim that production restoration has completed.
 
 Bulk restore maintenance: live rows are reconciled through temporary-table COPY and set-based upserts, with bounded SQL statements per table instead of network requests per row. A 5,000-row test checks the target uses fewer than 20 statements. After an operator-confirmed cancelled run, `resume_candidate` may be selected with the same explicit confirmation: it refuses if existing candidate counts or available volume/financial sums differ from the original snapshot. An entirely empty candidate can use the original empty-target copy. A previously merged candidate is not blindly merged again. Both fresh and interrupted full-snapshot paths were tested on disposable PostgreSQL; the source remains read-only.
+
+
+### Completed production restoration and acceptance
+
+The supplied compressed SQLite snapshot was restored into a separate database in the existing Aiven service, then reconciled with newer live imports. Original `defaultdb` was retained unchanged for rollback. No financial snapshot was uploaded to a GitHub release, artifact or source commit during this restore.
+
+- Successful restore job: https://github.com/mapkse-glitch/psx-trading-intelligence/actions/runs/40165536178
+- Active Vercel Production selection: `PSX_POSTGRES_DATABASE=psx_restore_64b36a85534e`, using the existing `DATABASE_URL` and `DATABASE_CA_CERT`. No additional paid service was created. The existing free-plan storage and resource limits still apply.
+- Verified live counts: 731,806 cash-price rows across 766 symbols; 6,668 futures rows; 2,425 index rows; 5,380 Top 5 rows; 506 raw executions and 331 account daily-symbol summaries.
+- Price snapshot coverage ends **22 October 2026**; newer Top 5 and account 91404 imports through **23 October 2026** were preserved. Account 91269 history ends 19 October. Import later files normally to extend coverage; missing dates were not invented.
+- Every restored account summary was checked against the old-snapshot/newer-live business-key union: 264 rows for 91404 and 67 for 91269. Buy/sell quantities and values, gross/net P&L, commission, SST and charges matched. Live rows take precedence on matching keys.
+- Live API checks passed for health, overview, both accounts, ATRL symbol/index records, all 36 watchlist symbols and ATRL automated analysis. Browser smoke checks passed for overview, technical analysis and market explorer without reported JavaScript errors. These are targeted acceptance checks, not a claim every possible user interaction was exhaustively tested.
+
+Observed live HTTPS request durations from one verification client (seconds, first/repeat): overview 0.359/0.257; account 91404 0.681/0.679; account 91269 0.595/0.441; ATRL market comparison 0.931/0.390; Core 36 5.977/0.424; ATRL automated analyst 2.237/0.218. These are point-in-time measurements, not latency guarantees or a controlled before/after speed comparison.
+
+**What to do next:** reload the dashboard and inspect both accounts. Continue importing later daily files through Import and Update Center; preview and commit normally. Keep your USB originals. Do not rerun the completed one-time restore. Keep the previous database until satisfied with the restored history. GitHub Actions credentials still select their own database independently; before future maintenance, point Actions at the intended database (the existing Actions URI still names the previous database). To roll back production selection, remove `PSX_POSTGRES_DATABASE` in Vercel Production and redeploy. Removing that variable does not delete either database.
