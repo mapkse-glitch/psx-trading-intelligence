@@ -90,8 +90,8 @@ const VIEW_TITLES = {
   overview: "Overview",
   import: "02 • Import and Update Center",
   top5: "03 • Top 5 Volume & Rate Register",
-  acc91404: "04 • Account 91404 Performance (THM00601)",
-  acc91269: "05 • Account 91269 Performance (THM00601)",
+  acc91404: "04 • Account 91404 Performance",
+  acc91269: "05 • Account 91269 Performance",
   futures: "06 • Futures Comparison & Annualized Analysis",
   technical: "07 • Technical Analysis, Setup Generator & 36-Ticker",
   reconciliation: "08 • Data Quality & Legacy Reconciliation",
@@ -213,7 +213,7 @@ async function switchView(view) {
   document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || "Dashboard";
   const previous = document.getElementById("viewContainer");
   const container = document.createElement('div');
-  container.id = 'viewContainer'; container.className = 'view-container'; container.tabIndex = -1;
+  container.id = 'viewContainer'; container.className = 'view-container'; container.tabIndex = -1; container.dataset.view = view;
   container.innerHTML = '<p class="loading" role="status">Loading workspace…</p>';
   previous.replaceWith(container);
 
@@ -1192,6 +1192,7 @@ async function renderAccountView(container, accountId) {
     ["daily_summary", `Daily Summary (${tDates.length}d)`],
     ["daily_detail", `Daily Detail (${fmtDate(rep.selected_date)})`],
     ["mtd_qtd_ytd", "MTD / QTD / YTD"],
+    ["weekly_summary", "Weekly Summary"],
     ["monthly_yearly", "Monthly & Yearly Summary"],
     ["symbol_perf", `Symbol Performance (${rep.symbol_performance.length})`],
     ["trade_log", `Trade Log (${rep.trade_log.length})`],
@@ -1449,6 +1450,53 @@ async function renderAccountView(container, accountId) {
         </div>
       </div>
     `).join("")}`;
+  } else if (activeTab === "weekly_summary") {
+    const mTot = rep.weekly_summary.total;
+    bodyHtml = `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Weekly Summary — Week-Wise Performance (Account ${accountId})</div>
+            <div class="card-subtitle">Monday–Sunday (ISO weeks) • Latest week first • Partial weeks use imported records only</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Week / Calendar range</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+            </thead>
+            <tbody>
+              ${TableDisplay.newestFirst(rep.weekly_summary.rows, r => r.week_start).map((r) => `
+                <tr>
+                  <td><b>${escapeHtml(r.week_label)}</b><br>${fmtDate(r.week_start)} – ${fmtDate(r.week_end)}<br><small>Records: ${fmtDate(r.first_date)} – ${fmtDate(r.last_date)}</small></td><td class="num">${r.trading_days}</td>
+                  <td class="num">${fmtInt(r.buy_qty)}</td><td class="num">${fmtNum(r.buy_value)}</td><td class="num">${fmtNum(r.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(r.sell_qty)}</td><td class="num">${fmtNum(r.sell_value)}</td><td class="num">${fmtNum(r.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(r.price_diff)}">${fmtNum(r.price_diff)}</td><td class="num">${fmtInt(r.net_qty)}</td>
+                  <td class="num ${pnlClass(r.gross_pnl)}">${fmtNum(r.gross_pnl)}</td>
+                  <td><span class="badge badge-blue">${r.commission_slab_label}</span></td>
+                  <td class="num">${fmtNum(r.commission_amount)}</td><td class="num">${fmtNum(r.sst_amount)}</td>
+                  <td class="num">${fmtNum(r.total_charges)}</td>
+                  <td class="num ${pnlClass(r.net_pnl)}">${fmtNum(r.net_pnl)}</td>
+                  <td class="num ${pnlClass(r.return_on_buy)}">${fmtPct(r.return_on_buy)}</td>
+                </tr>
+              `).join("")}
+              ${mTot ? `
+                <tr class="total-row">
+                  <td>TOTAL</td><td class="num">${mTot.trading_days}</td>
+                  <td class="num">${fmtInt(mTot.buy_qty)}</td><td class="num">${fmtNum(mTot.buy_value)}</td><td class="num">${fmtNum(mTot.avg_buy_price)}</td>
+                  <td class="num">${fmtInt(mTot.sell_qty)}</td><td class="num">${fmtNum(mTot.sell_value)}</td><td class="num">${fmtNum(mTot.avg_sell_price)}</td>
+                  <td class="num ${pnlClass(mTot.price_diff)}">${fmtNum(mTot.price_diff)}</td><td class="num">${fmtInt(mTot.net_qty)}</td>
+                  <td class="num ${pnlClass(mTot.gross_pnl)}">${fmtNum(mTot.gross_pnl)}</td><td>—</td>
+                  <td class="num">${fmtNum(mTot.commission_amount)}</td><td class="num">${fmtNum(mTot.sst_amount)}</td>
+                  <td class="num">${fmtNum(mTot.total_charges)}</td>
+                  <td class="num ${pnlClass(mTot.net_pnl)}">${fmtNum(mTot.net_pnl)}</td>
+                  <td class="num ${pnlClass(mTot.return_on_buy)}">${fmtPct(mTot.return_on_buy)}</td>
+                </tr>` : ""}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
   } else if (activeTab === "monthly_yearly") {
     const mTot = rep.monthly_summary.total;
     const yTot = rep.yearly_summary.total;
@@ -2104,6 +2152,7 @@ async function renderTechnicalLegacy(container) {
 
     bodyHtml = `
       <div class="filter-bar">
+        <div class="filter-group"><label for="screenerScope">Universe</label><select id="screenerScope" onchange="state.technical.subtab=this.value;renderTechnicalView(document.getElementById('viewContainer'))"><option value="core36" ${scope==='core36'?'selected':''}>Core 36 watchlist</option><option value="all531" ${scope==='all'?'selected':''}>All stocks</option></select></div>
         <div class="filter-group">
           <label>Search Ticker:</label>
           <input type="text" id="uniSearchInput" value="${t.search}" placeholder="Type full symbol freely — filters live, never auto-enters (e.g. ATRL, MLCF or MLF)..." style="width:230px;" oninput="onUniverseSearchInput(this.value)" />
@@ -2828,8 +2877,8 @@ function enhanceWorkspace() {
   });
   root.querySelectorAll('.table-wrap').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label','Scrollable data table');});
   root.querySelectorAll('table:not(.table-wrap table)').forEach(table=>{
-    if (table.querySelector('#set_slab1_upper')) {table.classList.add('settings-table');return;}
-    const wrapper=document.createElement('div');wrapper.className='table-wrap';table.replaceWith(wrapper);wrapper.append(table);
+    if (table.querySelector('#set_slab1_upper')) table.classList.add('settings-table');
+    const wrapper=document.createElement('div');wrapper.className='table-wrap';wrapper.tabIndex=0;wrapper.setAttribute('role','region');wrapper.setAttribute('aria-label','Scrollable data table');table.replaceWith(wrapper);wrapper.append(table);
   });
   root.querySelectorAll('table.data-table thead th').forEach(th=>th.setAttribute('scope','col'));
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);

@@ -1,5 +1,5 @@
 from psx_app.services.result_cache import persisted_result
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -216,7 +216,7 @@ class AccountService:
     def get_account_report(self, account_id: str, selected_date: Optional[str] = None) -> Dict[str, Any]:
         """
         Return full isolated report for a single account (91404 or 91269):
-        Dashboard, Daily Summary, Daily Detail by Date, MTD, QTD, YTD, Monthly Summary,
+        Dashboard, Daily Summary, Daily Detail by Date, MTD, QTD, YTD, Weekly Summary, Monthly Summary,
         Yearly Summary, Symbol Performance, Trade Log, Settings, Data Checks, Import Audit.
         """
         if account_id not in AUTHORIZED_ACCOUNTS:
@@ -263,6 +263,7 @@ class AccountService:
             ]
 
         by_date: Dict[str, List[Dict[str, Any]]] = {}
+        by_week: Dict[str, List[Dict[str, Any]]] = {}
         by_month: Dict[str, List[Dict[str, Any]]] = {}
         by_year: Dict[str, List[Dict[str, Any]]] = {}
         by_symbol: Dict[str, List[Dict[str, Any]]] = {}
@@ -271,6 +272,9 @@ class AccountService:
             d = r["trade_date"]
             m = d[:7]  # YYYY-MM
             y = d[:4]  # YYYY
+            day = date.fromisoformat(d)
+            monday = (day - timedelta(days=day.weekday())).isoformat()
+            by_week.setdefault(monday, []).append(r)
             by_date.setdefault(d, []).append(r)
             by_month.setdefault(m, []).append(r)
             by_year.setdefault(y, []).append(r)
@@ -285,6 +289,17 @@ class AccountService:
             for d in available_dates
         ]
         daily_total = self._aggregate_rows(sym_rows, "trade_date", "TOTAL", slab2_start) if sym_rows else None
+
+        weekly_summary = []
+        for monday, rows in sorted(by_week.items()):
+            start = date.fromisoformat(monday)
+            iso = start.isocalendar()
+            summary = self._aggregate_rows(rows, "week_start", monday, slab2_start)
+            summary.update(week_end=(start + timedelta(days=6)).isoformat(),
+                           iso_year=iso.year, iso_week=iso.week,
+                           week_label=f"{iso.year}-W{iso.week:02d}")
+            weekly_summary.append(summary)
+        weekly_total = self._aggregate_rows(sym_rows, "week_start", "TOTAL", slab2_start) if sym_rows else None
 
         monthly_summary = [
             self._aggregate_rows(by_month[m], "month", f"{m}-01", slab2_start)
@@ -427,6 +442,8 @@ class AccountService:
             "qtd_summary": {**qtd_summary, **qtd_period},
             "ytd_summary": {**ytd_summary, **ytd_period},
             "monthly_summary": {"rows": monthly_summary, "total": monthly_total},
+            "weekly_summary": {"rows": weekly_summary, "total": weekly_total,
+                               "definition": "ISO calendar week: Monday–Sunday; imported trading records only, including partial weeks."},
             "yearly_summary": {"rows": yearly_summary, "total": yearly_total},
             "symbol_performance": symbol_performance,
             "symbol_performance_total": symbol_performance_total,

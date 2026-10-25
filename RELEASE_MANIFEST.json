@@ -1,21 +1,24 @@
 {
-  "version": "1.3.15",
+  "version": "1.3.16",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 224,
+    "passed": 231,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": true,
-    "browser_test": "v1.3.15 restored production overview, technical analysis and market explorer smoke passed; targeted live API and account-value acceptance passed",
+    "browser_test": "v1.3.16 local Chromium: both weekly account tabs, sticky/internal table scroll, 390px mobile overflow, print, screener scopes, diagnostics, scoped Futures text; no page errors. Production verification follows deployment.",
     "isolated_full_snapshot_restore_tested": true,
     "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true,
     "volume_direct_labels_and_read_only_storage_audit_tested": true,
     "guarded_storage_cleanup_tested": true,
-    "production_guarded_storage_cleanup_verified": true
+    "production_guarded_storage_cleanup_verified": true,
+    "weekly_account_summaries_and_exports_tested": true,
+    "sticky_tables_mobile_print_tested": true,
+    "batched_index_and_selective_invalidation_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -27,8 +30,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 41094,
-      "sha256": "9d8465542f26d2ff4b1a916e57d0bd0aa930d11cb14352fe79faa86aeff6cd63"
+      "bytes": 46391,
+      "sha256": "1d9746b8fcf86bcf0facaee293a2d7602d792a0bb1f64f99003107fd46a24481"
     },
     "api/index.py": {
       "bytes": 29,
@@ -76,7 +79,7 @@
     },
     "psx_app/main.py": {
       "bytes": 45843,
-      "sha256": "e865378e97de3d14a4f1c85b452c0fa5b185fbce542bfcc119faf0fa1c35c79d"
+      "sha256": "d97de2f8a40d8e9d271b3c43bf4ca8d92dfed05c1a633bae35573a7727af0bfe"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -111,8 +114,8 @@
       "sha256": "ad760023386ff025ecf3d636014f3e8b9e7ecc341caa7520c6efe8b72bf8b221"
     },
     "psx_app/services/account_service.py": {
-      "bytes": 22164,
-      "sha256": "0e34350599c169bed9e0f967d91f798d77ffa0744722f51efe56774cc573e400"
+      "bytes": 23251,
+      "sha256": "9dfeb96d4b2555b29aa94881a3cbd26aa78573764f29623df6f2032d2056ea5c"
     },
     "psx_app/services/backup_service.py": {
       "bytes": 8328,
@@ -135,8 +138,8 @@
       "sha256": "d729f5ffa753cb1c9054120618970dfe8c3c896b92809083b36117ca35709593"
     },
     "psx_app/services/export_service.py": {
-      "bytes": 55600,
-      "sha256": "f3648590d8ca4f8fdb27cb0e445ab4122aa9cf0011f3fca1f58ed6749371e1e5"
+      "bytes": 55859,
+      "sha256": "2058678757f7041c4734c5704955c222aecb691d9c784b1b28bba75bef181f09"
     },
     "psx_app/services/forecast_ledger.py": {
       "bytes": 10213,
@@ -155,8 +158,8 @@
       "sha256": "8e4c3452440fc390f769f4970c55b2a1728faf12fac9424113f7b8969a478b40"
     },
     "psx_app/services/import_orchestrator.py": {
-      "bytes": 49643,
-      "sha256": "3ca150a02e1c689d75d792a52e61bb3ed869740c182e0839cee8eebdee34049c"
+      "bytes": 49670,
+      "sha256": "d86e2f6cfc7377226f6c2984ddba972f9f20d0e3e0f20e20a78519320aa0893a"
     },
     "psx_app/services/intelligence_service.py": {
       "bytes": 31481,
@@ -188,7 +191,7 @@
     },
     "psx_app/services/result_cache.py": {
       "bytes": 2578,
-      "sha256": "9a197910e8a4370905f58eb7a537eb3fd32725bd464d752c9ddd9d6a48ecf330"
+      "sha256": "f588fe926e10ece17415af837fd597eff71298ee41101a797f0e4eb0e9918ad9"
     },
     "psx_app/services/sector_reference.py": {
       "bytes": 5072,
@@ -211,8 +214,8 @@
       "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75"
     },
     "psx_app/static/app.js": {
-      "bytes": 176936,
-      "sha256": "3edf5cf3c3369f91abc0cd10fcc537491ba3f4618adcc5ac53126581681276a7"
+      "bytes": 181176,
+      "sha256": "003181bf39a9b1956cc641527e22a7948c1b4050ce22653f0fd1a77cff7840cd"
     },
     "psx_app/static/display1311.js": {
       "bytes": 3187,
@@ -220,19 +223,19 @@
     },
     "psx_app/static/index.html": {
       "bytes": 5235,
-      "sha256": "4928021b9159e6b2250a9aa44221a91ec73187f97396c5ac244739bd2d220625"
+      "sha256": "f81e99f1a19902f3c8d45d448f349a0485175d39c2acab440c056266ade01320"
     },
     "psx_app/static/styles.css": {
-      "bytes": 35211,
-      "sha256": "ce7cad1e6a2add8175a35a185d4fb9eaf2b2780b990f2b82d9cb460d6205c298"
+      "bytes": 36258,
+      "sha256": "f1889d1787045ac6e8996b44d56af612398518822f99a9f5009acbca4d61bc44"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 39825,
-      "sha256": "d820f65ae979dcbc3b9461455d99318b62e614132ac504c3bc90563e10028a1d"
+      "bytes": 40847,
+      "sha256": "4713de638143fce1585a8c797914764433b5b401c48b3097be843f2d2c53ef10"
     },
     "psx_app/upgrade_routes.py": {
       "bytes": 3327,
@@ -300,27 +303,27 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "54ad932631a33df6281d93b6bd9f9c20101c20a7e3b26e8c9f70134dfa4ad61c"
+      "sha256": "01c7893b2128f2cd0bb2915b7d383ed8cefbc59b420d8f5f2b197ecfb543d1ec"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "bf0b25e80df0b58f6df1b8c6a8d3eb3a372bfda1ad7609b310514f5d817be4be"
+      "sha256": "1c773176b5a4a543a67c5be01a26497befb4285591de029b0e5fbf9588e3303c"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "5623b343d52ca17d83c168f586c55b6beed512d73c556fe7e3def6c783ce34cb"
+      "sha256": "752982acaeef4681990baf81e929a7070cac5946f7e9b217d965492b598f4bb9"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "f55481ad1b45b731889c2cc21786c3d3ce0001f03ad6cab8ddb6a13316d15a19"
+      "sha256": "4bfd96f69c881cc52896883fc656e9358ed48e16cdb55eac4a6f2259c99380f3"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
       "sha256": "acad6b08eb53fb71b72c335d1e045abc14ed55415fbc88dd9da078925d2378b2"
     },
     "tests/test_v1314_postgres.py": {
-      "bytes": 27281,
-      "sha256": "b879dc286015365f6a0ff686b0635aaa1daad6c6ddab7a55341bddbe8ce44e37"
+      "bytes": 30130,
+      "sha256": "74231cf5bc87dd3f6aba329c54898bc0c1a148ac0875147ec0bed8eaa650a8e1"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -389,6 +392,10 @@
     ".github/workflows/storage-maintenance.yml": {
       "bytes": 1148,
       "sha256": "b4aa5b9293d34026e7875418fe4ed710fc38d69191e8acc71bda2de299fe87f2"
+    },
+    "tests/test_v1316_weekly.py": {
+      "bytes": 4488,
+      "sha256": "dba40dedec6335d420f2c420d865cf8e2392407dbf14da525400fc7c5de8d957"
     }
   }
 }

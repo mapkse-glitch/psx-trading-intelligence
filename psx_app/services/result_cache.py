@@ -22,7 +22,7 @@ def persisted_result(fn):
         from psx_app.database.schema import get_connection
         bound=sig.bind(*args,**kwargs);bound.apply_defaults()
         values={k:v for k,v in bound.arguments.items() if k!='self'}
-        key=hashlib.sha256(json.dumps([fn.__module__,fn.__qualname__,values,'1.3.15',datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()],sort_keys=True,default=str).encode()).hexdigest()
+        key=hashlib.sha256(json.dumps([fn.__module__,fn.__qualname__,values,'1.3.16',datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()],sort_keys=True,default=str).encode()).hexdigest()
         path=getattr(args[0],'db_path',None) if args else None
         with get_connection(path) as c:
             rev=c.execute("SELECT value FROM psx_runtime WHERE key='revision'").fetchone()[0]

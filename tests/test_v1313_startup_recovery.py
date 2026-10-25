@@ -71,7 +71,7 @@ def test_lifespan_and_static_survive_failed_first_remote_read(monkeypatch):
     monkeypatch.setattr(main,'init_db',lambda *a:pytest.fail('remote DB must not run in lifespan'))
     with TestClient(main.app) as client:
         assert calls==[]
-        page=client.get('/');assert page.status_code==200 and '1.3.15' in page.text
+        page=client.get('/');assert page.status_code==200 and '1.3.16' in page.text
         assert client.get('/static/app.js').status_code in (200,404) # actual asset path is root /app.js
         assert client.get('/app.js').status_code==200
         health=client.get('/api/health');assert health.status_code==503

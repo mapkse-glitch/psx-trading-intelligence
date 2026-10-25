@@ -212,7 +212,7 @@ class ExportService:
         ws_d = wb.create_sheet("Dashboard")
         ws_d["A1"] = "Trading Performance Dashboard"
         ws_d["A1"].font = TITLE_FONT
-        ws_d["A2"] = f"Account {account_id} (THM00601) • Market FUT, Reg • Currency PKR • Generated {datetime.now(ZoneInfo('Asia/Karachi')).strftime('%d-%m-%Y %H:%M PKT')}"
+        ws_d["A2"] = f"Account {account_id} • Market FUT, Reg • Currency PKR • Generated {datetime.now(ZoneInfo('Asia/Karachi')).strftime('%d-%m-%Y %H:%M PKT')}"
         ws_d["A2"].font = SUBTITLE_FONT
         ws_d["A4"] = "Latest Trading Day:"
         ws_d["A4"].font = BOLD_FONT
@@ -422,8 +422,9 @@ class ExportService:
                     c2.number_format = fmt
             _auto_fit_columns(ws_p)
 
-        # 6 & 7. Monthly Summary & Yearly Summary
+        # Weekly, Monthly and Yearly summaries (same weighted financial calculations).
         for tab_title, obj_key, col1_name, key_field in [
+            ("Weekly Summary", "weekly_summary", "Week (Monday–Sunday)", "week_start"),
             ("Monthly Summary", "monthly_summary", "Month", "month"),
             ("Yearly Summary", "yearly_summary", "Year", "year"),
         ]:
@@ -446,7 +447,7 @@ class ExportService:
             r_i = 5
             for row in rep[obj_key]["rows"]:
                 vals = [
-                    row[key_field], row["buy_qty"], row["buy_value"],
+                    (f"{row['week_label']} | {row['week_start']} – {row['week_end']}" if obj_key == "weekly_summary" else row[key_field]), row["buy_qty"], row["buy_value"],
                     row["avg_buy_price"] if row["avg_buy_price"] is not None else "N/A",
                     row["sell_qty"], row["sell_value"],
                     row["avg_sell_price"] if row["avg_sell_price"] is not None else "N/A",
@@ -489,6 +490,7 @@ class ExportService:
                         cell.number_format = "#,##0.00"
                     elif c_i == 16 and isinstance(v, (int, float)):
                         cell.number_format = "0.00%"
+            ws_my.freeze_panes = "B5"
             _auto_fit_columns(ws_my)
 
         # 8. Symbol Performance Sheet

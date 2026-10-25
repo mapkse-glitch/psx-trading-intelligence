@@ -804,27 +804,20 @@ class ImportOrchestrator:
                                 to_insert_f,
                             )
                     elif mode == "INDEX":
+                        from psx_app.database.selected_rows import date_rows
+                        known_dates = {r["trade_date"] for r in date_rows(conn, "index_ohlcv", [r["trade_date"] for r in recs])}
+                        index_inserts = []
                         for r in recs:
-                            ex_i = conn.execute(
-                                "SELECT close FROM index_ohlcv WHERE trade_date = ?",
-                                (r["trade_date"],),
-                            ).fetchone()
-                            if ex_i is None:
-                                conn.execute(
-                                    """
-                                    INSERT INTO index_ohlcv (
-                                        trade_date, pr_close, open, high, low, close,
-                                        source_filename, source_file_id, batch_id
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                    """,
-                                    (
-                                        r["trade_date"], r["pr_close"], r["open"], r["high"],
-                                        r["low"], r["close"], r["source_filename"], sf_id, batch_id,
-                                    ),
-                                )
-                                actual_new += 1
-                            else:
+                            if r["trade_date"] in known_dates:
                                 actual_dups += 1
+                                continue
+                            known_dates.add(r["trade_date"])
+                            index_inserts.append((r["trade_date"], r["pr_close"], r["open"], r["high"], r["low"], r["close"], r["source_filename"], sf_id, batch_id))
+                            actual_new += 1
+                        if index_inserts:
+                            conn.executemany("""INSERT INTO index_ohlcv
+                                (trade_date, pr_close, open, high, low, close, source_filename, source_file_id, batch_id)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", index_inserts)
 
             for sql, values in queued.items():
                 conn.executemany(sql, values)
@@ -832,7 +825,10 @@ class ImportOrchestrator:
             if equity_updated:
                 # Unchanged symbols retain their full-history calculations.
                 # Corrections invalidate the entire affected symbol, not only its last day.
-                conn.executemany("DELETE FROM indicator_cache WHERE symbol=?", [(s,) for s in sorted(affected_equity_symbols)])
+                symbols = sorted(affected_equity_symbols)
+                for offset in range(0, len(symbols), 500):
+                    group = symbols[offset:offset + 500]
+                    conn.execute("DELETE FROM indicator_cache WHERE symbol IN (" + ",".join("?" for _ in group) + ")", group)
 
             updated_manifest = {
                 **manifest,

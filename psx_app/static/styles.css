@@ -1087,3 +1087,14 @@ input[type="date"] { min-height:44px; color-scheme:light; }
 .volume-chart139{overflow-x:auto;overscroll-behavior-x:contain;border-radius:8px}.volume-chart139:focus-visible{outline:2px solid #3B82F6;outline-offset:3px}.volume-donut139,.volume-columns139{min-width:480px}.donut-label139{pointer-events:none}
 
 .grid-2.volume-charts139{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:20px}
+
+/* Bounded, keyboard-scrollable tables; headings remain visible inside each table. */
+.table-wrap{max-height:clamp(260px,60vh,620px);overflow:auto;position:relative;scrollbar-gutter:stable;overscroll-behavior:contain;isolation:isolate}
+.table-wrap thead{position:sticky;top:0;z-index:3;background:var(--bg-card,#152544)}
+.table-wrap thead th{background:var(--bg-card-alt,#152544);color:var(--text-main,#f1f5f9)}
+.table-wrap:focus-visible{outline:2px solid var(--accent,#60a5fa);outline-offset:2px}
+.view-container[data-view="futures"]{font-size:14px;line-height:1.5}
+.view-container[data-view="futures"] .data-table,.view-container[data-view="futures"] .data-table td{font-size:13.5px}
+.view-container[data-view="futures"] .data-table th{font-size:12.5px}
+.view-container[data-view="futures"] .card-subtitle,.view-container[data-view="futures"] .filter-group label{font-size:12.5px}
+@media print{.table-wrap{max-height:none!important;overflow:visible!important;scrollbar-gutter:auto}.table-wrap thead{position:static;display:table-header-group}}

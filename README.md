@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.15
+# PSX Intelligence v1.3.16
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -63,7 +63,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.15`. An empty database is expected before you import your data.
+   version `1.3.16`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -320,7 +320,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **224 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **231 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
@@ -478,3 +478,38 @@ Maintenance regression suite: **224 passed, 34 skipped**; synthetic tests exerci
 The guarded production cleanup completed successfully: [workflow run 40168863586](https://github.com/mapkse-glitch/psx-trading-intelligence/actions/runs/40168863586). Two full-SHA-verified migration-upload copies (85,919,596 payload bytes across 492 staging pieces) and the exact redundant price index were removed. A normal staging vacuum reclaimed additional table/TOAST overhead. Combined database size fell by **147,857,408 bytes (147.86 MB)**: active database **330,274,495 → 270,980,799 bytes**; retained rollback database **101,643,967 → 13,080,255 bytes**. This is database-size reduction, not a measurement of Aiven service-level WAL/shared-disk usage.
 
 The unique price constraint and reverse-order lookup index were preserved. Canonical counts and account totals matched before/after; independent live API checks also matched complete account-summary-row digests for both accounts. Health, ten-row symbol/index comparison and all 36 watchlist stocks passed after cleanup. No historical prices or account records were deleted and the rollback database remains available. **The one-month 2016–2018 capacity pilot has not been performed: it requires a supplied historical month.** Use the baseline above only while no unrelated imports have intervened; otherwise obtain a fresh audit immediately before the pilot.
+
+
+## v1.3.16 — weekly accounts, readable tables and bounded import work
+
+### Account performance (04 and 05)
+
+- Both accounts have a **Weekly Summary** tab and a **Weekly Summary** sheet in their account Excel export. Account headings no longer include the terminal suffix; source terminal identifiers remain in the raw trade/audit data.
+- Weeks follow ISO **Monday–Sunday**, including weeks that cross a month or calendar-year boundary. The table shows the ISO week, calendar range, actual first/last imported dates and number of stored trading days. Partial weeks are not padded with invented trades or zero-filled days.
+- Weekly quantities, values, commissions and SST are summed from the same account-isolated symbol/day rows as the existing monthly/yearly summaries. Average prices are quantity-weighted; Return on Buy is Net P&L divided by Buy Value, never an average of daily percentages. No financial calculation policy changed.
+- All-history weekly totals reconcile with the all-history monthly/yearly totals. Existing MTD/QTD/YTD periods still use that account's latest stored trading date. The weekly tab defaults to the latest week first; Excel exports retain chronological order.
+
+### Tables, readability and Technical Analysis (06 and 07)
+
+- Tables have bounded internal vertical/horizontal scrolling, keyboard-focusable containers and sticky headings. Normal page scrolling remains available between cards and on mobile; it is not disabled, because that would make content inaccessible. Printing removes the table height cap, and downloads retain all rows.
+- Futures table cells are 13.5px and headings 12.5px, scoped to module 06. Table heading colors follow the light/dark theme.
+- Primary technical navigation is now **Trading Ideas Generator**, **Automated Technical Analyst**, **Saved predictions & results**, **Stock screener**, and **Charts & past rule tests**.
+- The **Stock screener** contains a universe selector for **Core 36 watchlist / All stocks**, replacing two overlapping tabs without removing either scope.
+- “Which stocks have data?” was a data-coverage diagnostic, not a trading signal. It remains accessible from the scan's **Check where this stock has data** action as **Data diagnostics**; it no longer occupies a primary tab. It helps explain missing/stale/short price history. Saved forecast outcomes, historical rule tests and trading safeguards remain available.
+- Optional learning research is fetched only when its disclosure is opened, not on every initial analyst render. It remains separate from production trading rules; failures can be retried by closing and reopening it.
+
+### Performance changes and measured limits
+
+- Index imports prefetch only incoming dates and batch inserts instead of one existence query and one insert per new row. The existing first-record/existing-date policy, transaction, source references, duplicate handling and repeat-commit protection are retained.
+- Indicator invalidation uses bounded sets of at most 500 affected symbols per DELETE instead of one remote DELETE per symbol. Unchanged symbols retain their caches; a corrected symbol still invalidates its entire history.
+- A synthetic **100-date INDEX** import on a disposable local PostgreSQL server used **200 → 4 index SELECT/INSERT statements**, with both versions inserting exactly 100 records. One observed loopback commit was **0.0342s → 0.0162s**. This is a controlled synthetic comparison, not a guarantee of production or upload speed.
+- A separate synthetic 120-symbol cash import used **one** indicator invalidation statement and preserved the untouched symbol's cache. The analyst's initial production-analysis request group is **three → two APIs**; research loads separately only if requested.
+- The result-cache namespace is bumped with the release, so old cached account responses cannot hide the new weekly fields. Cache contents are expendable derived data; canonical prices and trades are not rewritten by viewing reports.
+- Large spreadsheet parsing, network speed, Vercel cold starts and the free Aiven plan's CPU/RAM/storage remain limiting factors. No unlimited-capacity or fixed-speed claim is made. No historical 2016 file is imported by this update; the owner controls those uploads.
+
+### Verification of this release
+
+- **231 passed, 34 skipped, one dependency deprecation warning** using synthetic SQLite tests and an explicitly configured disposable loopback PostgreSQL server. Skipped private-reference tests are not claimed as passed.
+- New tests cover ISO-year boundary/partial weeks, account isolation, weighted totals, empty accounts, Excel values/frozen headings, consolidated navigation, bounded index inserts, duplicate/existing-date preservation, and selective multi-symbol cache invalidation.
+- Local Chromium desktop/mobile checks verify sticky table headings while the table scrolls, horizontal scrolling without page-width overflow at 390px, both account tabs, screener scope changes, diagnostics access, Futures typography and unclipped print tables.
+- Existing financial calculations, provenance/revision handling and import transaction safeguards remain covered by the regression suite. Source changes are deployed through GitHub main → Vercel as before; no new provider or paid service is introduced.

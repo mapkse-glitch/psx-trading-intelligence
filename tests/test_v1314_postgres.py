@@ -482,3 +482,50 @@ def test_private_staged_snapshot_success_copies_and_removes_only_own_chunks(remo
         assert tuple(c.execute('SELECT id,close,volume FROM equity_ohlcv').fetchone())==(52,123.45,3000000000)
     assert get('chunk:unrelated-upload:0')==b'retain'
     with pytest.raises(Exception):get('chunk:private-success-test:0')
+
+
+def test_index_import_is_batched_and_keeps_first_value_and_existing_dates(remote,monkeypatch):
+    from psx_app.services.import_orchestrator import ImportOrchestrator
+    from psx_app.database import postgres
+    from psx_app.database.schema import get_connection
+    with get_connection() as c:
+        c.execute("INSERT INTO index_ohlcv(trade_date,close) VALUES ('2025-01-01',88)")
+    raw=workbook(100)
+    orch=ImportOrchestrator(data_root=remote)
+    stage=orch.stage_uploaded_files([('INDEX.xlsx',raw),('INDEX-copy.xlsx',raw)])
+    assert stage['batch_uuid']
+    calls=[];original=postgres.Connection.execute
+    def counted(self,sql,*args,**kwargs):
+        calls.append(sql)
+        return original(self,sql,*args,**kwargs)
+    monkeypatch.setattr(postgres.Connection,'execute',counted)
+    result=orch.commit_staged_batch(stage['batch_uuid'])
+    selects=[q for q in calls if q.startswith('SELECT * FROM index_ohlcv WHERE trade_date IN')]
+    inserts=[q for q in calls if 'INSERT INTO index_ohlcv' in q]
+    assert len(selects)<=12 and len(inserts)==1
+    assert result['new_records']==99 and result['duplicates_ignored']>=101
+    with get_connection() as c:
+        assert c.execute('SELECT COUNT(*) FROM index_ohlcv').fetchone()[0]==100
+        assert c.execute("SELECT close FROM index_ohlcv WHERE trade_date='2025-01-01'").fetchone()[0]==88
+    assert orch.commit_staged_batch(stage['batch_uuid'])['status']=='ALREADY_COMMITTED'
+
+
+def test_many_symbol_import_invalidates_in_one_bounded_delete(remote,monkeypatch):
+    from psx_app.database import postgres
+    from psx_app.database.schema import get_connection
+    from psx_app.services.import_orchestrator import ImportOrchestrator
+    book=openpyxl.Workbook();book.active.append(['DATE','SYMBOL','VOLUME','PR-CLOSE','HIGH','LOW','OPEN','CLOSE','AVG'])
+    symbols=['TEST'+str(i) for i in range(120)]
+    for symbol in symbols:book.active.append([datetime(2025,1,2),symbol,1000,99,103,98,99,100,100])
+    raw=io.BytesIO();book.save(raw)
+    with get_connection() as c:
+        c.executemany('INSERT INTO indicator_cache(symbol,trade_date,payload_json,updated_at) VALUES (?,?,?,?)',[(s,'2025-01-01','{}','2025') for s in symbols+['UNTOUCHED']])
+    orch=ImportOrchestrator(data_root=remote);stage=orch.stage_uploaded_files([('2025-cash.xlsx',raw.getvalue())])
+    queries=[];original=postgres.Connection.execute
+    def counted(self,sql,*args,**kwargs):
+        if sql.startswith('DELETE FROM indicator_cache'):queries.append(sql)
+        return original(self,sql,*args,**kwargs)
+    monkeypatch.setattr(postgres.Connection,'execute',counted)
+    result=orch.commit_staged_batch(stage['batch_uuid'])
+    assert result['new_records']==120 and len(queries)==1
+    with get_connection() as c:assert [r[0] for r in c.execute('SELECT DISTINCT symbol FROM indicator_cache')]==['UNTOUCHED']

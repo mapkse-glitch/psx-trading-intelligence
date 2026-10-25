@@ -14,7 +14,7 @@ function smallTable(headers,rows){
  const cls=i=>[numeric[i]?'num':'',wrap[i]?'cell-wrap':''].filter(Boolean).join(' ');
  return `<div class="table-wrap"><table class="data-table"><thead><tr>${headers.map((v,i)=>`<th class="${cls(i)}">${h(v)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr>${row.map((v,i)=>`<td class="${cls(i)}">${v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}">No matching data.</td></tr>`}</tbody></table></div>`;
 }
-function techNav139(tab){return `<div class="subtabs">${[['ideas','1. Trading Ideas Generator'],['analyst','2. Automated Technical Analyst'],['forecasts','Saved predictions & results'],['coverage','Which stocks have data?'],['core36','Core 36 watchlist'],['deep_dive','Charts & past rule tests'],['all531','All stocks']].map(([id,label])=>`<button class="subtab-btn ${tab===id?'active':''}" onclick="state.technical.subtab='${id}';renderTechnicalView(document.getElementById('viewContainer')).catch(e=>showToast(e.message,true))">${label}</button>`).join('')}</div>`;}
+function techNav139(tab){return `<div class="subtabs">${[['ideas','1. Trading Ideas Generator'],['analyst','2. Automated Technical Analyst'],['forecasts','Saved predictions & results'],['core36','Stock screener'],['deep_dive','Charts & past rule tests']].map(([id,label])=>`<button class="subtab-btn ${(tab===id||(tab==='all531'&&id==='core36'))?'active':''}" onclick="state.technical.subtab='${id}';renderTechnicalView(document.getElementById('viewContainer')).catch(e=>showToast(e.message,true))">${label}</button>`).join('')}</div>`;}
 function skeleton139(){return '<div class="card loading139" role="status"><span></span><span></span><span></span><p>Analysing imported data…</p></div>';}
 function contractCard139(result){
  const p=result.contract,valid=p.status==='CONDITIONAL';
@@ -54,17 +54,17 @@ async function renderTechnicalView(container){
    const r=await apiGet('/api/v139/coverage',false);
    if(!currentViewRender(container,ticket))return;
    coverage140=r;
-   container.innerHTML=techNav139(tab)+coveragePanel140(r);
+   container.innerHTML=techNav139(tab)+`<section class="card"><h3>Data diagnostics</h3><p>Checks which stocks have enough imported history and where records are missing or stale. This is a diagnostic, not a trading signal.</p><button class="btn btn-secondary" onclick="state.technical.subtab='ideas';renderTechnicalView(document.getElementById('viewContainer'))">Back to trading ideas</button></section>`+coveragePanel140(r);
    filterCoverage140();
  } else if(tab==='analyst'){
    const sym=state.analyst.symbol;const gen=++analystGeneration;
-   const [an,contract,learning]=await Promise.all([apiGet('/api/intelligence/automated-analyst/'+encodeURIComponent(sym)+'?action='+encodeURIComponent(state.analyst.action),false),apiGet('/api/v139/contract/'+encodeURIComponent(sym),false),apiGet('/api/v139/learning/'+encodeURIComponent(sym),false)]);
+   const [an,contract]=await Promise.all([apiGet('/api/intelligence/automated-analyst/'+encodeURIComponent(sym)+'?action='+encodeURIComponent(state.analyst.action),false),apiGet('/api/v139/contract/'+encodeURIComponent(sym),false)]);
    if(gen!==analystGeneration||!currentViewRender(container,ticket))return;
    if(['INSUFFICIENT_DATA','BLOCKED','NO_DATA'].includes(an.status)) {
      body=`<section class="card"><h3>${an.status==='INSUFFICIENT_DATA'?'Price history is too short for a safe signal':'Analysis is unavailable — review the data warning'}</h3><p>${h(an.message)}</p><p>No opening trade or automatic forecast is produced from incomplete indicators.</p><label>Ticker <input id="analystTickerInput" value="${h(sym)}" oninput="scheduleAnalyst139()" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()" /></label><button class="btn btn-primary" onclick="runAutomatedAnalyst()">Analyze selected ticker</button></section>`;
      container.innerHTML=techNav139(tab)+body;
    } else {
-     body=buildAutomatedAnalystCardHtml(an)+contractCard139(contract)+weeklyChart139(an.weekly_summary)+'<details class="card"><summary>Optional learning research — not the trading rules</summary>'+learningCard139(learning)+'</details>';
+     body=buildAutomatedAnalystCardHtml(an)+contractCard139(contract)+weeklyChart139(an.weekly_summary)+`<details class="card" data-learning-symbol="${h(sym)}" ontoggle="loadLearningOnDemand(this)"><summary>Optional learning research — not the trading rules</summary><div class="learning-content" role="status">Open to load research.</div></details>`;
      container.innerHTML=techNav139(tab)+body;saveForecast139(sym);
    }
  } else {
@@ -75,6 +75,13 @@ async function renderTechnicalView(container){
  enhanceWorkspace();
  } catch(e){if(currentViewRender(container,ticket))container.innerHTML=techNav139(tab)+`<section class="card"><h3>Could not complete analysis</h3><p>${h(e.message)}</p><label>Ticker <input id="analystTickerInput" value="${h(state.analyst.symbol)}" oninput="scheduleAnalyst139()" onkeydown="if(event.key==='Enter')runAutomatedAnalyst()"/></label><button class="btn btn-primary" onclick="renderTechnicalView(document.getElementById('viewContainer'))">Retry</button></section>`;}
  finally{if(currentViewRender(container,ticket)){container.classList.remove('refreshing139');container.removeAttribute('aria-busy');}}
+}
+async function loadLearningOnDemand(details){
+ if(!details.open||details.dataset.loading||details.dataset.loaded)return;
+ details.dataset.loading='true';const target=details.querySelector('.learning-content');target.textContent='Loading optional research…';
+ try{const result=await apiGet('/api/v139/learning/'+encodeURIComponent(details.dataset.learningSymbol),false);if(!details.isConnected)return;target.innerHTML=learningCard139(result);details.dataset.loaded='true';}
+ catch(e){if(details.isConnected)target.textContent='Research could not load: '+e.message+'. Close and reopen to retry.';}
+ finally{delete details.dataset.loading;}
 }
 function learningCard139(r){return `<section class="card"><h3>Learning research — separate from production rules</h3><p>${h(r.status)} ${r.stale?'— stale: new prices require a research refresh':''}</p>${r.test?smallTable(['Test samples','Model accuracy','Baseline accuracy','Model Brier','Baseline Brier'],[[fmtInt(r.test.n),fmtPct(r.test.accuracy),fmtPct(r.baseline.accuracy),fmtNum(r.test.brier,4),fmtNum(r.baseline.brier,4)]]):''}<p>${h(r.note||'')}</p><details class="secondary-note1312"><summary>Research process</summary><p>Research runs separately from page requests. Unvalidated research does not replace trading rules. See the Learning research section of README.md for refresh instructions.</p></details></section>`;}
 async function runAutomatedAnalyst(explicitSymbol=null){
