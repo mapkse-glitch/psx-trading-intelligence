@@ -5,14 +5,15 @@
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 215,
+    "passed": 220,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": true,
     "browser_test": "v1.3.15 restored production overview, technical analysis and market explorer smoke passed; targeted live API and account-value acceptance passed",
     "isolated_full_snapshot_restore_tested": true,
     "production_isolated_restore_tested": true,
-    "bulk_and_interrupted_restore_tested": true
+    "bulk_and_interrupted_restore_tested": true,
+    "volume_direct_labels_and_read_only_storage_audit_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -24,8 +25,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 32524,
-      "sha256": "98a0e8226b062295b0648a2fb39116829761a48e4584dd7fec405f63120876ee"
+      "bytes": 35127,
+      "sha256": "c893f2019345d3caca65263f9d653e90b860f8b282d591e04af132761bc34f91"
     },
     "api/index.py": {
       "bytes": 29,
@@ -220,16 +221,16 @@
       "sha256": "4928021b9159e6b2250a9aa44221a91ec73187f97396c5ac244739bd2d220625"
     },
     "psx_app/static/styles.css": {
-      "bytes": 35019,
-      "sha256": "1df3b67951c90233ce0d524aab258f9b50211f44249a00f2c016ed124e63a333"
+      "bytes": 35211,
+      "sha256": "ce7cad1e6a2add8175a35a185d4fb9eaf2b2780b990f2b82d9cb460d6205c298"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 37832,
-      "sha256": "0544e9f7431f3668fe9c8126ede4cdc7195dbd0c3a27c5ba05c609c010fee6c6"
+      "bytes": 39825,
+      "sha256": "d820f65ae979dcbc3b9461455d99318b62e614132ac504c3bc90563e10028a1d"
     },
     "psx_app/upgrade_routes.py": {
       "bytes": 3327,
@@ -360,16 +361,24 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     },
     ".github/workflows/prepare-isolated-restore.yml": {
-      "bytes": 1759,
-      "sha256": "854431c6609386fe6ba789982c745dbd38d45dd68fdea55d2715ea3852fb663a"
+      "bytes": 1760,
+      "sha256": "15a9da5dba49c49c5a675328da743ee3996aa451b1317d782254945df92ad588"
     },
     "tools/prepare_isolated_restore.py": {
-      "bytes": 15352,
-      "sha256": "edb9052e1bc2cfca548d62b5b869a78fcb83fdc10ff0552046dbcc82513f5b5f"
+      "bytes": 15498,
+      "sha256": "d390d1838d3908e4f66f58a86d1503b2a684bbb97a9b40f41a9ba3a65d6bc7f2"
     },
     "tests/test_isolated_restore.py": {
-      "bytes": 6580,
-      "sha256": "0af8ce6950f5d55663ec214fa9beff0d1b5e371cf8a9093d6780366db7c5b47b"
+      "bytes": 7570,
+      "sha256": "d7df2cddef2ad30101731b1efa523cdcc69c3f30a7d33c16bbe7da81b7d785b2"
+    },
+    "tools/inspect_postgres_storage.py": {
+      "bytes": 3320,
+      "sha256": "d0de3487661be9128e6cdb20210e7fd326ab8dea186bb53f95d8c69fe447eafd"
+    },
+    "tests/test_volume_charts.py": {
+      "bytes": 2644,
+      "sha256": "2adef94704cd956e7cdc1f8064ae5a05cf0434a8f6e186290cf1529333f8cc91"
     }
   }
 }

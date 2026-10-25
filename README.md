@@ -320,7 +320,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **215 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **220 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
@@ -435,3 +435,16 @@ The supplied compressed SQLite snapshot was restored into a separate database in
 Observed live HTTPS request durations from one verification client (seconds, first/repeat): overview 0.359/0.257; account 91404 0.681/0.679; account 91269 0.595/0.441; ATRL market comparison 0.931/0.390; Core 36 5.977/0.424; ATRL automated analyst 2.237/0.218. These are point-in-time measurements, not latency guarantees or a controlled before/after speed comparison.
 
 **What to do next:** reload the dashboard and inspect both accounts. Continue importing later daily files through Import and Update Center; preview and commit normally. Keep your USB originals. Do not rerun the completed one-time restore. Keep the previous database until satisfied with the restored history. GitHub Actions credentials still select their own database independently; before future maintenance, point Actions at the intended database (the existing Actions URI still names the previous database). To roll back production selection, remove `PSX_POSTGRES_DATABASE` in Vercel Production and redeploy. Removing that variable does not delete either database.
+
+
+### Volume-chart presentation and storage planning
+
+Market volume now uses one blue scale for ranked stocks and neutral slate for Others in both charts. The donut has stock/share/volume labels connected directly to slices; the detached legend is removed. Labels and headline percentages remain calculated from the selected date and Top N, not a fixed screenshot value. Charts stack where needed to keep labels readable; on small phones a chart can be scrolled horizontally rather than shrinking its labels to illegible text.
+
+For a **read-only storage audit**, open Actions → Verify connection and prepare isolated restore → Run workflow → choose `inspect_storage` on main. Other inputs are not needed. The audit reports database, table and index sizes, estimated dead rows, temporary-upload byte totals and the latest ten cash sessions' record/logical-byte counts. It uses database-enforced read-only connections and never removes records, changes compression, vacuums or switches production. It logs no account values, filenames, URIs or credentials. Database totals exclude shared PostgreSQL/WAL/system overhead; do not equate them directly with Aiven's service-level disk gauge.
+
+Do not forecast retention using raw TXT/XLSX upload sizes. Parsed canonical rows, indexes, staging, repeated revisions and WAL have different storage costs. PostgreSQL already compresses eligible large values through TOAST, but ordinary narrow OHLCV rows are not transparently compressed as a whole table. Zipping queryable prices into opaque blobs would require a separate archival/query design and can slow or break existing views. Do not trade away exact financial values or historical daily resolution to claim compression.
+
+Before importing 2016–2018, measure actual daily growth and inspect temporary staging, duplicate indexes and the retained rollback database. **Do not delete the rollback database without explicit approval and a verified recovery path.** Cleanup of deleted rows normally makes space reusable within tables; it does not guarantee that Aiven's disk gauge falls immediately. Avoid a blind `VACUUM FULL`: it locks/rebuilds the table and needs additional free disk. Keep headroom for imports and PostgreSQL maintenance. The free plan remains finite; no compression promise makes 1 GB unlimited.
+
+Official references: [PostgreSQL TOAST](https://www.postgresql.org/docs/current/storage-toast.html), [vacuuming and disk reclamation](https://www.postgresql.org/docs/current/routine-vacuuming.html), [Aiven free-tier limits](https://aiven.io/docs/products/postgresql/concepts/pg-free-tier).

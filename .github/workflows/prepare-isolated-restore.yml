@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Check connection only, or restore and reconcile into a separate database
+        description: Read-only connection/storage checks, or isolated restore
         type: choice
-        options: [check_connection, restore_candidate, resume_candidate]
+        options: [check_connection, inspect_storage, restore_candidate, resume_candidate]
         default: check_connection
         required: true
       upload_id:

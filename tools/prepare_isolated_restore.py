@@ -208,6 +208,9 @@ def main():
         if mode in ('restore_candidate','resume_candidate'):
             if os.getenv('RESTORE_CONFIRM')!='RESTORE_SEPARATE_DATABASE':raise ValueError('EXPLICIT_RESTORE_CONFIRMATION_REQUIRED')
             result=prepare(os.environ['UPLOAD_ID'],int(os.environ['TOTAL_CHUNKS']),os.environ['EXPECTED_SHA256'],resume=mode=='resume_candidate')
+        elif mode=='inspect_storage':
+            from tools.inspect_postgres_storage import inspect_storage
+            result=inspect_storage()
         elif mode!='check_connection':raise ValueError('INVALID_MODE')
         print(json.dumps(result))
     except ValueError as exc:

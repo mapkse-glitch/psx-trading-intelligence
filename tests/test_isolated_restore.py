@@ -100,3 +100,24 @@ def test_resume_checks_totals_before_reconciliation(pair,tmp_path):
     target.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES ('2026-10-23','TEST',100,11)")
     with pytest.raises(ValueError,match='RESUME_CANDIDATE_AGGREGATES_DIFFER_INSPECT_MANUALLY'):
         verify_candidate_snapshot(target,compressed,{'equity_ohlcv':1})
+
+
+def test_storage_audit_is_read_only_and_reports_no_account_values(pair):
+    from tools.inspect_postgres_storage import audit_database
+    import psycopg
+    s,_=pair
+    s.execute("INSERT INTO equity_ohlcv(trade_date,symbol,close,volume) VALUES ('2026-10-22','PRIVATE_TICKER',123.45,789)")
+    with s.transaction():
+        s.execute('SET TRANSACTION READ ONLY')
+        report=audit_database(s)
+    assert any(t['table_name']=='equity_ohlcv' for t in report['tables'])
+    assert report['recent_cash_sessions'][0]['records']==1
+    assert report['recent_cash_sessions'][0]['logical_row_bytes']>0
+    import json
+    rendered=json.dumps(report)
+    assert 'PRIVATE_TICKER' not in rendered and '123.45' not in rendered
+    with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+        with s.transaction():
+            s.execute('SET TRANSACTION READ ONLY')
+            s.execute('DELETE FROM equity_ohlcv')
+    assert s.execute('SELECT COUNT(*) FROM equity_ohlcv').fetchone()[0]==1
