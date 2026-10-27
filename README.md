@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.16
+# PSX Intelligence v1.3.17
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -63,7 +63,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.16`. An empty database is expected before you import your data.
+   version `1.3.17`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -320,7 +320,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **231 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **244 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
@@ -513,3 +513,42 @@ The unique price constraint and reverse-order lookup index were preserved. Canon
 - New tests cover ISO-year boundary/partial weeks, account isolation, weighted totals, empty accounts, Excel values/frozen headings, consolidated navigation, bounded index inserts, duplicate/existing-date preservation, and selective multi-symbol cache invalidation.
 - Local Chromium desktop/mobile checks verify sticky table headings while the table scrolls, horizontal scrolling without page-width overflow at 390px, both account tabs, screener scope changes, diagnostics access, Futures typography and unclipped print tables.
 - Existing financial calculations, provenance/revision handling and import transaction safeguards remain covered by the regression suite. Source changes are deployed through GitHub main → Vercel as before; no new provider or paid service is introduced.
+
+
+## v1.3.17 — Symbol vs Index identity, daily figures and price ranges
+
+This is a file-only update over v1.3.16 (base GitHub commit `0232f36f504cd4fcc10ad47ba779ae0e61a708bd`). It requires **no new environment variable, database migration, data re-import, paid service, or dependency**. No production data has been edited or imported to prepare this patch.
+
+### Install this ZIP yourself
+
+1. Extract the ZIP. It contains only the changed `psx_app/` application files, matching `tests/` files, and the existing `README.md` / `RELEASE_MANIFEST.json`—no database, secrets, backups, generated caches, or extra documentation folders.
+2. **Merge/overwrite these paths in your existing repository root. Do not delete or replace the entire existing `psx_app` or `tests` directory with the partial directories in this patch.** Keep all unchanged repository files.
+3. On GitHub, use **Add file → Upload files** at the repository root and drag the extracted folders/files together so `psx_app/main.py` remains at that exact path. Do not upload the ZIP itself as application source and do not add an extra parent directory.
+4. Commit to your chosen deployment branch (normally `main`). Let the existing GitHub checks and Vercel deployment finish. This patch has not been pushed automatically.
+5. Verify `/api/health` reports version **1.3.17**, then use **Ctrl+Shift+R** and open **09 → Symbol vs Index**. Your current Aiven connection settings and stored data stay in place.
+6. If a company name is absent, upload/preview/commit your authentic **Sector Wise** workbook through the existing reference import workflow. Its company-name columns remain `SYMBOL`, `COMPANY NAME`, `SECTOR`. Refresh the dashboard after committing the reference; do not invent a company name.
+
+### What appears in Symbol vs Index
+
+- A prominent full company-name card beside the Records/Symbol filters. Imported references are preferred: a Sector Wise-named list first, then the imported `COMP_LIST`, then other imported lists. With no imported match, the existing bundled Sector Wise company directory is used. No match displays **Full company name unavailable**. Names and sectors are HTML-escaped.
+- Two separate cards for **Latest Close** and **Latest Index Close**, each showing DoD change and DoD percentage. Changes follow the existing imported prior-close (`pr_close`) convention. Missing/nonpositive prior close leaves the change unavailable. Each card shows its own stored date; an older index is not labelled as today's index. No future index date is substituted.
+- Six partitions: **Day's Range**, **30 Days Range**, **60 Days Range**, **90 Days Range**, **180 Days Range**, **Year's Range**. Highs are maxima of imported highs; lows are minima of imported lows. Day means the latest stored symbol date, 30–180 mean calendar-day windows including that date, and Year means January 1 through that date (YTD), not trailing 365 days. There is no fabricated weekend/holiday data. Available session counts and window dates are shown. These ranges are calculated independently of the Records filter.
+- The symbol table has **nine columns** and the index table **eight**, adding **Volume (% Change)** to each. Existing comparisons, date bounds, extrema, exports and internal table scrolling remain available.
+
+### Volume percentage definition and limitations
+
+`(current volume / previous stored volume - 1) × 100`.
+
+- Symbol volume compares with the preceding stored record for that symbol, including a baseline outside the displayed Records limit.
+- Index volume remains the sum of imported cash-symbol volume on the index date; futures/account trade logs are excluded. Its baseline is the previous stored index date, even if that date is absent from the displayed symbol rows. This is not a verified index-member or exchange-wide volume total; changing imported cash coverage can also change the aggregate.
+- A missing or nonpositive prior volume is **Not available**, never 0% or infinity. A real current volume of zero following a positive volume is correctly **−100%**. No missing prices or volumes are zero-filled.
+- The symbol/index record tables retain exact-date matching. The separate latest-index card can show an older, explicitly dated index record when a same-date benchmark is unavailable.
+
+### Performance, safety and verification
+
+- One extra bounded symbol row supplies the oldest displayed row's previous volume; there is no per-row volume lookup.
+- Index-volume aggregation reads only the required dates in bounded groups of 200, avoiding scans over unrelated years when index coverage is stale. Range history is bounded to the larger of YTD and 180 days and does not grow with the displayed history beyond that bound.
+- Shared result-cache keys and versioned assets move to v1.3.17 so old payloads cannot hide the new fields. Only expendable derived cache writes occur during report reads; source prices, volumes, accounts and financial calculations are not rewritten by this update.
+- **244 tests passed, 34 skipped, one dependency deprecation warning** on isolated SQLite and explicitly configured disposable loopback PostgreSQL. Private-reference tests that were skipped are not claimed as passed. Tests cover source-name precedence, date boundaries, untruncated ranges, preceding volumes outside the display, missing/zero volume, stale/future index dates, cash-only aggregation and PostgreSQL shared-cache behavior.
+- Local Chromium checks passed for light/dark desktop and 390px mobile layouts: prominent name beside filters, six desktop range partitions/two per mobile row, exactly 9/8 table columns, dated older-index card, range independence from Records, sticky table headers and no page-width overflow or JavaScript errors.
+- The ZIP was overlaid onto a clean copy of the published v1.3.16 tree and checked against the complete release manifest. These are local/synthetic checks, not a claim that this unpushed patch has already been deployed or tested against live Aiven.

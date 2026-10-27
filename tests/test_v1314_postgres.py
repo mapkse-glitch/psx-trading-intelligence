@@ -529,3 +529,21 @@ def test_many_symbol_import_invalidates_in_one_bounded_delete(remote,monkeypatch
     result=orch.commit_staged_batch(stage['batch_uuid'])
     assert result['new_records']==120 and len(queries)==1
     with get_connection() as c:assert [r[0] for r in c.execute('SELECT DISTINCT symbol FROM indicator_cache')]==['UNTOUCHED']
+
+
+def test_market_identity_ranges_and_volume_deltas_survive_shared_postgres_cache(remote):
+    from psx_app.services.market_explorer import MarketExplorer
+    from psx_app.database.schema import get_connection
+    from psx_app.database.turso import revision
+    with get_connection() as c:
+        for dt,volume in [('2025-01-02',100),('2025-02-03',150)]:
+            c.execute('INSERT INTO equity_ohlcv(trade_date,symbol,volume,close,pr_close,high,low) VALUES (?,?,?,?,?,?,?)',(dt,'TEST',volume,100,90,110,80))
+            c.execute('INSERT INTO index_ohlcv(trade_date,close,pr_close) VALUES (?,1000,900)',(dt,))
+        c.execute("INSERT INTO company_reference(list_name,symbol,company,sector) VALUES ('Sector Wise','TEST','Full Test Company Limited','TEST SECTOR')")
+    before=revision()
+    a=MarketExplorer().symbol('TEST',1);b=MarketExplorer().symbol('TEST',1)
+    assert a==b and a['company']['name']=='Full Test Company Limited'
+    assert a['rows'][0]['volume_pct']==50 and a['index_rows'][0]['volume_pct']==50
+    assert len(a['ranges'])==6 and a['ranges'][-1]['records']==2
+    assert a['ranges'][1]['records']==1
+    assert revision()==before
