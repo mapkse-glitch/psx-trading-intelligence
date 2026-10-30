@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.18
+# PSX Intelligence v1.3.19
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,91 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.18 — price-limit card and table highlights
+## Current update: v1.3.19 — horizontal price range
+
+This partial update is based on **v1.3.18**. It changes the existing third card in
+**09 → Symbol vs Index**, not the database, import path or other modules.
+Earlier version sections below document previous releases; follow these steps now.
+
+### Install this update
+
+1. Keep the current source commit for rollback. Extract the ZIP.
+2. Merge its `psx_app/`, `tests/`, `README.md` and `RELEASE_MANIFEST.json` files
+   into the existing repository root, preserving paths. **Do not delete the whole
+   existing `psx_app/` or `tests/` folder**: the ZIP contains changed files only.
+3. On GitHub use **Add file → Upload files**, upload those extracted paths and
+   commit to `main`. Do not upload the ZIP as source or nest another parent folder.
+4. Wait for GitHub checks and Vercel. Verify `/api/health` shows **1.3.19**,
+   then hard-refresh (**Ctrl+Shift+R**). No new environment variable, migration,
+   data import, dependency or paid service is needed.
+
+### Price Limit Checker display
+
+- Three equally sized desktop cards remain; narrower layouts stack them.
+  The third shows a dated **Closing rate**, threshold status and horizontal bar.
+- **Upper Lock is at the left; Lower Lock is at the right.** This is a descending
+  price scale, intentionally opposite a normal low-to-high number line.
+- Endpoint labels show both lock prices. Green uses **#03D815** and red
+  **#F63131**, the dashboard's existing universal gain/loss tokens in both themes.
+  Gradient and row-fill tints are derived from these tokens, not new hues.
+- A distinct theme-contrasting tick/dot marks the actual close. Its position is
+  `100 × (upper − close) / (upper − lower)` percent from the left. It is clamped
+  to the nearest end for an out-of-range close, while the displayed closing rate
+  retains its actual value and status reports the threshold as reached.
+- Green-side proximity is `clamp((close − previous)/(upper − previous),0,1)`;
+  red-side proximity is `clamp((previous − close)/(previous − lower),0,1)`.
+  Endpoint intensity varies from 18% to 100% of its base color as proximity rises;
+  each side fades toward a soft center. Previous close corresponds to the center.
+- The source record date is shown explicitly. Old imported data is never relabelled
+  as today's live market rate. Missing/invalid baselines produce an unavailable
+  neutral track with no fabricated price marker. The graphic is read-only, with
+  an accessible description, not an interactive slider.
+
+### Preserved rules and requested removals
+
+- The existing requested upper/lower calculations are unchanged:
+  `upper = max(previous × 1.10, previous + 1)` and
+  `lower = min(previous × 0.90, previous − 1)` in PKR. Exact boundaries count.
+  This remains a calculation from imported close/previous close, not an official
+  exchange halt feed or instrument-specific rule engine; no tick rounding or
+  exchange validation is added. A sub-PKR-1 previous price can yield a negative
+  lower threshold under this requested formula, which is not silently altered.
+- The long close-based explanatory sentence is removed from the visible card.
+- The entire **Range and volume calculation details** panel is removed from
+  the view, not merely collapsed. Its underlying range/volume calculations remain.
+- **Max high / Min low** badges beneath table dates and the repeated helper lines
+  are removed. All tied maximum-High/minimum-Low row and exact-cell highlights
+  remain in both tables; a row can still qualify for both. Highlight backgrounds
+  now derive from the canonical gain/loss colors, with readable theme-colored
+  table text. The shared blue accent distinguishes a dual-extrema row.
+- Filters, record counts, company name, six range partitions, 9/8 table columns,
+  financial calculations, exports, internal scrolling and sticky headers remain.
+  Other dashboard component layouts are unchanged. Existing global positive and
+  negative tokens already match the specified colors; this update removes the
+  checker/highlight palette exceptions rather than recoloring unrelated controls.
+
+### Verification and safety
+
+- **288 passed, 34 skipped, one dependency deprecation warning** with isolated
+  SQLite and disposable loopback PostgreSQL. Skipped private-data tests are not
+  claimed as passed. Tests cover marker direction/positions, boundaries,
+  proximity/intensity inputs, overshoots, low prices and missing baselines.
+- Local synthetic Chromium tests passed in light/dark modes: equal-size desktop
+  cards, exact base icon colors, changing gradient intensities, all tied highlights,
+  no badges/details/disclaimer, unchanged 9/8 columns, no JavaScript page errors,
+  and no page-width overflow at 1200/1050/768/390/320px. Sticky headers remain fixed
+  after internal table scrolling. The complete delivered file overlay is checked
+  against its manifest and regression suite before handoff.
+- No new database request, write, schema change, source-data edit or cache rebuild
+  is introduced. Existing API cache namespace stays **1.3.17** because its payload
+  is unchanged; app/assets are versioned **1.3.19** to refresh browser files.
+  No overall performance increase is claimed; the graphic is a small client-only
+  calculation using existing response fields.
+- No live Aiven access or automatic GitHub push/deployment was performed. No
+  database, secrets, logs or generated cache files are in the ZIP. To roll back,
+  revert your source commit and redeploy; no database migration is involved.
+
+## Previous update: v1.3.18 — price-limit card and table highlights
 
 This partial-file ZIP updates published **v1.3.17**, GitHub base commit
 `31a647d45499996827d5dbecd65d8c6778e652f5`. The v1.3.17 section later in this
@@ -142,7 +226,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.18`. An empty database is expected before you import your data.
+   version `1.3.19`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -399,7 +483,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **273 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **288 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.

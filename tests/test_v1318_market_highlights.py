@@ -34,11 +34,12 @@ def test_missing_invalid_prices_never_claim_a_lock(row):
 
 def test_locked_card_is_explicitly_dated_close_based_and_escaped():
     r=run_js("({upper:priceLimitCard1318({close:110,pr_close:100,trade_date:'2026-10-30'},'<TEST>'),lower:priceLimitCard1318({close:90,pr_close:100},'TEST'),within:priceLimitCard1318({close:100,pr_close:100},'TEST'),missing:priceLimitCard1318(null,'TEST')})")
-    assert 'limit-upper1318' in r['upper'] and 'Upper threshold reached' in r['upper']
-    assert 'limit-lower1318' in r['lower'] and 'Lower threshold reached' in r['lower']
+    assert 'limit-upper1318' in r['upper'] and 'Upper lock reached' in r['upper']
+    assert 'limit-lower1318' in r['lower'] and 'Lower lock reached' in r['lower']
     assert '&lt;TEST&gt;' in r['upper'] and '2026-10-30' in r['upper']
-    assert 'not an exchange-confirmed trading halt' in r['upper']
-    assert 'Within thresholds' in r['within'] and 'Check unavailable' in r['missing']
+    assert 'not an exchange-confirmed trading halt' not in r['upper']
+    assert 'price-range-track1319' in r['upper']
+    assert 'Within range' in r['within'] and 'Check unavailable' in r['missing']
     assert 'stroke="currentColor"' in r['upper'] and 'aria-hidden="true"' in r['upper']
 
 def test_all_tied_high_and_low_rows_and_dual_extrema_are_marked():
@@ -48,7 +49,7 @@ def test_all_tied_high_and_low_rows_and_dual_extrema_are_marked():
     html=run_js("marketRecordsTable1318(['Date','High','Low'],[['A',114.5,80],['B',114.5,74.74],['C',100,74.74],['D','NA','NA']],"+json.dumps(records)+')')
     assert html.count('class="extrema-row1318')==3
     assert html.count('extreme-high-cell1318')==2 and html.count('extreme-low-cell1318')==2
-    assert html.count('>Max high</span>')==2 and html.count('>Min low</span>')==2
+    assert 'Max high</span>' not in html and 'Min low</span>' not in html
     assert 'row-max-high1318 row-min-low1318' in html
 
 def test_extrema_are_local_to_each_displayed_table_not_other_symbol_or_index():
