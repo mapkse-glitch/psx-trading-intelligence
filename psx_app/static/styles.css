@@ -1146,12 +1146,6 @@ input[type="date"] { min-height:44px; color-scheme:light; }
 
 /* v1.3.19: scoped, descending close-range card using the dashboard gain/loss tokens. */
 .price-range-card1319 .card-header{gap:10px}
-.range-closing1319{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;margin:4px 0 18px}
-.range-closing1319>span:first-child{grid-column:1/-1;color:var(--text-muted);font-size:12px}
-.range-closing1319>strong{font-size:26px;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.range-state1319{font-size:11px;font-weight:650;color:var(--text-main);text-align:right;max-width:100px}
-.limit-upper1318 .range-state1319{border-left:3px solid var(--pos-green);padding-left:7px}
-.limit-lower1318 .range-state1319{border-left:3px solid var(--neg-red);padding-left:7px}
 .price-range-labels1319{display:flex;justify-content:space-between;gap:14px;margin-top:auto}
 .price-range-labels1319>div{min-width:0;max-width:50%}
 .price-range-labels1319>div:last-child{text-align:right}
@@ -1165,9 +1159,28 @@ input[type="date"] { min-height:44px; color-scheme:light; }
 .price-range-mid1319{position:absolute;left:50%;top:2px;height:8px;width:1px;background:var(--text-muted);opacity:.5;z-index:1}
 .price-range-marker1319{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--text-main);transform:translateX(-50%);z-index:2;box-shadow:0 0 0 2px var(--bg-card);border-radius:2px}
 .price-range-marker1319>span{position:absolute;width:12px;height:12px;left:50%;top:4px;transform:translateX(-50%);border:2px solid var(--bg-card);border-radius:50%;background:var(--text-main);box-shadow:0 0 0 1px var(--text-main)}
-.price-range-footer1319{display:flex;justify-content:space-between;gap:10px;font-size:11px;line-height:1.5;color:var(--text-muted)}
-.price-range-footer1319 b{font-weight:600;color:var(--text-main);font-variant-numeric:tabular-nums}
 .range-unavailable1319 .price-range-fill1319{background:var(--bg-card-alt)}
 .range-unavailable1319 .price-range-mid1319{display:none}
 .price-range-unavailable1319{font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5}
-@media(max-width:420px){.range-closing1319>strong{font-size:24px}.range-state1319{max-width:88px}.price-range-labels1319 strong{font-size:13px}}
+@media(max-width:420px){.price-range-labels1319 strong{font-size:13px}}
+
+/* v1.3.20: original lock state + close label following the existing marker. */
+.price-lock-status1320{display:flex;align-items:center;gap:12px;min-height:68px;margin:2px 0 16px;color:var(--text-muted)}
+.price-lock-status1320>.price-lock-icon1318{width:32px;height:32px;flex:0 0 32px}
+.price-lock-status1320>strong{font-size:18px;line-height:1.35}
+.limit-upper1318 .price-lock-status1320{color:var(--pos-green)}
+.limit-lower1318 .price-lock-status1320{color:var(--neg-red)}
+.price-range-close-lane1320{position:relative;height:53px;margin:0 6px}
+.moving-close1320{position:absolute;top:0;width:144px;max-width:100%;left:clamp(0px,calc(var(--close-position1320) - 72px),calc(100% - 144px));text-align:center;font-variant-numeric:tabular-nums}
+.moving-close1320>span{display:block;font-size:10px;line-height:1.5;color:var(--text-muted)}
+.moving-close1320>strong{display:block;font-size:16px;line-height:1.5;font-weight:700;overflow-wrap:anywhere;color:var(--text-main)}
+.moving-close1320.pos>strong{color:var(--pos-green)}
+.moving-close1320.neg>strong{color:var(--neg-red)}
+/* Lightweight view entry and control feedback only: no looping or layout animation. */
+@keyframes workspaceEnter1320{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){
+ .view-container{animation:workspaceEnter1320 .18s ease-out both}
+ .btn,.nav-btn,.subtab-btn{transition:background-color .14s ease,border-color .14s ease,color .14s ease}
+ .price-range-marker1319,.moving-close1320{transition:left .18s ease}
+}
+@media(prefers-reduced-motion:reduce){.view-container{animation:none!important}.price-range-marker1319,.moving-close1320{transition:none!important}}

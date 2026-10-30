@@ -1,15 +1,15 @@
 {
-  "version": "1.3.19",
+  "version": "1.3.20",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 288,
+    "passed": 303,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
-    "browser_test": "v1.3.19 local synthetic Chromium light/dark: aligned three-card desktop layout, upper-left/lower-right bar, marker at endpoints/midpoints/overshoots, gradient proximity, canonical colors, all tied row highlights without badges, removed details/disclaimer, 9/8 table columns, sticky headers, widths 1200/1050/768/390/320 without page overflow, no JS page errors. Not pushed/deployed.",
+    "browser_test": "v1.3.20 local synthetic Chromium light/dark: latest main close sign colors, original open/closed status SVG, colored rate below marker with edge containment, no previous-close footer, aligned desktop cards, unchanged tied highlights/9-and-8 columns/six ranges, sticky headers, 1200/1050/768/390/320px without overflow, reduced-motion opt-out, no JS page errors. Not pushed/deployed.",
     "isolated_full_snapshot_restore_tested": true,
     "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true,
@@ -21,7 +21,8 @@
     "batched_index_and_selective_invalidation_tested": true,
     "symbol_identity_ranges_and_volume_change_tested": true,
     "price_lock_and_tied_extrema_tested": true,
-    "horizontal_price_range_and_removals_tested": true
+    "horizontal_price_range_and_removals_tested": true,
+    "restored_lock_moving_close_and_basic_motion_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -33,8 +34,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 62901,
-      "sha256": "63d4cd9a645a4a6bd19823f4c3bb82b4091906c603d83853ce2f90b75ce7a3a9"
+      "bytes": 68650,
+      "sha256": "76713541b7808b54cfe5063c0b3d0c6a10aa6bef82ddc4540eb57a1d251408a7"
     },
     "api/index.py": {
       "bytes": 29,
@@ -82,7 +83,7 @@
     },
     "psx_app/main.py": {
       "bytes": 45843,
-      "sha256": "9d1717b33990494628118900c37ac311c9531bb965eacfdc9f5ea219fd8f8f00"
+      "sha256": "4ed64add8eaf22e76055f06a0afebda9dbc8f52706dba58b0a7421551fe83a7d"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -226,19 +227,19 @@
     },
     "psx_app/static/index.html": {
       "bytes": 5235,
-      "sha256": "84817bdd6cfd2f5f12008bff7608883e8d0fc50da2838d77578bbf02215f13b9"
+      "sha256": "f76dd76744add9c48d9ef8debf819ce0a31f79eb0e6b35383da0cf0941a2b39f"
     },
     "psx_app/static/styles.css": {
-      "bytes": 45041,
-      "sha256": "90cb3a2cfd73f3c7c0524f9c81034530ab05cc1a9fd5acc1ffe60a3874d6805f"
+      "bytes": 45820,
+      "sha256": "0f4b78d6b2fa766b136c93a854d1c5b482f2120189429d4612cd089bf7a32369"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 47920,
-      "sha256": "ed310b48d8b9dc4921c29b10db16e26c5ae75fba1d7bcaf5b750fea426215c0d"
+      "bytes": 48056,
+      "sha256": "4d3433684260fa22f25a5f3c988925ddf55229de51de0f66985b251d5625c15c"
     },
     "psx_app/upgrade_routes.py": {
       "bytes": 3327,
@@ -306,19 +307,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "4e85acf7c7cc0b681c177fbf2687efb6d6a9405280bc229ccb49d65731092296"
+      "sha256": "9846aa9a4dbcac626bb8a6a14bdd4f5bc5c0e020c1552f684eb0002f9d654348"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "e5cf7024201a2b1ff3102fdfac5a1522a0357141817162856271e6d152826891"
+      "sha256": "1b3c66c77d8bd09beb70d96fe4034ac87a05b0c48e22654a62a39f3c366b131e"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "f2f5c4aa356d239707d3ef0cf8c1a310afa28a35a0bf8d4f5412e22c27f89bb7"
+      "sha256": "210be47f3fe9dc33750b2452e8745637b348d1ae088b520602c8b179ec8cb6c0"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "35c85080b98ae95cb261cc2804a87727f68f1bf5f7ce57cb93b50dfe50dbb5db"
+      "sha256": "69b5d4a73acdeb3919237202cc0d76e00b77a6ad88f5871e30b4f149507baf2c"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -411,7 +412,11 @@
     "tests/test_v1319_price_range.py": {
       "bytes": 2693,
       "sha256": "a276ac83361e023fc781fc10c9a86141f307fe4c77d323d33471334bb96516e3"
+    },
+    "tests/test_v1320_close_labels.py": {
+      "bytes": 2745,
+      "sha256": "aa085a97becc9a40f84fb754d117171676af9dd2587686dc6a130e5030837322"
     }
   },
-  "patch_base": "v1.3.18 / PSX_v1.3.18_Lock_Card_Row_Highlights_Update.zip"
+  "patch_base": "v1.3.19 / PSX_v1.3.19_Price_Range_Bar_Update.zip"
 }

@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.19
+# PSX Intelligence v1.3.20
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,95 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.19 — horizontal price range
+## Current update: v1.3.20 — close colors, original lock and moving rate
+
+This partial-file update is based on **v1.3.19**. It changes only the requested
+Market Explorer close/checker presentation plus the explicitly requested basic
+animations; other components' content, design and calculations are not changed.
+Previous version sections below are historical; use these current instructions.
+
+### Install v1.3.20
+
+1. Keep your existing source commit for rollback. Extract the ZIP.
+2. Merge/overwrite the extracted `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` paths at the existing repository root. **Do not delete
+   the complete existing `psx_app/` or `tests/` directories**: these are partial
+   folders containing changed files only.
+3. GitHub → **Add file → Upload files**: upload the extracted contents preserving
+   paths, then commit to `main`. Do not upload the ZIP as application source or
+   put the files inside another parent folder.
+4. Wait for GitHub checks and Vercel. Confirm `/api/health` reports **1.3.20**,
+   then hard-refresh (**Ctrl+Shift+R**). No migration, re-import, environment
+   variable, dependency or paid service is needed.
+
+### Exact visible changes
+
+- **Latest Close** and **Latest Index Close**: the main closing values now use
+  the same daily-change sign colors as their existing DoD figures. Positive is
+  canonical green **#03D815**, negative red **#F63131**, zero/missing neutral.
+  DoD amounts/percentages, headings and dates remain in place.
+- **Price Limit Checker**: restores the original large closed/open status-lock
+  SVG and status text above the bar. Reached upper = green closed lock; reached
+  lower = red closed lock; within range/unavailable = neutral open lock. Small
+  endpoint lock icons, the upper-left/lower-right orientation and gradient remain.
+- Removes the **Previous close** footer, and removes the duplicate closing-rate
+  block above the bar. **Closing rate** with the actual PKR value is now beneath
+  the indicator bar, positioned from the same percentage as the marker. It follows
+  the marker and is green above the previous close, red below, neutral unchanged
+  or without a valid baseline. The previous close remains an internal baseline;
+  hiding its footer does not remove data or alter the threshold calculations.
+- The rate label is centered under the marker where space permits, clamped inside
+  the track's available width near either endpoint so text cannot be cut off.
+  Out-of-range closes retain the real displayed value while marker/label stop at
+  the corresponding endpoint. Missing baselines retain an unavailable check, no
+  marker and a centered neutral label; no prior value is invented.
+- The record date remains visible; an old imported close is never relabelled as
+  today's live market rate. Removed calculation-details panel, disclaimer sentence
+  and row badges remain removed. Existing high/low row highlights are unchanged.
+
+### Authorized basic animation
+
+- One 180ms view-entry fade with a 4px rise, returning to `transform:none` so no
+  persistent transformed containing block is left behind.
+- Short 140ms background/border/text transitions on existing buttons and tabs;
+  180ms left-position transitions on the price marker/rate when updated in place.
+- No flashing, looping, per-row animation, new runtime library, timer or request.
+  Full content re-renders use the view entry, not a claim that every refresh
+  interpolates marker positions across replaced DOM nodes.
+- Operating-system **prefers-reduced-motion** disables these effects. There is
+  no animation of table dimensions, financial values or surrounding layout.
+
+### Rules, data safety and verification
+
+- Existing requested calculations remain unchanged: upper is
+  `max(previous × 1.10, previous + 1)`; lower is
+  `min(previous × 0.90, previous − 1)`, PKR. Exact boundaries count. These are
+  close-based requested thresholds, not an official exchange-halt feed or a
+  tick-rounded instrument-specific rules engine. Sub-PKR-1 baselines can yield
+  a negative lower threshold under this formula; the requested rule is not altered.
+- No source-data edits, database cleanup, new query, API shape, import/export
+  behavior, reference data, account calculation or schema change. API cache
+  namespace remains **1.3.17** because payloads are unchanged; app/assets are
+  **1.3.20**. The prior row-highlight palettes, filters, six ranges, nine/eight
+  record columns, internal table scroll and sticky headers are preserved.
+- **303 passed, 34 skipped, one dependency deprecation warning** on isolated
+  SQLite and disposable loopback PostgreSQL. Skipped private-reference tests are
+  not claimed as passed. New tests cover both close cards, positive/negative/zero
+  states, original open/closed icons, tracking positions, endpoints/overshoots,
+  missing baselines and reduced-motion CSS.
+- Local synthetic Chromium checks passed: light/dark sign colors, equal-sized
+  desktop cards, moving labels contained at endpoints and intermediate positions,
+  restored status icons, unchanged tied row highlights/9-and-8 columns/six ranges,
+  sticky internal-scroll headers, widths 1200/1050/768/390/320 without page-width
+  overflow, reduced-motion disabling effects, and no JavaScript page errors.
+- The delivered partial ZIP is overlaid onto the verified v1.3.19 source, checked
+  against the complete release manifest and regression suite. This is local
+  verification, not live Aiven/deployment testing or a promise of faster queries.
+- No production Aiven access or automatic GitHub push/deployment. No trading
+  database, credentials, logs or generated cache is included. Revert your source
+  commit and redeploy to roll back; no database migration is involved.
+
+## Previous update: v1.3.19 — horizontal price range
 
 This partial update is based on **v1.3.18**. It changes the existing third card in
 **09 → Symbol vs Index**, not the database, import path or other modules.
@@ -226,7 +314,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.19`. An empty database is expected before you import your data.
+   version `1.3.20`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -483,7 +571,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **288 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **303 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
