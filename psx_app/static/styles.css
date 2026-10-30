@@ -1123,3 +1123,39 @@ input[type="date"] { min-height:44px; color-scheme:light; }
 .market-calculation-notes1317 p{font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:8px}
 @media(max-width:1250px){.price-ranges1317{grid-template-columns:repeat(3,minmax(0,1fr))}.price-range1317:nth-child(3){border-right:0}.price-range1317:nth-child(-n+3){border-bottom:1px solid var(--border-color);padding-bottom:16px}.price-range1317:nth-child(n+4){padding-top:16px}}
 @media(max-width:760px){.symbol-filter-row1317{grid-template-columns:1fr;gap:0}.price-ranges1317{grid-template-columns:repeat(2,minmax(0,1fr))}.price-range1317:nth-child(3){border-right:1px solid var(--border-color)}.price-range1317:nth-child(even){border-right:0}.price-range1317:nth-child(4){border-bottom:1px solid var(--border-color)}.price-range1317:nth-child(n+3){padding-top:16px}.latest-dod1317 strong{font-size:18px}}
+
+/* Equal-width latest symbol/index/price-check cards; source data are unchanged. */
+.latest-market1318{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+.latest-market1318>.card{margin-bottom:0;min-width:0;display:flex;flex-direction:column}
+.latest-market1318 .card-header{align-items:flex-start;min-height:44px}
+.latest-market1318 .latest-dod1317{margin-top:auto}
+:root,:root[data-theme="light"]{--limit-up1318:#08683f;--limit-down1318:#b31b35;--extreme-high-bg1318:#e1f3e9;--extreme-low-bg1318:#fde8ed;--extreme-both-bg1318:#eee9fc;--extreme-high-ink1318:#075c35;--extreme-low-ink1318:#9f1730;--extreme-both-ink1318:#61449a;--extreme-positive1318:#12623d;--extreme-negative1318:#a61530;--extreme-high-cell1318:#c6e9d5;--extreme-low-cell1318:#f8ced9}
+:root[data-theme="dark"]{--limit-up1318:#4ade80;--limit-down1318:#fda4af;--extreme-high-bg1318:#193d33;--extreme-low-bg1318:#482b36;--extreme-both-bg1318:#35304f;--extreme-high-ink1318:#baf7d1;--extreme-low-ink1318:#ffd4dd;--extreme-both-ink1318:#decfff;--extreme-positive1318:#a7f3d0;--extreme-negative1318:#fecdd3;--extreme-high-cell1318:#205340;--extreme-low-cell1318:#663447}
+.price-lock-status1318{display:flex;align-items:center;gap:12px;margin:8px 0 14px;min-height:42px}
+.price-lock-icon1318{width:35px;height:35px;flex:0 0 35px}
+.price-lock-status1318 strong{font-size:19px;line-height:1.3}
+.limit-upper1318 .price-lock-status1318{color:var(--limit-up1318)}
+.limit-lower1318 .price-lock-status1318{color:var(--limit-down1318)}
+.limit-neutral1318 .price-lock-status1318{color:var(--text-muted)}
+.price-limit-previous1318{font-size:12px;color:var(--text-muted);margin-bottom:10px}
+.price-limit-previous1318 b{color:var(--text-main)}
+.price-limit-levels1318{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:auto}
+.price-limit-levels1318 span{display:block;font-size:12px;color:var(--text-muted);margin-bottom:5px}
+.price-limit-levels1318 strong{font-size:15px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.price-limit-note1318{font-size:11px;line-height:1.5;color:var(--text-muted);margin-top:12px}
+.extrema-table-note1318{font-size:11px;line-height:1.5;color:var(--text-muted);margin:8px 0 12px}
+.table-wrap table.data-table tr.row-max-high1318{--extreme-row-bg1318:var(--extreme-high-bg1318);--extreme-row-ink1318:var(--extreme-high-ink1318)}
+.table-wrap table.data-table tr.row-min-low1318{--extreme-row-bg1318:var(--extreme-low-bg1318);--extreme-row-ink1318:var(--extreme-low-ink1318)}
+.table-wrap table.data-table tr.row-max-high1318.row-min-low1318{--extreme-row-bg1318:var(--extreme-both-bg1318);--extreme-row-ink1318:var(--extreme-both-ink1318)}
+.table-wrap table.data-table tr.extrema-row1318>td{background:var(--extreme-row-bg1318)!important;color:var(--text-main)!important;border-bottom-color:var(--border-color)}
+.table-wrap table.data-table tr.extrema-row1318>td:first-child{box-shadow:inset 4px 0 var(--extreme-row-ink1318);padding-left:14px}
+.table-wrap table.data-table tr.extrema-row1318>td.pos,.table-wrap table.data-table tr.extrema-row1318>td .pos{color:var(--extreme-positive1318)!important}
+.table-wrap table.data-table tr.extrema-row1318>td.neg,.table-wrap table.data-table tr.extrema-row1318>td .neg{color:var(--extreme-negative1318)!important}
+.table-wrap table.data-table tr.extrema-row1318>td.extreme-high-cell1318{background:var(--extreme-high-cell1318)!important;color:var(--extreme-high-ink1318)!important;font-weight:750;box-shadow:inset 0 -2px var(--extreme-high-ink1318)}
+.table-wrap table.data-table tr.extrema-row1318>td.extreme-low-cell1318{background:var(--extreme-low-cell1318)!important;color:var(--extreme-low-ink1318)!important;font-weight:750;box-shadow:inset 0 -2px var(--extreme-low-ink1318)}
+.extrema-row-labels1318{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;white-space:normal}
+.extrema-row-badge1318{display:inline-block;padding:2px 5px;border:1px solid currentColor;border-radius:4px;font:600 10px/1.4 var(--font-sans)}
+.badge-high1318{color:var(--extreme-high-ink1318);background:var(--extreme-high-bg1318)}
+.badge-low1318{color:var(--extreme-low-ink1318);background:var(--extreme-low-bg1318)}
+@media(max-width:1050px){.latest-market1318{grid-template-columns:1fr}.latest-market1318 .card-header{min-height:0}}
+@media print{.extrema-row1318>td{-webkit-print-color-adjust:exact;print-color-adjust:exact}.extrema-row-badge1318{border-color:#333}}

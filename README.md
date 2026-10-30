@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.17
+# PSX Intelligence v1.3.18
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -16,6 +16,85 @@ Drive, credentials or user trading database is included in the release archive.
 - [Calculation boundaries](#calculation-and-data-boundaries)
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
+
+## Current update: v1.3.18 — price-limit card and table highlights
+
+This partial-file ZIP updates published **v1.3.17**, GitHub base commit
+`31a647d45499996827d5dbecd65d8c6778e652f5`. The v1.3.17 section later in this
+README is historical; use these installation steps for the current ZIP.
+
+### Install v1.3.18 yourself
+
+1. Keep your current source commit for rollback. Extract the ZIP.
+2. **Merge/overwrite the extracted files at your existing repository root. Do
+   not delete the whole existing `psx_app/` or `tests/` folder:** the ZIP contains
+   partial folders, not a replacement for the repository.
+3. Use GitHub **Add file → Upload files**. Upload the extracted `psx_app/`,
+   `tests/`, `README.md` and `RELEASE_MANIFEST.json` together, preserving paths
+   such as `psx_app/main.py`. Do not upload the ZIP as application source or nest
+   its contents inside another parent folder. Commit to `main` when ready.
+4. Wait for GitHub checks and Vercel deployment. Confirm `/api/health` reports
+   **1.3.18**, hard-refresh (**Ctrl+Shift+R**), then open **09 → Symbol vs Index**.
+5. No new environment variable, dependency, migration or data re-import is needed.
+   Existing reference names, six ranges, weekly reports and exports remain.
+
+### Third card: requested close-based price check
+
+Three equally sized desktop cards show Latest Close, Latest Index Close and
+**Price-limit check**. Narrow screens stack them.
+
+- Uses latest imported **symbol close** and that row's imported `pr_close`,
+  not its high/low or the index price.
+- Upper price = `max(previous close × 1.10, previous close + PKR 1)`.
+- Lower price = `min(previous close × 0.90, previous close − PKR 1)`.
+- **Green closed lock** at or above the upper price; **red closed lock** at or
+  below the lower price. Exact boundary prices count as reached. An unlocked
+  neutral state appears within those prices. Missing/invalid close or a
+  nonpositive previous close gives an unavailable check, not an invented value.
+- Previous PKR 100 → upper PKR 110 / lower PKR 90. Previous PKR 5 → upper PKR 6 /
+  lower PKR 4. The card displays the previous close, both prices and source date.
+- This implements your requested arithmetic, **not exchange-confirmed circuit
+  breaker or halt status**. No live exchange feed, instrument exemption or
+  tick-size rounding is added. For a previous close below PKR 1 the requested
+  lower-price formula can be negative: it is shown as calculated, not silently
+  clamped or advertised as an official trading limit.
+
+### Maximum High / minimum Low highlighting in both tables
+
+- Each table independently highlights **every row tied for maximum High** and
+  **every row tied for minimum Low** within its displayed Records selection.
+  These are not the six range cards' independent calendar windows.
+- High rows have muted green fill; low rows muted rose. Rows meeting both use
+  violet fill, with their exact High/Low cells emphasized separately. Visible
+  **Max high / Min low** badges avoid relying on color alone.
+- Null/nonfinite values are excluded. Actual numeric zero stays as imported.
+  A single row can qualify for both. Empty tables retain the no-data state.
+- Separate light/dark palettes remain visible under alternating-row/hover styles.
+  Symbol/index keep nine/eight columns, internal scrolling and sticky headers.
+  Export values are unchanged; this is browser styling, not spreadsheet formatting.
+
+### Safety, performance and verification
+
+- No source-data writes, financial calculation changes, extra database queries,
+  schema changes, cleanup, credentials or trading database in this patch. Live
+  Aiven was not accessed; nothing was pushed or deployed automatically.
+- Thresholds use existing API fields; highlighting is linear in displayed rows,
+  with no per-row request. App/static versions move to **1.3.18**; API cache
+  namespace deliberately stays **1.3.17** because its payload is unchanged,
+  avoiding unnecessary report-cache rebuilds. No overall speed increase is claimed.
+- **273 passed, 34 skipped, one dependency deprecation warning** using isolated
+  SQLite and disposable loopback PostgreSQL. Skips are not claimed as passes.
+  Tests cover exact boundaries, low prices, missing baselines, all ties,
+  simultaneous extrema and unaffected ordinary tables.
+- Local synthetic Chromium checks passed: three equal desktop cards; green/red
+  states; independent tied extrema in both tables; 9/8 columns; minimum tested
+  highlighted-row text contrast **5.61:1 light / 7.29:1 dark**; hover persistence;
+  sticky header after internal scrolling; stacked 390px mobile layout without
+  page-width overflow; no JavaScript page errors. Not live deployment verification.
+- The ZIP is overlaid on a clean published v1.3.17 tree and checked against the
+  complete release manifest and regression suite. To roll back, revert your
+  source commit and redeploy; no data migration is involved. Keep authentic
+  workbook and database backups independently.
 
 ## Repository layout
 
@@ -63,7 +142,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.17`. An empty database is expected before you import your data.
+   version `1.3.18`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -320,7 +399,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **244 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **273 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
