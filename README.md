@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.24
+# PSX Intelligence v1.3.25
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,115 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.24 — Futures Last Data with automatic contract Days
+## Current update: v1.3.25 — Market Performance
+
+This **partial source update for v1.3.24** adds **10 • Market Performance** below
+Market Explorer. Settings moves to menu 11; its functionality is unchanged.
+No authentic records, import settings, database schema, credentials or other
+modules are rewritten. No GitHub push or live deployment was performed.
+
+### Install v1.3.25
+
+1. Keep the current source commit for rollback. Extract the update ZIP.
+2. **Merge/overwrite** the included `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` into the existing **v1.3.24 repository root**.
+   These are partial folders: do not delete the original folders, create an extra
+   enclosing application folder, or upload the ZIP itself as application source.
+3. Commit through your normal GitHub workflow, let Vercel deploy, then hard-refresh
+   with Ctrl+Shift+R. Confirm **v1.3.25** in the sidebar or `/api/health`.
+4. Open **Market Performance**. No new environment variables, database maintenance
+   or re-import are required when authentic cash, INDEX, COMP_LIST and KSE100
+   membership data are already imported. Missing reference/data coverage is shown,
+   not replaced by sample records.
+
+### Seven periods and chart definitions
+
+- **Daily:** date filter, index summary and eight top-10 column charts.
+  A requested closed/missing date resolves to the last imported date on or before
+  it, explicitly labelled. A request before all history is rejected, never moved
+  forward to a later price.
+- **Weekly:** ISO year/week numbers, **Monday–Friday only**. Imported weekend
+  observations are excluded from weekly values and weekly baselines. The combined
+  chart has five weekday slots; absent observations are gaps, not fabricated zeroes.
+- **Monthly:** month/year filter. The combined chart shows **each stored session
+  within that month**, not one column per month across all history (confirmed A).
+- **Quarterly:** fiscal Q1 Jul–Sep, Q2 Oct–Dec, Q3 Jan–Mar, Q4 Apr–Jun.
+- **Half Year:** H1 Jul–Dec; H2 Jan–Jun.
+- **Nine Month Ended:** Jul–Mar, not a rolling window or Jan–Sep.
+- **Yearly:** Jul–Jun. FY 2026–27 means 1 Jul 2026–30 Jun 2027.
+  Quarterly, half-year, nine-month and annual combined charts use monthly buckets.
+
+Each period has scrip-volume and sector-volume leaders, sector gainers/losers,
+scrip PKR gainers/losers and scrip percentage gainers/losers. The latter six
+charts use **only imported KSE100 membership**. Volume charts include all imported
+cash symbols, not just KSE100 or SEL_COMP_LIST. Ties are deterministic, and fewer
+than ten eligible leaders are shown without padding or invented records.
+
+- Price change = last eligible close in the period minus the last stored close
+  **before the period began**; percentage = change / baseline × 100.
+- Return rankings exclude KSE100 symbols whose last quote is older than the
+  period's cash as-of date, or whose endpoint/baseline is missing or nonpositive.
+  Actual zero returns are valid but are neither gainers nor losers.
+- **Sector returns are equal-weight averages of eligible KSE100-member percentage
+  returns**, as confirmed. They are not market-cap weights or index-point
+  contributions. Expand Chart data for eligible/total sector-member counts.
+- KSE100 membership is the imported static list; historical reconstitutions,
+  corporate-action adjustments and dividend/total-return adjustments are not modeled.
+- Sector lookup uses imported COMP_LIST, then imported KSE100 sector data;
+  unmapped volume is kept as **Unmapped**, never silently dropped. There is no
+  bundled-company or membership fallback.
+- The combined chart is **index point change** (line, left axis), not index level,
+  plus imported cash volume (stacked columns, right axis). Stacks are the top five
+  sectors for the selected period, Other, and Unmapped when applicable. Their sum
+  equals imported bucket volume. This is **not official KSE100 trading volume**;
+  the index table itself does not provide volume.
+- Cash/index as-of dates and pre-period baselines remain separate and visible.
+  Future observations never enter an older selected period. Current/unfinished
+  imported periods are labelled; reaching the final weekday is not certification
+  of full import coverage. Missing imports cannot be distinguished from exchange
+  holidays. Expand Calculation & coverage for limitations and excluded-member counts.
+
+### UI and performance safeguards
+
+Shared red **#F63131**, green **#03D815**, yellow separator rules, human-readable
+shared dates, system fonts, light/dark themes and reduced-motion preference are
+retained. Eight charts form a responsive two-column grid, with internal horizontal
+scrolling for dense labels and a full-width combined chart. Keyboard-focusable
+columns expose exact values; Chart data tables are created only when expanded.
+There is no external chart library, CDN, background training or full OHLCV download.
+The top Export button downloads the selected report as CSV with coverage notes;
+spreadsheet formula-leading text is neutralized. No trading or database write
+is performed by the report (other than expendable PostgreSQL derived-result cache).
+
+One report response contains filters, summary, eight rankings and the small
+combined series. Date-range aggregation and indexed per-symbol baseline seeks
+replace a network read per symbol. Browser caching reuses the existing bounded
+30-second revision-scoped panel cache; in-flight reads deduplicate, imports/refresh
+invalidate the cache scope, and late replies cannot overwrite a newer tab or view.
+PostgreSQL also uses the existing revision-keyed shared compressed result cache.
+Its namespace and source data are unchanged.
+
+### Verification for v1.3.25
+
+- **411 passed, 34 skipped, 1 dependency deprecation warning**, including guarded
+  loopback PostgreSQL tests, fiscal boundaries, weekday exclusion, index baselines,
+  exact stacked volumes, membership restrictions, missing prices, stale symbols,
+  safe chart labels, stale-response protection and shared-cache invalidation.
+- Local Chromium: all seven tabs, eight charts per tab, combined chart counts,
+  light/dark themes, lazy data tables, CSV download and layouts at
+  1600/1200/768/390/320 px; no document overflow or JavaScript errors. Returning
+  to a cached period within the cache interval issued **zero new report requests**.
+- A separate **synthetic local SQLite** benchmark used **1,000,000 rows, 1,000
+  symbols and 1,000 weekday sessions**. Two calculations per period took roughly
+  **68–323 ms**, with bounded chart payloads (about 16–104 KB including date options).
+  Date ranges and baseline lookups used the existing indexes. These figures are
+  not Aiven/Vercel network or production memory/load measurements and are not a
+  live latency guarantee. No live Aiven benchmark or production data access occurred.
+- Clean overlay/hash verification and a second regression run validate this patch
+  against its v1.3.24 source baseline. No synthetic databases, credentials, browser
+  images, package dependencies or benchmark data are included in the ZIP.
+
+## Previous update: v1.3.24 — Futures Last Data with automatic contract Days
 
 This partial source update is based on **v1.3.23**. It adds the requested latest-only
 futures view and removes the old retention tab from the interface. **No historical

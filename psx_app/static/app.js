@@ -96,7 +96,8 @@ const VIEW_TITLES = {
   technical: "07 • Technical Analysis, Setup Generator & 36-Ticker",
   reconciliation: "08 • Data Quality & Legacy Reconciliation",
   exports: "09 • Exports & reports",
-  settings: "10 • Settings, Rule Versioning & Database Backup",
+  performance: "10 • Market Performance",
+  settings: "11 • Settings, Rule Versioning & Database Backup",
 };
 
 function fmtNum(v, decimals = 2) {
@@ -231,6 +232,7 @@ async function switchView(view) {
     else if (view === "futures") await renderFuturesView(container);
     else if (view === "technical") await renderTechnicalView(container);
     else if (view === "market") await renderMarketView(container);
+    else if (view === "performance") await renderPerformance1325(container);
     else if (view === "reconciliation") await renderReconciliationView(container);
     else if (view === "exports") await renderExportsView(container);
     else if (view === "settings") await renderSettingsView(container);
@@ -2886,7 +2888,7 @@ function enhanceWorkspace() {
 async function renderLatestBadge(view) {
   const dates = await apiGet('/api/data-dates');
   if (state.currentView !== view) return;
-  const key = ({top5:'top5',futures:'futures',technical:'cash',market:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
+  const key = ({top5:'top5',futures:'futures',technical:'cash',market:'cash',performance:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
   let badge = document.getElementById('moduleLatestBadge');
   if (!badge) {badge = document.createElement('span');badge.id='moduleLatestBadge';badge.className='badge badge-green';document.getElementById('viewTitle').after(badge);}
   badge.textContent = dates[key] ? 'Auto → Latest: '+fmtDate(dates[key]) : 'No imported data';
@@ -2927,6 +2929,7 @@ async function refreshIfCloudChanged() {
   }
 }
 function exportCurrentModule() {
+  if (state.currentView === 'performance') {exportPerformance1325();return;}
   const account = state.currentView === 'acc91404' ? '91404' : state.currentView === 'acc91269' ? '91269' : null;
   const key = account ? 'account_'+account+'_xlsx' : ({top5:'top5_xlsx',technical:'technical_xlsx'})[state.currentView];
   if (state.currentView === 'futures') {window.location.href=futuresExportUrl();return;}

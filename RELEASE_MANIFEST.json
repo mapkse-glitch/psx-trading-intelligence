@@ -1,15 +1,15 @@
 {
-  "version": "1.3.24",
+  "version": "1.3.25",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 372,
+    "passed": 411,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
-    "browser_test": "v1.3.24 local synthetic Chromium light/dark: Last Data beside Date Summary; no retention tab; latest imported futures date and 60 contracts; aligned cards; 12 alphabetic columns, exact cash source and separate volumes, per-contract 14/42/70 Days, canonical high/low colors and yellow dividers, internal sticky table, 1600/1200/768/390/320px without page overflow, one initial report request and no metadata dependency, refresh/empty/error states and late metadata response guard, no JS page errors. Not pushed/deployed.",
+    "browser_test": "v1.3.25 local synthetic Chromium: seven fiscal/weekday tabs, eight rankings each, daily/monthly combined buckets, shared light/dark colors and yellow dividers, human-readable dates, lazy chart data tables, CSV export, one initial report request and zero repeated requests within cache TTL; 1600/1200/768/390/320px without document overflow; no JavaScript errors. No live login, GitHub push, deployment or Aiven changes.",
     "isolated_full_snapshot_restore_tested": true,
     "production_isolated_restore_tested": true,
     "bulk_and_interrupted_restore_tested": true,
@@ -31,20 +31,30 @@
     "parallel_matching_shared_market_cache_and_global_get_dedup_tested": true,
     "matching_query_output_parity_tested": true,
     "last_futures_snapshot_calendar_days_annualization_and_retention_tab_removal_tested": true,
-    "latest_futures_revision_cache_and_indexed_join_tested": true
+    "latest_futures_revision_cache_and_indexed_join_tested": true,
+    "market_performance_fiscal_weekday_charts_tested": true,
+    "market_performance_postgres_revision_cache_tested": true
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
       "bytes": 4252,
       "sha256": "ddc9f313cb58457f9bdd15a077d8ea42648a1c45166de7257d990ea40bdb947e"
     },
+    ".github/workflows/prepare-isolated-restore.yml": {
+      "bytes": 1760,
+      "sha256": "15a9da5dba49c49c5a675328da743ee3996aa451b1317d782254945df92ad588"
+    },
+    ".github/workflows/storage-maintenance.yml": {
+      "bytes": 1148,
+      "sha256": "b4aa5b9293d34026e7875418fe4ed710fc38d69191e8acc71bda2de299fe87f2"
+    },
     ".gitignore": {
       "bytes": 120,
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 101333,
-      "sha256": "f00ee3d2d1661f1ae52e603138b6df63ad1a99ca1350d2cb6ddc8574e3cc89ff"
+      "bytes": 108445,
+      "sha256": "f7c60503bf4704836d2020ae95c6231cb163a47dce51470b384002c48ff425d4"
     },
     "api/index.py": {
       "bytes": 29,
@@ -92,7 +102,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "46cf9b92a0b9348c6141d3a0e690b06ccc59084cad64203cd16184d16999bf82"
+      "sha256": "57dd6597eb303e95162b522bae53f37f3b507d26a0e65c1dd830e2c4b4bef72d"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -186,6 +196,14 @@
       "bytes": 11044,
       "sha256": "94c0adaddb79dbe7707aadc0da665fa64a50fbb51155520a642fa92b43aa17ac"
     },
+    "psx_app/services/market_panels.py": {
+      "bytes": 11069,
+      "sha256": "6535a510a895ead8bb20028b4b17a89251c8b11984d2ab16177398d17f96ab51"
+    },
+    "psx_app/services/market_performance.py": {
+      "bytes": 14822,
+      "sha256": "64291c646d782d551ebf3bcf26180a6365fcb32688ee0c72e09bd26ecf89741a"
+    },
     "psx_app/services/migration_service.py": {
       "bytes": 5753,
       "sha256": "6f32d57fe4d941b81499a6c4a2bbc3922cf8bcaf9bd3e73ad53447d8d99f2f68"
@@ -227,20 +245,28 @@
       "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75"
     },
     "psx_app/static/app.js": {
-      "bytes": 185195,
-      "sha256": "7c6528929d6fdd00fe83cc90529c8a4d0acbbe709d24da7e102c3590d1d0b182"
+      "bytes": 185412,
+      "sha256": "464f298c321ec4343e156a16e0348a0f20e58d435175ca6dd00afb8853945a91"
     },
     "psx_app/static/display1311.js": {
       "bytes": 4164,
       "sha256": "ce0aa1597d4a724b5092640a5af58e2fa0f602723bb8bbf52f5fbe6f0a778a8d"
     },
     "psx_app/static/index.html": {
-      "bytes": 5285,
-      "sha256": "fc06ef40f8eef9abd8c16d713aeb727b70c7ddada4cd0750600893d1bcf76026"
+      "bytes": 5484,
+      "sha256": "7b75a6f3623e2b00332a670fda5028ac693fb366dcf29d55f6affe647cea5b76"
+    },
+    "psx_app/static/market1321.js": {
+      "bytes": 13364,
+      "sha256": "ed30582927c92193abf2fbc6327f9e927bb78fe8987597167bbcdca2b18fd151"
+    },
+    "psx_app/static/performance1325.js": {
+      "bytes": 15259,
+      "sha256": "4f2d010cc3e6ab0861192c1e947dbfcbb6c618cdf91cb0f6591278108880e25e"
     },
     "psx_app/static/styles.css": {
-      "bytes": 55731,
-      "sha256": "6319d7923a1e1f4d460bbf25ab662358efcb33b44b9f578aa9e27582f44b9abe"
+      "bytes": 60859,
+      "sha256": "1c276fad4b630a4236dbd3389f2652111044b658b94a48abc8df87d40495bb79"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
@@ -251,8 +277,8 @@
       "sha256": "6d81c0f8480184c88e4ddf85d72b5288fcb0f8da7831fc5facc0f0de60ae434c"
     },
     "psx_app/upgrade_routes.py": {
-      "bytes": 3813,
-      "sha256": "e96bc614c80baa5db5d6cd6a5aa4750d2f243189bbd3f27d8ce86ba231818f31"
+      "bytes": 4232,
+      "sha256": "0ef0f3dd1c53ac222606a7f28ab4a391317c6c81686bf4efd6c9b0d6249d167f"
     },
     "pytest.ini": {
       "bytes": 42,
@@ -290,6 +316,10 @@
       "bytes": 3775,
       "sha256": "f00c9e7d9ec3cabd8f45b04637acd4ac5bbbabf84ef9fb15a51971e7508fe2aa"
     },
+    "tests/test_isolated_restore.py": {
+      "bytes": 11432,
+      "sha256": "6ce90ef6fcc4d6bd4d51927873b0f62c72491f9deba5beeeb1076a05eab240c1"
+    },
     "tests/test_module_a_top5.py": {
       "bytes": 3278,
       "sha256": "45d1882de7bf76c8d8b407d50d5cf0d597b69731c74cd613c2ba231b88854a7d"
@@ -316,19 +346,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "2490b525dafb228b68c5752eac34b1f0a4a545d5f35c245523637d9c7598cb65"
+      "sha256": "7753e9e8407db1d47bfb5304a579255f36100ff1cdea85a12968cd5f05512b68"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "cf97623cfbcd06adee37716ffedd90b752ffef6e77b1235d26bcc810b96c8dfb"
+      "sha256": "e0534f56610a13378970302864a0d1d229daa6d47b872e34632860234b19179d"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "e21597a376133b0c03b9e0a8e61f1ef7520255b88c919f0fb15b9915ea6dfe9d"
+      "sha256": "9bc97fddd49c70b366a92ac3cfb67e455ea604cb3b3debbe1369d93953663561"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "c63171db24197def3eef9c6ea9f218af728c80dee2d600a84ebd77e2fc7e2eda"
+      "sha256": "8e26949390e1f9fca58f248618bebc5a19b7ce1d393938aaeb8fc4d8024b6ebf"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -337,74 +367,6 @@
     "tests/test_v1314_postgres.py": {
       "bytes": 31286,
       "sha256": "8afc9b2895a0bb8a87d78c5ac238ed219930f26436d8071f7b396bfdc00f6e16"
-    },
-    "tests/test_v133_import_and_latest.py": {
-      "bytes": 5448,
-      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1"
-    },
-    "tests/test_v134_freshness_and_history.py": {
-      "bytes": 6309,
-      "sha256": "60552b2a8c1ee02f0b3e09e983932d229239eb548e24525ffaebf27d32af3f03"
-    },
-    "tests/test_v137_reliability.py": {
-      "bytes": 10968,
-      "sha256": "c502df448cda48a0bd545d597fd70e0d3065f4660f480561207937a69ffd7229"
-    },
-    "tests/test_v138_tables.py": {
-      "bytes": 3523,
-      "sha256": "5d250fde288bb07a3221290aeb51fc8dedac6a2428481e37de8cf1b8d61b8f6f"
-    },
-    "tests/test_v139_accountability.py": {
-      "bytes": 4601,
-      "sha256": "7c53d808e2af83dbdcb1438aaa3b25826048ee2ecea02100cc437759450e64f1"
-    },
-    "tools/import_sqlite_to_postgres.py": {
-      "bytes": 8395,
-      "sha256": "4c31b5a041a1877a3de64bfebb2f785f74ddfa30243a500ab70ce3573f7ba106"
-    },
-    "tools/migrate_staged_snapshot.py": {
-      "bytes": 2832,
-      "sha256": "9f5b68c8f7093bb656e7306342126639595cf13a765e104bdf9b027ad7afefe8"
-    },
-    "tools/refresh_learning.py": {
-      "bytes": 984,
-      "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f"
-    },
-    "tools/stage_sqlite_snapshot.py": {
-      "bytes": 2379,
-      "sha256": "0923edfd09c3ac67b1124f708963227cbcf8988d7b676776d661ab1ee8e958f4"
-    },
-    "vercel.json": {
-      "bytes": 158,
-      "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
-    },
-    ".github/workflows/prepare-isolated-restore.yml": {
-      "bytes": 1760,
-      "sha256": "15a9da5dba49c49c5a675328da743ee3996aa451b1317d782254945df92ad588"
-    },
-    "tools/prepare_isolated_restore.py": {
-      "bytes": 15498,
-      "sha256": "d390d1838d3908e4f66f58a86d1503b2a684bbb97a9b40f41a9ba3a65d6bc7f2"
-    },
-    "tests/test_isolated_restore.py": {
-      "bytes": 11432,
-      "sha256": "6ce90ef6fcc4d6bd4d51927873b0f62c72491f9deba5beeeb1076a05eab240c1"
-    },
-    "tools/inspect_postgres_storage.py": {
-      "bytes": 3320,
-      "sha256": "d0de3487661be9128e6cdb20210e7fd326ab8dea186bb53f95d8c69fe447eafd"
-    },
-    "tests/test_volume_charts.py": {
-      "bytes": 2644,
-      "sha256": "2adef94704cd956e7cdc1f8064ae5a05cf0434a8f6e186290cf1529333f8cc91"
-    },
-    "tools/maintain_postgres_storage.py": {
-      "bytes": 9248,
-      "sha256": "fd6c4909cea090e5c68347b38cb95821cfac19156d8f2ba3d43b5a610e5f269e"
-    },
-    ".github/workflows/storage-maintenance.yml": {
-      "bytes": 1148,
-      "sha256": "b4aa5b9293d34026e7875418fe4ed710fc38d69191e8acc71bda2de299fe87f2"
     },
     "tests/test_v1316_weekly.py": {
       "bytes": 4488,
@@ -426,21 +388,13 @@
       "bytes": 2745,
       "sha256": "aa085a97becc9a40f84fb754d117171676af9dd2587686dc6a130e5030837322"
     },
-    "psx_app/services/market_panels.py": {
-      "bytes": 11069,
-      "sha256": "6535a510a895ead8bb20028b4b17a89251c8b11984d2ab16177398d17f96ab51"
-    },
-    "psx_app/static/market1321.js": {
-      "bytes": 13364,
-      "sha256": "ed30582927c92193abf2fbc6327f9e927bb78fe8987597167bbcdca2b18fd151"
+    "tests/test_v1321_frontend.py": {
+      "bytes": 3599,
+      "sha256": "e4b6335deca5704c29297aea4ac7c8501835160721fb2e88cef68e274f8398e5"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
       "sha256": "80a1035a0b3179e3224b66ba46decc060283a0b64cb4c46d5716405c102b27aa"
-    },
-    "tests/test_v1321_frontend.py": {
-      "bytes": 3599,
-      "sha256": "575254dca9ab21d345534c129e862eb644e5a21a9519e97f794376b659b6a786"
     },
     "tests/test_v1321_postgres.py": {
       "bytes": 3166,
@@ -461,108 +415,142 @@
     "tests/test_v1324_postgres.py": {
       "bytes": 2192,
       "sha256": "be0c2959bff76fd66f68e76ceb3321b01d76d8f8b6f8b996a0c01a558249307d"
+    },
+    "tests/test_v1325_performance.py": {
+      "bytes": 13965,
+      "sha256": "7cddd1ef2d7c32117a0e415a908b798995c2d3b6effbff5e4d5adfff9d73de88"
+    },
+    "tests/test_v1325_postgres.py": {
+      "bytes": 1477,
+      "sha256": "a3444cc4ddaa13437069cf3a3248049320edb81867abd7d52ee48ccd05173ccb"
+    },
+    "tests/test_v133_import_and_latest.py": {
+      "bytes": 5448,
+      "sha256": "0f128bfa9bf09bb6cfb3bb25e431dc4836ae2e29cfbadecb2f6a9bf6668f21e1"
+    },
+    "tests/test_v134_freshness_and_history.py": {
+      "bytes": 6309,
+      "sha256": "60552b2a8c1ee02f0b3e09e983932d229239eb548e24525ffaebf27d32af3f03"
+    },
+    "tests/test_v137_reliability.py": {
+      "bytes": 10968,
+      "sha256": "c502df448cda48a0bd545d597fd70e0d3065f4660f480561207937a69ffd7229"
+    },
+    "tests/test_v138_tables.py": {
+      "bytes": 3523,
+      "sha256": "5d250fde288bb07a3221290aeb51fc8dedac6a2428481e37de8cf1b8d61b8f6f"
+    },
+    "tests/test_v139_accountability.py": {
+      "bytes": 4601,
+      "sha256": "7c53d808e2af83dbdcb1438aaa3b25826048ee2ecea02100cc437759450e64f1"
+    },
+    "tests/test_volume_charts.py": {
+      "bytes": 2644,
+      "sha256": "2adef94704cd956e7cdc1f8064ae5a05cf0434a8f6e186290cf1529333f8cc91"
+    },
+    "tools/import_sqlite_to_postgres.py": {
+      "bytes": 8395,
+      "sha256": "4c31b5a041a1877a3de64bfebb2f785f74ddfa30243a500ab70ce3573f7ba106"
+    },
+    "tools/inspect_postgres_storage.py": {
+      "bytes": 3320,
+      "sha256": "d0de3487661be9128e6cdb20210e7fd326ab8dea186bb53f95d8c69fe447eafd"
+    },
+    "tools/maintain_postgres_storage.py": {
+      "bytes": 9248,
+      "sha256": "fd6c4909cea090e5c68347b38cb95821cfac19156d8f2ba3d43b5a610e5f269e"
+    },
+    "tools/migrate_staged_snapshot.py": {
+      "bytes": 2832,
+      "sha256": "9f5b68c8f7093bb656e7306342126639595cf13a765e104bdf9b027ad7afefe8"
+    },
+    "tools/prepare_isolated_restore.py": {
+      "bytes": 15498,
+      "sha256": "d390d1838d3908e4f66f58a86d1503b2a684bbb97a9b40f41a9ba3a65d6bc7f2"
+    },
+    "tools/refresh_learning.py": {
+      "bytes": 984,
+      "sha256": "6c67f515b62cc0688d6a291784a5715cbe73a331500b83390a4cf6233195231f"
+    },
+    "tools/stage_sqlite_snapshot.py": {
+      "bytes": 2379,
+      "sha256": "0923edfd09c3ac67b1124f708963227cbcf8988d7b676776d661ab1ee8e958f4"
+    },
+    "vercel.json": {
+      "bytes": 158,
+      "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
   },
-  "patch_base": "v1.3.23 / PSX_v1.3.23_UI_Polish_Faster_Navigation_Update.zip",
+  "patch_base": "PSX_v1.3.24_Futures_Last_Data_Update.zip",
   "local_benchmark": {
-    "matching_query": {
-      "environment": "Local SQLite synthetic 5000 stored sessions for selected symbol, 45000 cash rows total; median 15 uncached service calls. Not live Aiven/full-page measurements.",
-      "matching_ms": {
-        "v1.3.22": 10.5,
-        "v1.3.23": 3.399
+    "rows": 1000000,
+    "symbols": 1000,
+    "sessions": 1000,
+    "backend": "local SQLite synthetic, not live Aiven",
+    "reports": {
+      "daily": {
+        "milliseconds": [
+          68.2,
+          68.2
+        ],
+        "bytes": 104166,
+        "charts": 8,
+        "buckets": 0
       },
-      "speedup": 3.09,
-      "identical_outputs": true
-    },
-    "navigation": {
-      "method": "Synthetic Chromium localhost with 100ms injected delay per market request; 3 Symbol vs Index \u2192 Matching Rate transitions per build. Not live Vercel/Aiven measurements.",
-      "results": [
-        {
-          "version": "1.3.22",
-          "run": 0,
-          "transition_ms": 319,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/meta",
-              "start_ms": 0
-            },
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 112
-            }
-          ],
-          "warm_matching_ms": 12
-        },
-        {
-          "version": "1.3.22",
-          "run": 1,
-          "transition_ms": 298,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/meta",
-              "start_ms": 0
-            },
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 112
-            }
-          ],
-          "warm_matching_ms": 29
-        },
-        {
-          "version": "1.3.22",
-          "run": 2,
-          "transition_ms": 293,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/meta",
-              "start_ms": 0
-            },
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 112
-            }
-          ],
-          "warm_matching_ms": 24
-        },
-        {
-          "version": "1.3.23",
-          "run": 0,
-          "transition_ms": 192,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 0
-            }
-          ],
-          "warm_matching_ms": 32
-        },
-        {
-          "version": "1.3.23",
-          "run": 1,
-          "transition_ms": 189,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 0
-            }
-          ],
-          "warm_matching_ms": 23
-        },
-        {
-          "version": "1.3.23",
-          "run": 2,
-          "transition_ms": 208,
-          "requestStarts": [
-            {
-              "path": "/api/v139/market/matching/PRL",
-              "start_ms": 0
-            }
-          ],
-          "warm_matching_ms": 36
-        }
-      ],
-      "cold_parallel_start_gap_ms": 1
+      "weekly": {
+        "milliseconds": [
+          75.6,
+          76.4
+        ],
+        "bytes": 34531,
+        "charts": 8,
+        "buckets": 5
+      },
+      "monthly": {
+        "milliseconds": [
+          102.2,
+          103.1
+        ],
+        "bytes": 24636,
+        "charts": 8,
+        "buckets": 23
+      },
+      "quarterly": {
+        "milliseconds": [
+          98.1,
+          97.9
+        ],
+        "bytes": 15995,
+        "charts": 8,
+        "buckets": 3
+      },
+      "halfyear": {
+        "milliseconds": [
+          216.7,
+          247.1
+        ],
+        "bytes": 16129,
+        "charts": 8,
+        "buckets": 6
+      },
+      "ninemonth": {
+        "milliseconds": [
+          323.2,
+          268.6
+        ],
+        "bytes": 16325,
+        "charts": 8,
+        "buckets": 9
+      },
+      "yearly": {
+        "milliseconds": [
+          271.7,
+          225.9
+        ],
+        "bytes": 16643,
+        "charts": 8,
+        "buckets": 12
+      }
     }
   },
   "last_data_query_plan": [
@@ -571,5 +559,12 @@
     "SEARCH futures_ohlcv USING COVERING INDEX idx_fut_date_month",
     "SEARCH e USING INDEX sqlite_autoindex_equity_ohlcv_1 (trade_date=? AND symbol=?) LEFT-JOIN",
     "USE TEMP B-TREE FOR RIGHT PART OF ORDER BY"
-  ]
+  ],
+  "market_performance_query_plan": {
+    "date_options": "covering date indexes",
+    "baseline": "idx_eq_sym_date (symbol=?, trade_date<?)",
+    "period_aggregate": "idx_eq_date_sym (trade_date range); bounded group by symbol",
+    "network_reads": "batched SQL, no network call per symbol",
+    "raw_ohlcv_sent_to_browser": false
+  }
 }

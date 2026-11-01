@@ -66,3 +66,11 @@ def learning(symbol:str):
 def coverage(search: str = Query('', max_length=150)):
     from psx_app.services.data_coverage import DataCoverage
     return DataCoverage(DB_PATH).report(search)
+
+from typing import Literal
+from psx_app.services.market_performance import MarketPerformance
+
+@router.get('/market-performance')
+def market_performance(period:Literal['daily','weekly','monthly','quarterly','halfyear','ninemonth','yearly']='daily',key:str|None=Query(None,max_length=32)):
+    try: return MarketPerformance(DB_PATH).report(period,key)
+    except ValueError as error: raise HTTPException(422,str(error))
