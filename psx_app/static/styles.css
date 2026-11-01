@@ -1186,7 +1186,7 @@ input[type="date"] { min-height:44px; color-scheme:light; }
 @media(prefers-reduced-motion:reduce){.view-container{animation:none!important}.price-range-marker1319,.moving-close1320{transition:none!important}}
 
 /* v1.3.21 market panels: existing palette, borders, typography and motion. */
-.range-window-bar1321{height:8px;border:1px solid var(--border-color);border-radius:999px;margin:12px 0;background:linear-gradient(90deg,var(--pos-green),color-mix(in srgb,var(--pos-green) 14%,var(--bg-card)) 49.5%,color-mix(in srgb,var(--neg-red) 14%,var(--bg-card)) 50.5%,var(--neg-red))}
+.range-window-bar1321{height:8px;border:1px solid var(--border-color);border-radius:999px;margin:12px 0;background:linear-gradient(90deg,var(--pos-green) 0%,#D4C83F 50%,var(--neg-red) 100%)}
 .range-window-empty1321{background:var(--bg-card-alt)}
 .panels-filter1321{gap:18px;align-items:flex-end;flex-wrap:wrap}
 .panels-filter1321 select{max-width:100%;min-width:150px}
@@ -1257,3 +1257,22 @@ hr{border:0;border-top:1px solid var(--separator-color)}
 .sector-cards1321:focus-visible,.index-rail1322:focus-visible{outline:2px solid var(--accent-blue);outline-offset:3px}
 .table-wrap table.data-table tr.extrema-row1318>td.semantic-high1322,.table-wrap table.data-table tr.extrema-row1318>td.semantic-high1322 *{color:var(--pos-green)!important}
 .table-wrap table.data-table tr.extrema-row1318>td.semantic-low1322,.table-wrap table.data-table tr.extrema-row1318>td.semantic-low1322 *{color:var(--neg-red)!important}
+
+/* v1.3.23: clearer quote units, stable alignment and restrained useful feedback. */
+.latest-quote1323{flex:1;display:flex;flex-direction:column;justify-content:center;padding:12px 0 22px;min-width:0}
+.latest-unit1323{display:block;color:var(--text-muted);font-size:12px;font-weight:600;line-height:1.5}
+.latest-quote1323 .latest-close1317{margin:5px 0 0;overflow-wrap:anywhere}
+.latest-market1318 .latest-dod1317{gap:12px;grid-template-columns:repeat(2,minmax(0,1fr));padding-top:12px}
+.latest-market1318 .latest-dod1317>div{min-width:0}
+.latest-market1318 .latest-dod1317 span{min-height:18px}
+@media(hover:hover) and (pointer:fine){
+ .btn:not(:disabled):hover,.nav-btn:hover,.subtab-btn:not(:disabled):hover,.quick-pill:hover{box-shadow:0 2px 7px color-mix(in srgb,var(--accent-blue) 13%,transparent)}
+ select:not(:disabled):hover,input:not(:disabled):not([type="checkbox"]):not([type="file"]):hover{border-color:var(--accent-blue)}
+ a[href]:hover{text-underline-offset:3px}
+}
+.btn:focus-visible,.nav-btn:focus-visible,.subtab-btn:focus-visible,.quick-pill:focus-visible{outline:2px solid var(--accent-blue);outline-offset:3px}
+@media(prefers-reduced-motion:no-preference){
+ .btn,.nav-btn,.subtab-btn,.quick-pill{transition:background-color .14s ease,border-color .14s ease,color .14s ease,box-shadow .14s ease}
+ select,input:not([type="checkbox"]):not([type="file"]){transition:border-color .14s ease}
+}
+@media(prefers-reduced-motion:reduce){.btn,.nav-btn,.subtab-btn,.quick-pill,select,input{transition:none!important}}

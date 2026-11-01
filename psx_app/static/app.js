@@ -171,22 +171,24 @@ function databaseNotice1313(payload) {
   document.querySelector('.status-pill').dataset.connection = 'unavailable';
 }
 
+// Concurrent identical GETs share one request, including across page transitions.
+// A refresh/import swaps state.apiCache and therefore also isolates in-flight reads.
+const apiFlights1323=new WeakMap();
 async function apiGet(url, useCache = true) {
-  if (useCache && state.apiCache[url]) {
-    return state.apiCache[url];
-  }
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    if (res.status === 503 && err.code) databaseNotice1313(err);
-    const error = new Error(err.detail || "API request failed"); error.code = err.code; throw error;
-  }
-  const data = await res.json();
-  databaseNotice1313(null);
-  if (useCache) {
-    state.apiCache[url] = data;
-  }
-  return data;
+ const scope=state.apiCache;
+ if(useCache&&scope[url])return scope[url];
+ let flights=apiFlights1323.get(scope);if(!flights){flights=new Map();apiFlights1323.set(scope,flights);}
+ let request=flights.get(url);
+ if(!request){
+  request=(async()=>{
+   const res=await fetch(url);
+   if(!res.ok){const err=await res.json().catch(()=>({detail:res.statusText}));if(res.status===503&&err.code)databaseNotice1313(err);const error=new Error(err.detail||'API request failed');error.code=err.code;throw error;}
+   const data=await res.json();databaseNotice1313(null);return data;
+  })();
+  flights.set(url,request);
+ }
+ try{const data=await request;if(useCache&&state.apiCache===scope)scope[url]=data;return data;}
+ finally{if(flights.get(url)===request)flights.delete(url);}
 }
 
 function clearClientCache() {

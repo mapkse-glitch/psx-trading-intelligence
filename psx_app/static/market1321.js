@@ -12,7 +12,7 @@ function panelGet1322(url){
  if(!cache){cache=new Map();panelCaches1322.set(scope,cache);}
  const hit=cache.get(url);if(hit?.promise)return hit.promise;
  if(hit&&Date.now()-hit.at<30000)return Promise.resolve(hit.data);
- const entry={};entry.promise=apiGet(url,false).then(data=>{cache.set(url,{data,at:Date.now()});return data;},error=>{cache.delete(url);throw error;});cache.set(url,entry);return entry.promise;
+ const entry={};entry.promise=apiGet(url,false).then(data=>{cache.set(url,{data,at:Date.now()});if(cache.size>48){for(const [key,value] of cache){if(cache.size<=48)break;if(!value.promise)cache.delete(key);}}return data;},error=>{cache.delete(url);throw error;});cache.set(url,entry);return entry.promise;
 }
 function number1321(value,decimals=2){return value==null?'Not available':fmtNum(value,decimals);}
 function signed1321(value){return value==null?'Not available':`<span class="${pnlClass(value)}">${fmtNum(value)}</span>`;}
@@ -25,7 +25,7 @@ function smallSymbolCard1321(card,report){
  if(card.status!=='OK')return html+'<p class="small-empty1321">No imported price records for this symbol. Import its authentic data to populate the figures.</p></article>';
  html+=`<div class="small-metric-row1321 three1321">${metric1321('Latest close',number1321(card.close),tone)}${metric1321('DoD change',number1321(card.change),tone)}${metric1321('DoD change (%)',pct1321(card.pct),tone)}</div>`;
  html+=`<div class="small-metric-row1321">${metric1321('Latest high',number1321(card.high),'pos')}${metric1321('Latest low',number1321(card.low),'neg')}</div>`;
- html+=`<div class="small-metric-row1321">${metric1321('Source average',number1321(card.avg_price))}${metric1321('Volume',card.volume==null?'Not available':fmtInt(card.volume))}</div>`;
+ html+=`<div class="small-metric-row1321">${metric1321('Average',number1321(card.avg_price))}${metric1321('Volume',card.volume==null?'Not available':fmtInt(card.volume))}</div>`;
  html+=`<div class="small-metric-row1321">${periodMetric1321('Week to date',card.week)}${periodMetric1321('Month to date',card.month)}</div>`;
  html+=`<section class="small-window1321"><h4>Based on Selected Sessions (${fmtInt(report.requested)})</h4><div class="small-metric-row1321">${metric1321('Session high',number1321(card.session_high),'pos')}${metric1321('Session low',number1321(card.session_low),'neg')}</div><p class="small-coverage1321">${fmtInt(card.session_count)} of ${fmtInt(report.requested)} sessions available · ${fmtDate(card.session_first)} – ${fmtDate(card.trade_date)}</p></section>`;
  return html+'</article>';
@@ -39,11 +39,13 @@ async function renderMarketExtra1321(container,ticket){
  const current=()=>currentViewRender(container,ticket)&&state.market.tab===tab;
  let html=marketTabs1321(tab);
  if(tab==='matching'){
-  const meta=await panelGet1322('/api/v139/market/meta');if(!current())return;
+  const candidate=m.match_symbol||m.symbol;
+  // Launch independent reads together, rather than metadata THEN history.
+  const [meta,prepared]=await Promise.all([panelGet1322('/api/v139/market/meta'),candidate?panelGet1322('/api/v139/market/matching/'+encodeURIComponent(candidate)):Promise.resolve(null)]);if(!current())return;
   if(!meta.symbols.includes(m.match_symbol))m.match_symbol=meta.symbols.includes(m.symbol)?m.symbol:meta.symbols[0];
   html+=`<section class="card filter-bar panels-filter1321"><label>Symbol <select id="matchingSymbol1321" ${meta.symbols.length?'':'disabled'} onchange="state.market.match_symbol=this.value;marketRefresh139()">${meta.symbols.map(s=>`<option value="${h(s)}" ${s===m.match_symbol?'selected':''}>${h(s)}</option>`).join('')}</select></label><span class="panels-note1321">10 nearest historical closes · excludes the most recent calendar month</span></section>`;
   if(!m.match_symbol){container.innerHTML=html+'<section class="card">No imported symbol prices are available.</section>';enhanceWorkspace();return;}
-  const r=await panelGet1322('/api/v139/market/matching/'+encodeURIComponent(m.match_symbol));if(!current())return;
+  const r=candidate===m.match_symbol&&prepared?prepared:await panelGet1322('/api/v139/market/matching/'+encodeURIComponent(m.match_symbol));if(!current())return;
   if(r.status!=='OK'){container.innerHTML=html+'<section class="card">No imported prices for this symbol.</section>';enhanceWorkspace();return;}
   html+=`<section class="card"><div class="matching-heading1321"><h3>${h(r.symbol)} · Matching Rate</h3><span>Latest symbol: ${fmtDate(r.latest.trade_date)}${r.latest_index?' · Latest index: '+fmtDate(r.latest_index.trade_date):' · Index unavailable'}</span></div><p class="panels-note1321">Matches strictly before ${fmtDate(r.cutoff)}. Differences = latest close − historical close. Gaps count stored trading sessions for this symbol. Index dates must match exactly.</p>`;
   const headers=['Latest close','Latest index close','Nearby close','Match date','Close difference','Sessions ago','Index date','Index close on match','Index difference'];

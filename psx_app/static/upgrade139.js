@@ -49,6 +49,7 @@ async function renderTechnicalView(container){
  const tab=state.technical.subtab;
  if(!['ideas','analyst','forecasts','coverage','ideas_and_analyst'].includes(tab)){await renderTechnicalLegacy(container);if(container.isConnected){const nav=container.querySelector('.subtabs');if(nav)nav.outerHTML=techNav139(tab);}return;}
  const ticket=beginViewRender(container);container.setAttribute('aria-busy','true');
+ if(container.dataset.marketTab!==m.tab){container.dataset.marketTab=m.tab;container.innerHTML=marketTabs1321(m.tab)+skeleton139();}
  if(!container.querySelector('.card'))container.innerHTML=techNav139(tab)+skeleton139();
  else container.classList.add('refreshing139');
  try {
@@ -122,7 +123,8 @@ async function commitReference139(button){if(!referenceToken139)return;button.di
 
 function volumePct1317(row){return row.volume_pct==null?'Not available':`<span class="${pnlClass(row.volume_pct)}">${fmtPct(row.volume_pct,false)}</span>`;}
 function latestMarketCard1317(label,row,identity){
- return `<section class="card latest-close-card1317"><div class="card-header"><h3>${h(label)}</h3><span>${h(identity)}${row?' · '+fmtDate(row.trade_date):''}</span></div><div class="latest-close1317 ${pnlClass(row?.change)}">${row?.close==null?'Not available':fmtNum(row.close)}</div><div class="latest-dod1317"><div><span>DoD Change</span><strong class="${pnlClass(row?.change)}">${row?.change==null?'Not available':fmtNum(row.change)}</strong></div><div><span>DoD Change (%)</span><strong class="${pnlClass(row?.pct)}">${row?.pct==null?'Not available':fmtPct(row.pct,false)}</strong></div></div>${!row?'<p>No imported index close on or before the selected symbol date.</p>':''}</section>`;
+ const index=label==='Latest Index Close',unit=index?'Index points':'PKR per share';
+ return `<section class="card latest-close-card1317"><div class="card-header"><h3>${h(label)}</h3><span>${h(identity)}${row?' · '+fmtDate(row.trade_date):''}</span></div><div class="latest-quote1323"><span class="latest-unit1323">${unit}</span><div class="latest-close1317 ${pnlClass(row?.change)}">${row?.close==null?'Not available':fmtNum(row.close)}</div></div><div class="latest-dod1317"><div><span>DoD Change (${index?'points':'PKR'})</span><strong class="${pnlClass(row?.change)}">${row?.change==null?'Not available':fmtNum(row.change)}</strong></div><div><span>DoD Change (%)</span><strong class="${pnlClass(row?.pct)}">${row?.pct==null?'Not available':fmtPct(row.pct,false)}</strong></div></div>${!row?'<p>No imported index close on or before the selected symbol date.</p>':''}</section>`;
 }
 // Requested, close-based price thresholds only; no claim of an exchange-confirmed halt.
 function priceLimit1318(row){
@@ -157,20 +159,22 @@ function priceLimitCard1318(row,symbol){
 }
 async function renderMarketView(container){
  const ticket=beginViewRender(container);const m=state.market;container.setAttribute('aria-busy','true');
+ if(container.dataset.marketTab!==m.tab){container.dataset.marketTab=m.tab;container.innerHTML=marketTabs1321(m.tab)+skeleton139();}
  if(!container.querySelector('.card'))container.innerHTML=skeleton139();else container.classList.add('refreshing139');
  try{
  if(m.tab==='matching'||m.tab==='smallcards'){await renderMarketExtra1321(container,ticket);return;}
- const meta=await apiGet('/api/v139/market/meta',false);if(!currentViewRender(container,ticket))return;
+ // Share metadata and short-lived reports with sibling market tabs.
+ const meta=await panelGet1322('/api/v139/market/meta');if(!currentViewRender(container,ticket))return;
  if(!meta.dates.includes(m.date))m.date=meta.dates[0]||null;
  if(!meta.symbols.includes(m.symbol))m.symbol=meta.symbols[0]||'PRL';
  let html=marketTabs1321(m.tab);
  if(!m.date){container.innerHTML=html+'<section class="card">No imported cash prices available.</section>';return;}
  if(m.tab==='volume'){
- const r=await apiGet('/api/v139/market/volume?'+new URLSearchParams({date:m.date,n:m.n}),false);if(!currentViewRender(container,ticket))return;
+ const r=await panelGet1322('/api/v139/market/volume?'+new URLSearchParams({date:m.date,n:m.n}));if(!currentViewRender(container,ticket))return;
  const full=fmtDate(m.date);
  html+=`<div class="explorer-layout"><aside class="card date-hierarchy calendar-only1312"><h3>Trading date</h3><label>Select date <input type="date" min="${meta.dates.at(-1)}" max="${meta.dates[0]}" value="${m.date}" onchange="marketCalendar1311(this.value)"/></label></aside><div><section class="card"><h3>${h(full)}</h3><div class="top-n139" role="group" aria-label="Top volume count">${Array.from({length:10},(_,i)=>`<button class="subtab-btn ${m.n===i+1?'active':''}" aria-pressed="${m.n===i+1}" onclick="state.market.n=${i+1};marketRefresh139()">${i+1}</button>`).join('')}</div><details class="secondary-note1312"><summary>Data notes</summary><p>${h(r.universe)}</p></details></section><div class="grid-2 volume-charts139"><section class="card"><h3>Top ${r.top_n} stocks account for ${r.top_pct.toFixed(2)}% of total volume</h3>${donut139(r)}</section><section class="card"><h3>Top ${r.top_n} stocks account for ${r.top_pct.toFixed(2)}% of total volume</h3>${columns139(r)}</section></div><section class="card">${smallTable(['Symbol','Volume (M)','Share'],r.parts.map(p=>[h(p.symbol),fmtNum(p.volume/1e6,3)+'M',fmtPct(p.pct,false)]))}<button class="btn btn-secondary" onclick="downloadMarket139()">Download view data</button></section></div></div>`;
  }else{
- const r=await apiGet('/api/v139/market/symbol/'+encodeURIComponent(m.symbol)+'?'+new URLSearchParams({n:m.days}),false);if(!currentViewRender(container,ticket))return;
+ const r=await panelGet1322('/api/v139/market/symbol/'+encodeURIComponent(m.symbol)+'?'+new URLSearchParams({n:m.days}));if(!currentViewRender(container,ticket))return;
  html+=`<div class="symbol-filter-row1317"><section class="card filter-bar"><label>Records <input type="number" min="1" max="6000" value="${m.days}" onchange="state.market.days=Math.min(6000,Math.max(1,Math.floor(Number(this.value)||1)));marketRefresh139()"/></label><label>Symbol <select onchange="state.market.symbol=this.value;marketRefresh139()">${meta.symbols.map(s=>`<option ${s===m.symbol?'selected':''}>${h(s)}</option>`).join('')}</select></label></section><section class="card company-card1317" aria-label="Full symbol name"><span class="eyebrow">${h(m.symbol)} · Full company name</span><h2>${h(r.company?.name||'Full company name unavailable')}</h2>${r.company?.sector?`<p>${h(r.company.sector)}</p>`:''}</section></div>`;
  if(r.status!=='OK'){container.innerHTML=html+'<section class="card">No symbol records on or before this date.</section>';return;}
  html+=`<div class="grid-2 latest-market1317 latest-market1318">${latestMarketCard1317('Latest Close',r.latest_symbol,m.symbol)}${latestMarketCard1317('Latest Index Close',r.latest_index,'Imported index')}${priceLimitCard1318(r.latest_symbol,m.symbol)}</div><section class="card price-ranges1317" aria-label="Symbol high and low ranges">${r.ranges.map(x=>`<div class="price-range1317"><h3>${h(x.label)}</h3>${rangeBar1321(x)}<small>${fmtDate(x.start)} – ${fmtDate(x.end)}<br>${fmtInt(x.records)} stored sessions</small></div>`).join('')}</section>`;
@@ -206,7 +210,7 @@ function columns139(r){
  const max=Math.max(...r.parts.map(x=>x.volume)),w=600/r.parts.length;
  return `<div class="volume-chart139" tabindex="0" role="region" aria-label="Volume bar chart; scroll horizontally on small screens"><svg class="market-svg volume-columns139" viewBox="0 0 700 480" role="img" aria-label="Top volume columns with stock, volume in millions and share labels">${[0,.25,.5,.75,1].map(f=>`<text x="0" y="${365-f*265}" fill="currentColor" font-size="12">${fmtNum(max*f/1e6,1)}M</text><line x1="65" x2="690" y1="${365-f*265}" y2="${365-f*265}" stroke="currentColor" opacity=".12"/>`).join('')}${r.parts.map((p,i)=>{const x=65+i*w,y=365-p.volume/max*265;return `<g><title>${h(p.symbol)} ${fmtNum(p.volume/1e6,2)}M (${p.pct.toFixed(2)}%)</title><rect x="${x}" y="${y}" width="${w*.68}" height="${365-y}" rx="2" fill="${volumeColor139(p,i)}"/><text x="${x}" y="${y-23}" fill="currentColor" font-size="12" font-weight="600">${fmtNum(p.volume/1e6,1)}M</text><text x="${x}" y="${y-8}" fill="currentColor" font-size="11">${p.pct.toFixed(1)}%</text><text x="${x}" y="385" transform="rotate(45 ${x} 385)" fill="currentColor" font-size="12">${h(p.symbol)}</text></g>`;}).join('')}</svg></div>`;
 }
-function marketRefresh139(){renderMarketView(document.getElementById('viewContainer'));}
+function marketRefresh139(){return renderMarketView(document.getElementById('viewContainer'));}
 
 async function downloadMarket139(){const m=state.market;const path=m.tab==='volume'?'/api/v139/market/volume?'+new URLSearchParams({date:m.date,n:m.n}):'/api/v139/market/symbol/'+encodeURIComponent(m.symbol)+'?'+new URLSearchParams({n:m.days});downloadJson139(await apiGet(path,false),'market-explorer.json');}
 

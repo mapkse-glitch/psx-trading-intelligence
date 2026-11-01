@@ -39,13 +39,18 @@ class MarketPanels:
             cutoff = month_before(latest['trade_date'])
             index = c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC LIMIT 1', (latest['trade_date'],)).fetchone()
             index = dict(index) if index else None
-            # The window counts ALL stored symbol sessions through the latest date;
-            # filtering in the outer query must not shorten this trading-session gap.
-            rows = [dict(r) for r in c.execute('''WITH history AS (
-                SELECT trade_date,close,COUNT(*) OVER () - ROW_NUMBER() OVER (ORDER BY trade_date) AS sessions_ago
-                FROM equity_ohlcv WHERE symbol=? AND trade_date<=?
-            ) SELECT trade_date,close,sessions_ago FROM history WHERE trade_date<?
-              ORDER BY ABS(close-?),trade_date DESC LIMIT 10''', (symbol, latest['trade_date'], cutoff, latest['close']))]
+            # Rank only eligible older prices first. Count gaps for the ten
+            # selected dates using the existing (symbol,trade_date) index, rather
+            # than calculating two window functions for every stored session.
+            rows = [dict(r) for r in c.execute('''WITH nearest AS (
+                SELECT trade_date,close FROM equity_ohlcv
+                WHERE symbol=? AND trade_date<?
+                ORDER BY ABS(close-?),trade_date DESC LIMIT 10
+            ) SELECT n.trade_date,n.close,
+                (SELECT COUNT(*) FROM equity_ohlcv AS later
+                 WHERE later.symbol=? AND later.trade_date>n.trade_date AND later.trade_date<=?) AS sessions_ago
+              FROM nearest AS n ORDER BY ABS(n.close-?),n.trade_date DESC''',
+              (symbol,cutoff,latest['close'],symbol,latest['trade_date'],latest['close']))]
             dates = [r['trade_date'] for r in rows]
             indices = {r['trade_date']:dict(r) for r in c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date IN ('+','.join('?' for _ in dates)+')', dates)} if dates else {}
         for row in rows:

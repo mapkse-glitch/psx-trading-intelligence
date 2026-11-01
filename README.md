@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.22
+# PSX Intelligence v1.3.23
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,110 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.22 — compact cards and consistent display rules
+## Current update: v1.3.23 — clearer quotes, seamless gradients and lighter navigation
+
+This is a **partial source update for v1.3.22**. Trading data, import logic,
+threshold rules, date handling, colors, exports and reference membership stay intact.
+
+### Install v1.3.23
+
+1. Keep your current GitHub commit for rollback. Extract this ZIP.
+2. Merge/overwrite its included `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` files at the existing repository root. **Do not delete
+   existing folders**: this archive contains changed files only. Do not nest the
+   extracted contents in another folder or upload the ZIP itself as source.
+3. Commit to GitHub and wait for the normal checks and Vercel deployment.
+4. Hard-refresh (Ctrl+Shift+R) and confirm **1.3.23** in the sidebar or `/api/health`.
+   No dependency, environment variable, migration, new index, cleanup or re-import
+   is required. This update has not been pushed or deployed on your behalf.
+
+### Visual corrections
+
+- Latest Close now clearly says **PKR per share**; Latest Index Close says **Index
+  points**. Index levels are not labelled as rupees. Daily absolute-change labels
+  carry the corresponding unit. Main figures keep their gain/loss colors.
+- Quote groups are vertically balanced between the existing header and daily
+  changes. All three latest cards retain equal desktop dimensions; responsive
+  stacking, word wrapping and the existing Price Limit Checker remain intact.
+- The six Day's Range–Year's Range bars use an opaque, continuous **green → yellow
+  → red gradient**, with midpoint #D4C83F. The center no longer mixes the card's
+  dark background into the colors. Headings, endpoint High/Low prices and dates
+  stay in place. These six bars remain marker-free; the separate Price Limit
+  Checker and its close indicator/calculation are unchanged.
+- Matching Rate remains the shared dashboard sans-serif font at **13 px**. This
+  was verified from computed browser styles, not just the stylesheet declaration.
+- Small Cards now labels the imported source-average value simply **Average**.
+  The source field, calculations, precision and values are unchanged.
+- Restrained hover feedback applies only to useful controls: buttons, navigation,
+  tabs, quick selectors and editable filters. No card-lift effect, looping motion,
+  chart animation or new general-purpose transform was added. Keyboard focus is
+  explicit; added transitions are disabled for reduced-motion preferences.
+- Existing yellow dividers, #03D815 green, #F63131 red and day–month-name–year
+  display conventions are retained in both themes.
+
+### Loading investigation and changes
+
+Two avoidable source-level costs were identified in the reported tab transition:
+Matching Rate fetched metadata and then its report serially, while Symbol vs Index
+used a different browser fetch path and did not populate that metadata cache. The
+matching query also calculated two window functions across the full symbol history
+before selecting ten eligible matches. These are verified code paths; they do not
+establish that every live delay has the same cause.
+
+- All Market Explorer tabs now share the same **30-second, refresh-scoped report
+  cache**. It deduplicates in-flight requests and retains at most **48 completed
+  responses** per client-cache scope. Import, manual refresh and the existing
+  cloud-revision refresh replace that scope as before. Failures are not cached.
+- Matching Rate starts independent metadata/history reads **in parallel** when the
+  selected symbol is known. After Symbol vs Index, metadata is already reusable,
+  so the first Matching Rate transition needs only the report request. An invalid
+  symbol still resolves through real metadata rather than fabricated fallback data.
+- Active tab feedback and a lightweight loading state are immediate, instead of
+  leaving the old tab selected while a new tab loads. Existing render-generation
+  guards still prevent a late older response replacing the current view.
+- The shared GET helper now deduplicates concurrent identical requests across all
+  dashboard pages. Existing `useCache=false` calls remain uncached on sequential
+  reads; they are not silently given a TTL. A response from an older cache scope
+  cannot populate a refreshed scope. POST/import/export behavior is untouched.
+- The matching query first ranks eligible historical closes and limits to ten,
+  then counts later stored sessions for those dates using the existing symbol/date
+  index. Calendar-month exclusions, nearest-price ordering, newest-date tie breaks,
+  signed differences, real trading-session gaps and exact-date index joins retain
+  their previous meanings. Existing valid shared backend results can be reused;
+  the global backend cache namespace remains 1.3.17.
+
+### Verification and honest performance measurements
+
+- **Matching query:** local SQLite, selected symbol with 5,000 stored sessions
+  within a 45,000-row synthetic database; median of 15 uncached service calls:
+  **10.500 ms (v1.3.22) → 3.399 ms (v1.3.23)**, about **3.09×** faster. Full report
+  outputs were identical to the old implementation.
+- **Tab transition:** local Chromium with an artificial 100 ms delay per market
+  HTTP request, three completed Symbol vs Index → Matching Rate renders per build:
+  median **298 ms → 192 ms**; required requests **2 → 1**. A fully cold matching
+  visit started its two independent requests 1 ms apart. Already-warm matching
+  transitions were small in both builds (24 ms old / 32 ms new median); this test
+  does not claim a warm-cache improvement where there was none.
+- Those are **local synthetic measurements, not live Vercel/Aiven guarantees**.
+  Actual first-load cold starts, database/network latency and large analysis jobs
+  can still take time. Heavy pages are not speculatively fetched in the background.
+- Chromium checks passed in light/dark themes and at 1600/1200/768/390/320 px:
+  equal desktop latest-card dimensions, proper quote units, real opaque range
+  gradients, six original range headings/endpoints, separate index cards, unchanged
+  table structures/colors, computed 13 px Matching Rate font, no page overflow,
+  reduced-motion opt-out and no JavaScript page errors.
+- Full isolated suite: **341 passed, 34 skipped, 1 dependency deprecation warning**,
+  including disposable loopback PostgreSQL tests. Skipped tests require private
+  historical fixtures. Added checks cover units, gradients, label rename, parallel
+  loading, cache limits, failed/concurrent reads, late-response refresh isolation
+  and matching output/session-count parity.
+- The minimal archive is overlay-tested against a clean v1.3.22 manifest baseline.
+  Unrelated application files remain byte-identical. No live credentials, trading
+  database, private workbook, generated data or screenshots are included.
+
+Older release sections below are retained as historical reference.
+
+## Previous update: v1.3.22 — compact cards and consistent display rules
 
 This **partial source update for v1.3.21** makes the requested visual corrections
 without changing trading data, imports, financial definitions or exports.
@@ -574,7 +677,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.22`. An empty database is expected before you import your data.
+   version `1.3.23`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -831,7 +934,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **333 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **341 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.
