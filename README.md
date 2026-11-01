@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.20
+# PSX Intelligence v1.3.21
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,171 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.20 — close colors, original lock and moving rate
+## Current update: v1.3.21 — range bars, Matching Rate and Small Cards
+
+This partial update is based on **v1.3.20** and implements the confirmed choices:
+search history older than one month, count stored trading sessions, use the
+pre-window index close, and use your imported **SEL_COMP_LIST** membership.
+The older release sections below are historical; use these current steps.
+
+### Install v1.3.21
+
+1. Keep the current source commit for rollback. Extract the ZIP.
+2. Merge/overwrite its `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` files at your existing repository root. **Do not delete
+   the full existing `psx_app/` or `tests/` folders**: this ZIP contains partial
+   folders with changed files only. Preserve paths, including the new
+   `psx_app/services/market_panels.py` and `psx_app/static/market1321.js` files.
+3. GitHub → **Add file → Upload files**: upload the extracted contents and commit
+   to `main`. Do not upload the ZIP itself as application source or nest the files
+   inside another parent folder.
+4. Wait for GitHub checks and Vercel. Confirm `/api/health` reports **1.3.21**, then
+   hard-refresh (**Ctrl+Shift+R**). All browser scripts, including the new one, have
+   matching versioned asset URLs. No dependency, environment variable, migration,
+   new index, new database table or data re-import is needed.
+5. Open **09 → Market Explorer**. The tabs are **Market volume → Symbol vs Index →
+   Matching Rate → Small Cards**. Your existing Aiven data and imported reference
+   lists stay in place. If SEL_COMP_LIST is absent, Small Cards explicitly asks
+   for the existing reference import; it never substitutes COMP_LIST/bundled data.
+
+### Six marker-free range bars
+
+In Symbol vs Index, Day's / 30 / 60 / 90 / 180 Days / Year's Range retain their
+headings, High/Low values, dates, record counts and calculation windows. A small
+horizontal bar is added beneath those values, green at the High/left side and red
+at the Low/right side, fading toward the center. **No current-price marker** is
+added to these six bars. Missing bounds give a neutral unavailable bar.
+
+These are visual range summaries, not additional lock checks or a new high/low
+calculation. The existing Price Limit Checker, its status icon, descending scale,
+tracking closing-rate label and thresholds remain unchanged. Existing Year means
+YTD and 30–180 means calendar-day windows; those definitions are not altered.
+
+### Keyboard navigation in dashboard dropdown filters
+
+- Focus a single-choice dropdown and type a letter: **C** jumps to its first
+  C-item; repeated C cycles through available C-items and wraps to the first.
+- Type multiple letters within one second to select a longer prefix, including
+  words separated by spaces. Matching is case-insensitive and accent-normalized;
+  disabled/hidden options are skipped. A nonmatching longer prefix can restart
+  from its latest letter. This jumps the selection; it does not hide other options.
+- **Press Enter or move focus away to apply the choice. Escape cancels a staged
+  keyboard selection.** Staging prevents a network refresh on every letter and
+  lets you cycle smoothly without losing focus. A tooltip on the dropdown explains
+  these controls. Pointer/arrow selection keeps the native select behavior.
+- Applies to ordinary single-choice native dropdowns across modules, including
+  dynamically rendered filters. It does not intercept text/date/number inputs,
+  multi-selects, composition input or Ctrl/Alt/Meta shortcuts. No new filter
+  controls, extra tab stops, external widget, font or package is introduced.
+
+### Matching Rate: exact definitions
+
+1. Choose a symbol. Its latest imported close and date anchor the comparison.
+2. Exclude the most recent **one calendar month**: eligible dates are strictly
+   before `latest symbol date minus one calendar month`. Month subtraction clamps
+   to a valid day in the shorter month (e.g. March 31 → February 28/29). This is
+   neither a 30-trading-session cutoff nor a search confined to one previous month.
+3. Search **all older available symbol records**, rank by the absolute difference
+   from the latest close, and return the closest ten. Equal distances use newest
+   historical date first. Fewer than ten eligible records means fewer rows, not
+   duplicates or fabricated matches. Source prices are not split-adjusted here.
+4. The nine table columns are **Latest close, Latest index close, Nearby close,
+   Match date, Close difference, Sessions ago, Index date, Index close on match,
+   Index difference**. Differences are signed `latest minus historical` values;
+   matching/ranking itself uses absolute symbol-price distance.
+5. **Sessions ago** counts stored records for this symbol after the matched date
+   through its latest date. It is not calendar-day distance, futures/account rows,
+   or a reconstructed exchange calendar. Missing imported sessions cannot be
+   guessed, so the count describes the available history only.
+6. Latest index = newest stored index on or before the latest symbol date, shown
+   with its own date. A match's index uses the **exact match date only**, never a
+   nearby-date substitute. Missing same-day index is clearly unavailable; a future
+   index is not used. Index difference = latest index close minus exact-date index
+   close. The table retains the dashboard's internal scrolling/sticky-header style.
+
+This is a historical-price lookup, not a prediction, valuation or trade signal.
+
+### Small Cards: membership, sessions and all seven sections
+
+- Sector options come exclusively from the imported SEL_COMP_LIST sheet. Exactly
+  one card is created per listed symbol in that sector, sorted by ticker—no padding
+  cards, unlisted companies or bundled-list substitutes. A member without prices
+  still gets one clearly labelled no-price card, rather than disappearing.
+- Session count defaults to **14**, accepts integers **1–6000**, and is independent
+  of the Symbol vs Index Records filter. Cards use a responsive equal-width grid:
+  columns wrap with the viewport; a partially filled final row is not stretched
+  into a misleading full-width comparison chart. Both themes use the existing
+  borders, fonts, spacing and canonical **#03D815 / #F63131** gain/loss colors.
+- Card heading: ticker and authentic imported company name, dated quote and stale
+  coverage label when applicable. The ticker and first row's closing/change values
+  are green for a positive daily change, red for negative and neutral if unchanged
+  or unavailable. "Negative closing" means a daily decline, not a negative price.
+- **1:** Latest close, daily change and daily percentage, using the existing
+  imported `pr_close` convention. **2:** Latest High/Low. **3:** Source average and
+  volume; an absent source average is unavailable, not recomputed. Zero volume
+  remains a real zero. **4:** Week-to-date and month-to-date change plus percentage.
+- **5:** Centered **Based on Selected Sessions (N)** heading, then maximum High
+  and minimum Low over the symbol's last N stored records. Actual coverage count
+  and first/last dates are shown; short histories are not zero-filled.
+- **6:** Current index close, high, low, daily change and percentage. All values in
+  this section use the current index change's sign color, independently of the
+  symbol's color. The index record date is shown explicitly.
+- **7:** Selected-session index maximum High, minimum Low, change and percentage;
+  this section's sign color follows the index's **selected-window** change, not
+  its daily change. The window dates, available count and baseline date are shown.
+- WTD/MTD baseline = last available symbol close before Monday/month start of the
+  latest imported cash-market date. A missing/zero/nonpositive baseline, or no
+  symbol record in the current period, makes that period unavailable. Partial
+  imported coverage is never represented as a complete exchange calendar.
+- The anchor is the latest imported cash-market date. Each symbol and the index
+  independently use their own last N stored sessions through that date; their
+  quote/window dates can differ and remain visible. Index selected-window change
+  = latest index close minus the stored index close **immediately before** that
+  N-session window; percentage uses that baseline. Without that preceding record
+  the change is unavailable, not calculated from the first included session.
+
+### Performance, storage and verification
+
+- New read endpoints: `/api/v139/market/matching/{symbol}`, `/market/selected-sectors`
+  and `/market/small-cards?sector=...&sessions=...` under `/api/v139`. Session bounds
+  are API-validated; all SQL values, including sector/symbol names, are bound.
+- Matching ranks one symbol's history inside SQL and returns at most ten records;
+  exact matching index dates are fetched in one bounded query. It does not transfer
+  all historical rows to the browser or perform a query for every matching row.
+- Sector calculations are batched in groups of at most 50 reference members. SQL
+  returns compact aggregates per symbol; WTD/MTD baselines are fetched in batches
+  of at most 100 exact symbol/date pairs. One shared index window of at most N+1
+  records is read and reused across all cards. No per-card history/API request loop.
+- These new functions reuse the existing bounded compressed shared-result cache,
+  keyed by canonical data revision and Karachi day. Reference/price imports invalidate
+  results through that revision. New function identities give new cache keys;
+  the existing **1.3.17 cache namespace** deliberately stays unchanged, preserving
+  valid older reports rather than forcing all modules to rebuild.
+- Source tables, financial calculations in existing modules, database adapters,
+  imports, existing exports, Price Limit Checker and base UI helpers are unchanged.
+  No new source-data write, cleanup, schema migration or reference import was run.
+  Normal expendable result-cache writes may occur when reading these new reports;
+  they never advance the canonical revision and retain the existing 200-entry cap.
+- **326 passed, 34 skipped, one dependency deprecation warning** on isolated SQLite
+  and disposable loopback PostgreSQL. Tests cover month-end/leap cutoffs, signed
+  differences/ties, trading-session gaps, exact/missing/future index data, real
+  zeros, missing membership, 105-member batching, partial/stale coverage, daily
+  versus N-session index baselines, API validation and cache invalidation.
+- Local synthetic Chromium checks passed in both themes: unchanged six headings
+  with marker-free bars; four ordered tabs; 9-column matching table; 4-refinery /
+  9-cement card counts and equal widths; requested session changes; missing-price
+  membership; 1200/768/390/320px layouts without page-width overflow; horizontal
+  table scrolling; no JavaScript page errors. Keyboard checks cover repeated-letter
+  cycling, longer prefixes/spaces, disabled options, Escape, Enter/blur single
+  commit and unaffected text inputs, including a dropdown outside the new tabs.
+- The delivered ZIP is overlaid onto a verified v1.3.20 source tree, checked against
+  its complete release manifest and regression suite. These are local/synthetic
+  checks, not live Aiven/deployment verification or an overall speed guarantee.
+- No production Aiven access or automatic GitHub push/deployment. No trading
+  database, credentials, logs or generated caches in the ZIP. Revert your source
+  commit and redeploy to roll back; no data migration is involved.
+
+## Previous update: v1.3.20 — close colors, original lock and moving rate
 
 This partial-file update is based on **v1.3.19**. It changes only the requested
 Market Explorer close/checker presentation plus the explicitly requested basic
@@ -314,7 +478,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.20`. An empty database is expected before you import your data.
+   version `1.3.21`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -571,7 +735,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **303 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **326 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.

@@ -18,6 +18,16 @@ def metadata():return MarketExplorer(DB_PATH).metadata()
 def volume(date:str|None=None,n:int=Query(10,ge=1,le=10)):return MarketExplorer(DB_PATH).volume(date,n)
 @router.get('/market/symbol/{symbol}')
 def symbol(symbol:str,n:int=Query(50,ge=1,le=6000),end:str|None=None):return MarketExplorer(DB_PATH).symbol(symbol,n,end)
+from psx_app.services.market_panels import MarketPanels
+
+@router.get('/market/matching/{symbol}')
+def matching_rates(symbol:str):return MarketPanels(DB_PATH).matching(symbol)
+@router.get('/market/selected-sectors')
+def selected_sectors():return MarketPanels(DB_PATH).sectors()
+@router.get('/market/small-cards')
+def sector_cards(sector:str=Query(...,min_length=1,max_length=150),sessions:int=Query(14,ge=1,le=6000)):
+    return MarketPanels(DB_PATH).small_cards(sector,sessions)
+
 @router.get('/contract/{symbol}')
 def contract(symbol:str):
     r=TechnicalService(DB_PATH).get_ticker_analysis(symbol,tail_bars=120)
