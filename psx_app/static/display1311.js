@@ -21,6 +21,15 @@ function numericValue1311(text){
  if(!/^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:%|\s*(?:PKR|M|K))?$/.test(clean))return null;
  return Number(clean.replace(/[, %]|PKR|M|K/g,''));
 }
+function semanticRangeTone1322(label){
+ const high=/\bhigh\b/i.test(label),low=/\blow\b/i.test(label);
+ return high!==low?(high?'pos':'neg'):'';
+}
+function markRangeTone1322(el,tone){
+ if(!tone)return;
+ el.classList.toggle('semantic-high1322',tone==='pos');el.classList.toggle('semantic-low1322',tone==='neg');
+ el.classList.toggle('pos',tone==='pos');el.classList.toggle('neg',tone==='neg');
+}
 function enhanceDisplay1311(root){
  let notice=root.querySelector('#calendarNotice1311');const msg=state.calendarNotices?.[state.currentView];
  if(msg){if(!notice){notice=document.createElement('p');notice.id='calendarNotice1311';notice.className='card calendar-notice';notice.setAttribute('role','status');root.prepend(notice);}if(notice.textContent!==msg)notice.textContent=msg;}else notice?.remove();
@@ -30,8 +39,12 @@ function enhanceDisplay1311(root){
   const header=headers[i]||'';
   if(/date|time|year|month|symbol|stock|account|order.*id|execution.*id|batch|version|rank|^id$|indicator votes|rule score|check after/i.test(header))return;
   const value=numericValue1311(cell.textContent);
-  if(value!==null){cell.classList.toggle('pos',value>0);cell.classList.toggle('neg',value<0);}
+  if(value!==null){const tone=semanticRangeTone1322(header);if(tone)markRangeTone1322(cell,tone);else{cell.classList.toggle('pos',value>0);cell.classList.toggle('neg',value<0);}}
  }));
  });
- root.querySelectorAll('.kpi-value').forEach(el=>{const val=numericValue1311(el.textContent);if(val!==null){el.classList.toggle('pos',val>0);el.classList.toggle('neg',val<0);}});
+ root.querySelectorAll('.kpi-value').forEach(el=>{const val=numericValue1311(el.textContent);if(val!==null){const tone=semanticRangeTone1322(el.parentElement.querySelector('.kpi-label')?.textContent||'');if(tone)markRangeTone1322(el,tone);else{el.classList.toggle('pos',val>0);el.classList.toggle('neg',val<0);}}});
+ root.querySelectorAll('.small-metric1321,.extrema139>div,.price-range1317>div>div').forEach(group=>{
+  const label=group.querySelector('span,b,.kpi-label')?.textContent||'';const tone=semanticRangeTone1322(label);
+  group.querySelectorAll('strong,.extrema-value1312').forEach(el=>{if(numericValue1311(el.textContent)!==null)markRangeTone1322(el,tone);});
+ });
 }

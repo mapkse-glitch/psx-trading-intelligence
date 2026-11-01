@@ -23,10 +23,12 @@ def test_symbol_card_signs_session_headings_and_safe_names():
  card={'symbol':'<TEST>','company':'<img src=x>','trade_date':'2025-04-10','status':'OK','close':100,'change':-1,'pct':-1,'high':110,'low':90,'avg_price':101,'volume':0,'session_count':2,'session_first':'2025-04-09','session_high':111,'session_low':89,'week':{'change':2,'pct':2},'month':{'change':-2,'pct':-2}}
  html=frontend('smallSymbolCard1321('+json.dumps(card)+', {requested:14,index:null})')
  assert '<h3 class="neg">&lt;TEST&gt;</h3>' in html and '&lt;img src=x&gt;' in html
- for label in ['Latest close','DoD change','Latest high','Latest low','Source average','Volume','Week to date','Month to date','Based on Selected Sessions (14)','Current index','Index · selected 14 sessions']:assert label in html
+ for label in ['Latest close','DoD change','Latest high','Latest low','Source average','Volume','Week to date','Month to date','Based on Selected Sessions (14)']:assert label in html
  assert '2 of 14 sessions available' in html
- assert html.count('small-metric1321')==20
- assert 'Not available' in html and 'No imported index data' in html
+ assert html.count('small-metric1321')==11
+ assert 'Current index' not in html
+ index=frontend('smallIndexCards1322({requested:14,index:null})')
+ assert 'Current index' in index and 'No imported index data' in index
  assert '<strong class="">0</strong>' in html  # real zero volume is not missing
 
 def test_no_price_reference_symbol_still_has_one_card():
@@ -36,8 +38,8 @@ def test_no_price_reference_symbol_still_has_one_card():
 
 def test_assets_scoped_css_and_no_changed_cache_namespace():
  html=(ROOT/'psx_app/static/index.html').read_text();css=(ROOT/'psx_app/static/styles.css').read_text()
- assert '/market1321.js?v=1.3.21' in html
- assert 'repeat(auto-fill,minmax(min(100%,300px),1fr))' in css
+ assert '/market1321.js?v=1.3.22' in html
+ assert '.sector-cards1321,.index-rail1322{display:flex;flex-wrap:nowrap;overflow-x:auto' in css
  assert '--pos-green: #03D815' in css and '--neg-red: #F63131' in css
  assert 'range-window-bar1321' in css and 'var(--pos-green)' in css and 'var(--neg-red)' in css
  assert "values,'1.3.17'" in (ROOT/'psx_app/services/result_cache.py').read_text()

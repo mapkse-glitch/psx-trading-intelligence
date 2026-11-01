@@ -67,48 +67,55 @@ class MarketPanels:
             rows = [dict(r) for r in c.execute('SELECT sector,COUNT(*) AS symbols FROM company_reference WHERE list_name=? GROUP BY sector ORDER BY sector', (name,))]
         return {'status':'OK','source':name,'sectors':rows}
 
+    def small_cards(self, sector=None, sessions=14):
+        return self.small_cards_v1322(sector, sessions)
+
     @persisted_result
-    def small_cards(self, sector, sessions=14):
+    def small_cards_v1322(self, sector=None, sessions=14):
         sessions = min(6000, max(1, int(sessions)))
         with get_connection(self.db_path) as c:
             name = reference_name(c)
             if not name:
-                return {'status':'NO_REFERENCE','cards':[],'index':None,'as_of':None,'requested':sessions,'source':None,'sector':sector}
+                return {'status':'NO_REFERENCE','cards':[],'index':None,'as_of':None,'requested':sessions,'source':None,'sector':sector,'sectors':[]}
+            sectors = [dict(r) for r in c.execute('SELECT sector,COUNT(*) AS symbols FROM company_reference WHERE list_name=? GROUP BY sector ORDER BY sector', (name,))]
+            if sector is None and sectors: sector = sectors[0]['sector']
             members = [dict(r) for r in c.execute('SELECT symbol,company,sector FROM company_reference WHERE list_name=? AND sector=? ORDER BY symbol', (name, sector))]
             if not members:
-                return {'status':'NO_SECTOR','cards':[],'index':None,'as_of':None,'requested':sessions,'source':name,'sector':sector}
+                return {'status':'NO_SECTOR','cards':[],'index':None,'as_of':None,'requested':sessions,'source':name,'sector':sector,'sectors':sectors}
             as_of = c.execute('SELECT MAX(trade_date) FROM equity_ohlcv').fetchone()[0]
             if not as_of:
-                return {'status':'OK','cards':[{**r,'status':'NO_DATA'} for r in members],'index':None,'as_of':None,'requested':sessions,'source':name,'sector':sector}
+                return {'status':'OK','cards':[{**r,'status':'NO_DATA'} for r in members],'index':None,'as_of':None,'requested':sessions,'source':name,'sector':sector,'sectors':sectors}
             anchor = date.fromisoformat(as_of)
             monday = (anchor-timedelta(days=anchor.weekday())).isoformat()
             month = anchor.replace(day=1).isoformat()
             stats = {}
-            # At most 50 members per query, one compact aggregate per symbol returned.
-            # No full per-symbol history travels to Python and no per-card query loop.
+            # Each UNION branch uses the existing (symbol,trade_date) index to read
+            # only N latest rows BEFORE numbering. WTD/MTD use two indexed seeks.
+            # One network query per <=50 members, not one request per card and not
+            # a window sort over every historical row in the selected sector.
             for offset in range(0,len(members),50):
-                symbols = [r['symbol'] for r in members[offset:offset+50]]
-                sql = '''WITH ranked AS (
-                    SELECT symbol,trade_date,close,pr_close,high,low,avg_price,volume,
-                      ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) AS rn
-                    FROM equity_ohlcv WHERE symbol IN ('''+','.join('?' for _ in symbols)+''') AND trade_date<=?
-                ) SELECT symbol,
-                    MAX(CASE WHEN rn=1 THEN trade_date END) AS trade_date,
-                    MAX(CASE WHEN rn=1 THEN close END) AS close,
-                    MAX(CASE WHEN rn=1 THEN pr_close END) AS pr_close,
-                    MAX(CASE WHEN rn=1 THEN high END) AS high,
-                    MAX(CASE WHEN rn=1 THEN low END) AS low,
-                    MAX(CASE WHEN rn=1 THEN avg_price END) AS avg_price,
-                    MAX(CASE WHEN rn=1 THEN volume END) AS volume,
-                    COUNT(CASE WHEN rn<=? THEN 1 END) AS session_count,
-                    MIN(CASE WHEN rn<=? THEN trade_date END) AS session_first,
-                    MAX(CASE WHEN rn<=? THEN high END) AS session_high,
-                    MIN(CASE WHEN rn<=? THEN low END) AS session_low,
-                    MAX(CASE WHEN trade_date<? THEN trade_date END) AS week_baseline_date,
-                    MAX(CASE WHEN trade_date<? THEN trade_date END) AS month_baseline_date
-                  FROM ranked GROUP BY symbol'''
-                for r in c.execute(sql, (*symbols, as_of, sessions, sessions, sessions, sessions, monday, month)):
-                    stats[r['symbol']] = dict(r)
+                branches, params = [], []
+                for member in members[offset:offset+50]:
+                    sym = member['symbol']
+                    branches.append('''SELECT ? AS symbol,
+                        MAX(CASE WHEN rn=1 THEN trade_date END) AS trade_date,
+                        MAX(CASE WHEN rn=1 THEN close END) AS close,
+                        MAX(CASE WHEN rn=1 THEN pr_close END) AS pr_close,
+                        MAX(CASE WHEN rn=1 THEN high END) AS high,
+                        MAX(CASE WHEN rn=1 THEN low END) AS low,
+                        MAX(CASE WHEN rn=1 THEN avg_price END) AS avg_price,
+                        MAX(CASE WHEN rn=1 THEN volume END) AS volume,
+                        COUNT(*) AS session_count, MIN(trade_date) AS session_first,
+                        MAX(high) AS session_high, MIN(low) AS session_low,
+                        (SELECT trade_date FROM equity_ohlcv WHERE symbol=? AND trade_date<? ORDER BY trade_date DESC LIMIT 1) AS week_baseline_date,
+                        (SELECT trade_date FROM equity_ohlcv WHERE symbol=? AND trade_date<? ORDER BY trade_date DESC LIMIT 1) AS month_baseline_date
+                        FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY trade_date DESC) AS rn
+                          FROM (SELECT trade_date,close,pr_close,high,low,avg_price,volume
+                            FROM equity_ohlcv WHERE symbol=? AND trade_date<=?
+                            ORDER BY trade_date DESC LIMIT ?) AS limited) AS ranked''')
+                    params.extend((sym,sym,monday,sym,month,sym,as_of,sessions))
+                for row in c.execute(' UNION ALL '.join(branches), params):
+                    if row['trade_date'] is not None: stats[row['symbol']] = dict(row)
             # Fetch exact WTD/MTD baselines in bounded batches instead of N+1 lookups.
             keys = sorted({(r['symbol'], r[k]) for r in stats.values() for k in ('week_baseline_date','month_baseline_date') if r[k]})
             baselines = {}
@@ -140,5 +147,5 @@ class MarketPanels:
                                'low':min((r['low'] for r in window if r['low'] is not None),default=None),
                                'count':len(window),'first':window[-1]['trade_date'],'last':window[0]['trade_date'],
                                'baseline_date':previous['trade_date'] if previous else None}}
-        return {'status':'OK','sector':sector,'source':name,'as_of':as_of,'requested':sessions,'cards':cards,'index':index,
+        return {'status':'OK','sector':sector,'source':name,'as_of':as_of,'requested':sessions,'cards':cards,'index':index,'sectors':sectors,
                 'basis':'Sessions are the last N stored records for each symbol and independently for the index, through the latest imported cash-market date. WTD/MTD use the last available close before Monday/month start; no new-period record or missing baseline is unavailable. Index session change uses the stored close immediately before its N-session window. Missing records are not filled.'}

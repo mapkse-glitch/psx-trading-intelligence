@@ -116,8 +116,8 @@ def test_sector_database_reads_are_batched_not_per_card(panels_db,monkeypatch):
   with original(path) as c:yield Proxy(c)
  monkeypatch.setattr(module,'get_connection',counted)
  MarketPanels(panels_db).small_cards('CEMENT',14)
- assert len(count)==6  # names, members, anchor, one aggregate batch, one baseline batch, index window
- assert sum('WITH ranked' in sql for sql in count)==1
+ assert len(count)==7  # names, sectors, members, anchor, bounded aggregate batch, baseline batch, index window
+ assert sum('AS limited) AS ranked' in sql for sql in count)==1
 
 def test_many_members_stay_in_bounded_batches(panels_db):
  with get_connection(panels_db) as c:

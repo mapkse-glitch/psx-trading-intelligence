@@ -25,7 +25,7 @@ def matching_rates(symbol:str):return MarketPanels(DB_PATH).matching(symbol)
 @router.get('/market/selected-sectors')
 def selected_sectors():return MarketPanels(DB_PATH).sectors()
 @router.get('/market/small-cards')
-def sector_cards(sector:str=Query(...,min_length=1,max_length=150),sessions:int=Query(14,ge=1,le=6000)):
+def sector_cards(sector:str|None=Query(None,min_length=1,max_length=150),sessions:int=Query(14,ge=1,le=6000)):
     return MarketPanels(DB_PATH).small_cards(sector,sessions)
 
 @router.get('/contract/{symbol}')

@@ -36,6 +36,9 @@ def test_panel_api_validation_and_no_reference_fallback(remote,monkeypatch):
  with TestClient(main.app) as client:
   for route in ['/api/v139/market/selected-sectors','/api/v139/market/matching/AAA','/api/v139/market/small-cards?sector=CEMENT&sessions=2']:
    r=client.get(route);assert r.status_code==200 and r.json()['status']=='OK'
+  default=client.get('/api/v139/market/small-cards?sessions=2').json()
+  assert default['sector']=='CEMENT' and default['sectors']==[{'sector':'CEMENT','symbols':2}]
+  assert len(default['cards'])==2
   for n in [0,6001,'bad']:
    assert client.get('/api/v139/market/small-cards',params={'sector':'CEMENT','sessions':n}).status_code==422
   assert client.get('/api/v139/market/small-cards',params={'sector':"CEMENT' OR 1=1 --"}).json()['cards']==[]

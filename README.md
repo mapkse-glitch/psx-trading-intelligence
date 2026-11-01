@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.21
+# PSX Intelligence v1.3.22
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,103 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.21 — range bars, Matching Rate and Small Cards
+## Current update: v1.3.22 — compact cards and consistent display rules
+
+This **partial source update for v1.3.21** makes the requested visual corrections
+without changing trading data, imports, financial definitions or exports.
+
+### Install v1.3.22
+
+1. Keep the existing source commit for rollback. Extract this ZIP.
+2. Merge/overwrite the included `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` into the **existing repository root**. These are partial
+   folders: **do not delete the existing folders**, and do not upload the ZIP as
+   source or nest everything inside another parent folder.
+3. Commit the merged files to GitHub. Wait for the normal checks and Vercel build.
+4. Hard-refresh the dashboard (Ctrl+Shift+R). Confirm version **1.3.22** in the
+   sidebar or `/api/health`. No new dependency, environment setting, database
+   migration, index creation, cleanup, re-import or Aiven configuration is needed.
+
+### Requested corrections
+
+- The six existing Symbol vs Index range headings stay in place. **High and its
+  price are directly above the green/left bar end; Low and its price are directly
+  above the red/right end.** Old vertical High/Low rows are gone; these bars have
+  no current-price marker. The Price Limit Checker keeps its existing lock state,
+  calculation, price marker and moving rate label.
+- Matching Rate uses the dashboard's sans-serif UI font at a readable **13 px**,
+  with tabular numerals and the existing internal table scroll.
+- Small Cards now uses compact **280 px symbol cards in one horizontal rail**.
+  Cards never wrap into another row, including sectors with nine or more symbols.
+  Keyboard focus, native horizontal scroll and gentle scroll snapping are available.
+  A sector member with no prices still has an honest placeholder card.
+- The shared benchmark is no longer repeated inside every symbol card. Two
+  separate index cards show current index figures and the selected-session window,
+  in their own horizontal rail. Their dates, coverage and pre-window baseline
+  remain explicit. Symbol and index financial definitions are unchanged.
+- Shared divider lines are yellow **#D4A72C** in both themes: card-header rules,
+  table-row rules, tabs, range partitions, coverage, index headings and workspace
+  boundaries. Card/control outer outlines and blue status/accent indicators keep
+  their existing styling; chart grids are not recolored.
+- Shared semantic display rules make **High green #03D815 / Low red #F63131**,
+  independent of whether the instrument gained or lost. This applies to tables,
+  range extrema, KPIs and new cards, including highlighted rows and nested spans.
+  Close/change figures retain their existing gain/loss direction colors.
+- Full displayed dates use **6 Sept 2019**. Date-only values do not shift timezone;
+  timestamps retain the existing Karachi time conversion. Native date input values,
+  dropdown values, sort keys, API/database dates, raw code blocks and spreadsheet
+  formats are preserved. Display-only date conversion does not rewrite stored data.
+
+### Faster Small Cards and reusable panel-loading defaults
+
+- Initial Small Cards rendering makes **one combined report request** for sector
+  options, symbol cards and the shared index. The separate sector endpoint remains
+  compatible for other clients.
+- Sector aggregates now read only each symbol's **latest N stored rows before
+  numbering**, using the existing symbol/date index. WTD/MTD baselines use indexed
+  date seeks. Queries remain batched in groups of at most 50 members; there is no
+  HTTP/database round-trip for each card. Shared index data is fetched once.
+- Small Cards and Matching Rate use a bounded-lifetime **30-second panel cache**
+  with concurrent-request deduplication. The cache is scoped to the existing client
+  cache object, so refresh/import/cloud-revision changes invalidate it normally.
+  Failed requests are not cached. New report identity prevents old cached Small
+  Cards payloads being reused; the global 1.3.17 result-cache namespace stays intact.
+- Compact cards and one shared index section also reduce repeated DOM construction.
+  Existing unrelated report algorithms, import pipeline and data-source adapters
+  remain byte-identical to v1.3.21.
+
+### Verification and measured results
+
+- Local SQLite benchmark: **9 synthetic symbols × 5,000 stored rows = 45,000 rows**.
+  Median of seven uncached service calls per case, old versus new:
+
+  | Selected sessions | v1.3.21 | v1.3.22 | Ratio |
+  | --- | ---: | ---: | ---: |
+  | 7 | 94.57 ms | 8.15 ms | 11.60× |
+  | 14 | 95.08 ms | 8.23 ms | 11.55× |
+  | 100 | 95.58 ms | 9.63 ms | 9.93× |
+  | 6,000 requested / 5,000 available | 109.81 ms | 90.03 ms | 1.22× |
+
+  All financial outputs matched the previous service exactly in all four cases;
+  only the new sector-options field was excluded from parity comparison. These
+  timings are **local synthetic query measurements, not live Aiven or full-page
+  speed promises**. Large requested windows necessarily read more data.
+- Local Chromium checks: both themes, nine-symbol one-row rail, separate index
+  cards, shared semantic High/Low colors, yellow dividers, six endpoint labels,
+  marker-free bars, universal Matching Rate font, date display with unchanged
+  input/dropdown values and raw code, one initial Small Cards request and no repeat
+  request on immediate rerender. Widths 1600/1200/768/390/320 px had no page-level
+  horizontal overflow. No JavaScript page errors were observed.
+- Full isolated regression suite: **333 passed, 34 skipped, 1 dependency warning**,
+  including disposable loopback PostgreSQL query/API/cache tests. The 34 skipped
+  tests require private historical fixtures; no live Aiven test was performed.
+- Minimal ZIP overlay is checked against every full-release manifest hash and
+  tested again from a clean v1.3.21 baseline. No credentials, trading database,
+  private workbook, generated test data or browser screenshots are packaged.
+
+The sections below describe older releases and are retained for reference.
+
+## Previous update: v1.3.21 — range bars, Matching Rate and Small Cards
 
 This partial update is based on **v1.3.20** and implements the confirmed choices:
 search history older than one month, count stored trading sessions, use the
@@ -478,7 +574,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.21`. An empty database is expected before you import your data.
+   version `1.3.22`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -735,7 +831,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **326 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **333 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.

@@ -107,21 +107,19 @@ function fmtNum(v, decimals = 2) {
   });
 }
 
-// Global display format for calendar dates across the whole dashboard: DD-MM-YYYY
-// (e.g. 22-09-2026) — matches the Excel workbooks. Timestamps render as "DD-MM-YYYY HH:MM".
+// Display dates only; database values, date inputs and sorting keys stay ISO.
 function fmtDate(v) {
-  if (!v) return "—";
-  const str = String(v);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return `${str.slice(8,10)}-${str.slice(5,7)}-${str.slice(0,4)}`;
-  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(str)) {
-    const date = new Date(str);
-    if (!Number.isNaN(date.getTime())) {
-      const parts = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Karachi', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
-      const get = type => parts.find(p=>p.type===type)?.value;
-      return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')} PKT`;
-    }
+ if(!v)return '—';const str=String(v),months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+ const display=(y,m,d)=>`${Number(d)} ${months[Number(m)-1]} ${y}`;
+ let match=str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ const legacy=str.match(/^(\d{2})-(\d{2})-(\d{4})$/);if(!match&&legacy)match=[str,legacy[3],legacy[2],legacy[1]];
+ if(match){const [,y,m,d]=match,check=new Date(`${y}-${m}-${d}T12:00:00Z`);if(!Number.isNaN(check.getTime())&&check.toISOString().slice(0,10)===`${y}-${m}-${d}`)return display(y,m,d);return str;}
+ if(/^\d{4}-\d{2}-\d{2}[T ]/.test(str)){
+  const date=new Date(str);if(!Number.isNaN(date.getTime())){
+   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Karachi',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date),get=t=>parts.find(p=>p.type===t)?.value;
+   return `${display(get('year'),get('month'),get('day'))} ${get('hour')}:${get('minute')} PKT`;
   }
-  return str;
+ }return str;
 }
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
@@ -619,7 +617,7 @@ async function renderOverview(container) {
       <section class="card workflow-card"><span class="eyebrow">03 / TECHNICALS</span><h3>Research your next setup</h3><p>Core 36 watchlist, indicator history and rule-based scores—not win probabilities.</p><button class="btn btn-secondary" onclick="switchView('technical')">Open technicals →</button></section>
     </div>
     <section class="card utility-card"><div><h3>Keep your data dependable</h3><p>Integrity, reference reconciliation and cloud sync are separate checks. No blanket “100% reconciled” claim.</p></div><div class="action-row"><button class="btn btn-secondary" onclick="switchView('reconciliation')">Check data quality</button><button class="btn btn-secondary" onclick="switchView('settings')">Backups &amp; settings</button></div></section>
-    <p class="workspace-note">Historical analysis only. This workspace does not supply live quotes or execute trades. Dates: DD-MM-YYYY · Times: Asia/Karachi.</p>`;
+    <p class="workspace-note">Historical analysis only. This workspace does not supply live quotes or execute trades. Dates: 6 Sept 2019 · Times: Asia/Karachi.</p>`;
 }
 
 // ============================================================================
@@ -1062,7 +1060,7 @@ async function renderTop5View(container) {
       <div class="card-header">
         <div>
           <div class="card-title">Top 5 Volume &amp; Rate Register Blocks (${data.blocks_count} Ticker-Date Blocks • ${data.total_rows} Rows)</div>
-          <div class="card-subtitle">Latest trading date first • Date Header Format: DD-MM-YYYY • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
+          <div class="card-subtitle">Latest trading date first • Displayed dates: 6 Sept 2019 • Visible Columns: Rank, Rate, Volume, Trades (Sorted by Volume Descending)</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:14px;">
@@ -1761,13 +1759,13 @@ async function renderFuturesView(container) {
     </div>
   `;
 
-  // Match the workbook ListDates dropdown, with explicit DD-MM-YYYY display.
+  // Match the workbook ListDates dropdown, with explicit day–month–year display.
   const dateCtrl = (tabKey, st) => {
     const val = st.selected_date;
     const isAll = !/^\d{4}-\d{2}-\d{2}$/.test(val || "");
     const shown = isAll ? latestDate : val;
     return `
-      <div class="filter-group" title="Worksheet date filter — select an imported trading date, matching the Excel ListDates dropdown. Dates are displayed as DD-MM-YYYY; no browser-locale month/day ambiguity.">
+      <div class="filter-group" title="Worksheet date filter — select an imported trading date, matching the Excel ListDates dropdown. Dates are displayed as 6 Sept 2019; no browser-locale month/day ambiguity.">
         <label>Selected Date:</label>
         <span class="date-readout">${isAll ? "All dates" : fmtDate(shown)}</span>
         <input type="date" aria-label="Selected date for this worksheet" value="${shown}" min="${[...availDates].sort()[0]}" max="${[...availDates].sort().at(-1)}" ${isAll ? "disabled" : ""} onchange="futuresCalendar1311('${tabKey}',this.value,${escapeHtml(JSON.stringify(availDates))})"/>
@@ -2881,12 +2879,14 @@ function enhanceWorkspace() {
     const wrapper=document.createElement('div');wrapper.className='table-wrap';wrapper.tabIndex=0;wrapper.setAttribute('role','region');wrapper.setAttribute('aria-label','Scrollable data table');table.replaceWith(wrapper);wrapper.append(table);
   });
   root.querySelectorAll('table.data-table thead th').forEach(th=>th.setAttribute('scope','col'));
+  // Preserve implicit option values before formatting their visible date labels.
+  root.querySelectorAll('option').forEach(option=>{if(!option.hasAttribute('value'))option.value=option.value;});
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
   let node;const edits=[];
   while ((node=walker.nextNode())) {
-    if (node.parentElement.closest('pre,code,script,style,textarea')) continue;
-    if (/\d{4}-\d{2}-\d{2}/.test(node.nodeValue)) {
-      const text=node.nodeValue.replace(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?\b/g,fmtDate);
+    if (node.parentElement.closest('pre,code,script,style,textarea,[data-raw]')) continue;
+    if (/\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/.test(node.nodeValue)) {
+      const text=node.nodeValue.replace(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?\b|\b\d{2}-\d{2}-\d{4}\b/g,fmtDate);
       if (text!==node.nodeValue) edits.push([node,text]);
     }
   }
