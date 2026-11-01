@@ -1276,3 +1276,18 @@ hr{border:0;border-top:1px solid var(--separator-color)}
  select,input:not([type="checkbox"]):not([type="file"]){transition:border-color .14s ease}
 }
 @media(prefers-reduced-motion:reduce){.btn,.nav-btn,.subtab-btn,.quick-pill,select,input{transition:none!important}}
+
+/* v1.3.24: latest-only futures snapshot; existing typography/palette/motion. */
+.last-data-summary1324{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;margin-bottom:18px;align-items:stretch}
+.last-data-summary1324>.card{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px;min-width:0}
+.last-data-summary1324 .eyebrow{font-size:10px;color:var(--text-muted)}
+.last-data-summary1324 strong{font-size:26px;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.last-data-summary1324 span:not(.eyebrow):not(.badge){font-size:12px;color:var(--text-muted);line-height:1.5}
+.last-data-table1324 table{min-width:1260px}
+.last-data-table1324 th,.last-data-table1324 td{font-variant-numeric:tabular-nums}
+.last-data-table1324 th:nth-child(2),.last-data-table1324 td:nth-child(2){min-width:145px}
+.last-contract-date1324{display:block;margin-top:6px;white-space:nowrap;font-size:11px;line-height:1.4;color:var(--text-muted)}
+.last-data-table1324 td.last-days1324{color:var(--text-main)!important}
+.last-data-note1324{font-size:12px;line-height:1.65;color:var(--text-muted);margin-top:14px}
+@media(max-width:1000px){.last-data-summary1324{grid-template-columns:1fr 1fr}.last-data-summary1324>.card:first-child{grid-column:1/-1}}
+@media(max-width:600px){.last-data-summary1324{grid-template-columns:1fr;gap:12px}.last-data-summary1324>.card:first-child{grid-column:auto}.last-data-summary1324>.card{padding:16px}.last-data-summary1324 strong{font-size:24px}}

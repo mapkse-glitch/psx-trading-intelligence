@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.23
+# PSX Intelligence v1.3.24
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,143 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.23 — clearer quotes, seamless gradients and lighter navigation
+## Current update: v1.3.24 — Futures Last Data with automatic contract Days
+
+This partial source update is based on **v1.3.23**. It adds the requested latest-only
+futures view and removes the old retention tab from the interface. **No historical
+records are deleted, compressed, re-imported or rewritten.**
+
+### Install v1.3.24
+
+1. Keep the current GitHub source commit for rollback. Extract the ZIP.
+2. Merge/overwrite its included `psx_app/`, `tests/`, `README.md` and
+   `RELEASE_MANIFEST.json` files into your existing **v1.3.23 repository root**.
+   These are partial folders: **do not delete existing folders**, nest everything
+   inside another parent folder, or upload the ZIP itself as application source.
+3. Commit, wait for the normal GitHub/Vercel checks, then hard-refresh
+   (Ctrl+Shift+R). Confirm **1.3.24** in the sidebar or `/api/health`.
+4. Open **06 → Futures Comparison & Annualized Analysis → Last Data**, immediately
+   beside **Date Summary**. No new dependency, configuration, schema migration,
+   index, cleanup or data re-import is required. Nothing was pushed/deployed for you.
+
+### Tab and table
+
+- **2-Month Rolling Retention** is removed from the visible tabs. Its preview API
+  remains compatible for existing integrations. Removing a tab does not delete
+  data or change the rolling-window filters/settings used by the older views.
+- **Last Data** always queries the **latest imported futures date**. It has no
+  manual date pin, user-entered Days or rolling-window override. Newer cash data
+  does not move the futures snapshot forward. Older futures rows are not mixed
+  into the latest-date table, even if a symbol has no row on that latest date.
+- Three aligned cards show the latest date, number of contracts, and count of
+  exact same-date cash matches. No data is shown honestly as unavailable with an
+  awaiting-import state, not a fabricated date or sample figures.
+- The table contains the requested **12 columns**, ordered by **Symbol A–Z**, then
+  by calculated contract rule date and contract label:
+
+  | Column | Meaning |
+  | --- | --- |
+  | Symbol | Futures base/cash symbol |
+  | Contract/Month | Original contract month, with its calculated last Friday shown beneath |
+  | Current Value | Same-date cash close, PKR |
+  | Volume | Same-date **cash** volume |
+  | Future Value | Futures close, PKR |
+  | Future Volume | Futures volume, separate from cash volume |
+  | High | Futures high, always green |
+  | Low | Futures low, always red |
+  | Difference | Futures close − cash close, PKR |
+  | Difference % | Difference ÷ cash close × 100 |
+  | Days | Automatically calculated calendar days to that contract month’s last Friday |
+  | Annualized % | Difference % × 365 ÷ Days |
+
+- Cash prices and volumes use an **exact date + symbol join**. Missing cash quotes
+  remain unavailable; no earlier/later price is substituted. Genuine zero volumes
+  remain zero. Contracts/variants such as OCT and OCTB remain distinct rows.
+
+### Days: explicit calculation boundaries
+
+Days are computed from the **displayed data date**, not the computer date:
+
+`Days = max(0, contract-month last Friday − latest futures data date)`
+
+The data date is excluded; the ending Friday is included by date subtraction.
+These are **calendar days**, including weekends, not a trading-session count.
+This naturally includes the remaining current-month days, every intervening full
+month, and the target month up to its last Friday.
+
+For example, if the latest imported date is **16 Oct 2026**:
+
+- OCT/OCTB → **30 Oct 2026** → **14 Days**.
+- NOV → **27 Nov 2026** → **42 Days**.
+- DEC → **25 Dec 2026** → **70 Days**.
+
+The target is the user's requested **last-Friday rule**, not a claimed official,
+holiday-adjusted exchange expiry calendar. The calculated date is visible in each
+contract cell and in the Days tooltip.
+
+- An explicit YY/YYYY in a recognizable contract month is used; YY means 2000–2099.
+- For a yearless month, use its **next occurrence relative to the data month,
+  current month included**. Thus JAN from a December snapshot maps to January of
+  the next year. This inference is disclosed in the table footer. An expired rule
+  date in the current month is not silently moved a year forward.
+- A passed rule date or the ending Friday itself gives **Days = 0** and unavailable
+  Annualized %, never division by zero or a made-up 1/30-day denominator.
+- Unknown month/year gives unavailable Days and Annualized %. Missing/nonpositive
+  cash close prevents spread/percentage calculations. A valid zero spread with
+  positive Days remains a real **0.00%**, not unavailable.
+- Existing futures views retain their original user-entered Days and financial
+  formulas. Their service methods were checked structurally against v1.3.23 and
+  remain unchanged. This new automatic rule applies only to **Last Data**.
+
+### Consistent styling and efficient navigation
+
+- Reuses the existing font scale, date format (**6 Sept 2019**), yellow dividers,
+  **#03D815** High/positive and **#F63131** Low/negative colors, native controls,
+  useful hover feedback, responsive spacing and internal sticky-header table scroll.
+- Latest-date cards stretch evenly on desktop and stack cleanly on smaller widths.
+  The 12-column table scrolls internally instead of widening the page.
+- The new tab makes **one fresh report HTTP request** per visit/Refresh latest,
+  with the existing global concurrent-GET deduplication. It bypasses futures
+  metadata and historical dropdown requests; no browser TTL can pin this report.
+- The report uses **one indexed latest-date SELECT with a same-date cash join**,
+  not one query per symbol/contract. Local SQLite query-plan inspection confirmed
+  existing `idx_fut_date_base`, the covering futures date index, and the cash
+  date/symbol unique index are used. No new index is installed.
+- Existing revision-keyed, compressed PostgreSQL report caching is reused. A new
+  canonical import/revision invalidates an older latest-data result; no separate
+  process cache is used for this endpoint. No source-data write occurs; normal
+  expendable report-cache writes remain possible without advancing the revision.
+- Tab selection/loading feedback is immediate. Generation guards reject late
+  previous-tab responses, including metadata replies, before unnecessary follow-up
+  requests or DOM replacement. Errors retain the tabs and offer Retry.
+- Existing header/8-sheet futures workbook exports are unchanged. Last Data has
+  not been silently inserted into or substituted for the legacy workbook sheets.
+
+### Verification
+
+- **372 passed, 34 skipped, 1 dependency deprecation warning** on isolated SQLite
+  and disposable loopback PostgreSQL. The skipped tests need private historical
+  fixtures; no production Aiven database or user workbook was accessed.
+- Added tests cover current/next/further months, December–January rollover,
+  leap February, explicit years, contract suffixes, ending/passed Fridays,
+  unknown month/year, exact/missing cash joins, zero volume/spread, alphabetical
+  ordering, freshest snapshot after a new import, API filter independence,
+  per-contract 365-day annualization and shared-cache revision invalidation.
+- Local synthetic Chromium checks passed in light and dark themes with 60
+  contracts, three aligned summary cards, all 12 columns, A–Z ordering, separate
+  source volumes, canonical High/Low colors, yellow rules, sticky headers,
+  1600/1200/768/390/320 px without page-level horizontal overflow, one initial
+  report request and no metadata dependency. Refresh, empty/error states and late
+  metadata-response protection passed; no JavaScript page errors were observed.
+- Timing on live Vercel/Aiven was not measured; network/cold-start latency still
+  exists. This release removes avoidable work rather than promising instant pages.
+- The minimal ZIP is verified against a clean v1.3.23 overlay and tested again.
+  Unrelated application files remain byte-identical. No trading database, private
+  credentials, workbook, generated test data or screenshots are packaged.
+
+Older release sections below remain as historical reference.
+
+## Previous update: v1.3.23 — clearer quotes, seamless gradients and lighter navigation
 
 This is a **partial source update for v1.3.22**. Trading data, import logic,
 threshold rules, date handling, colors, exports and reference membership stay intact.
@@ -677,7 +813,7 @@ Your own USB remains your backup. No credentials or user database are in this ZI
    Do **not** just redeploy the old 1.3.13 code.
 5. Open the dashboard. Sidebar should say **Database: connected**. Settings should
    say **PostgreSQL — direct remote database**. `/api/health` should return 200 and
-   version `1.3.23`. An empty database is expected before you import your data.
+   version `1.3.24`. An empty database is expected before you import your data.
 
 The first API request creates the application tables and default configuration in
 **your deliberately configured PostgreSQL database**. It does not manufacture
@@ -934,7 +1070,7 @@ separate calendar; date-range cards show the actual minimum and maximum dates.
 
 ## Verification and performance
 
-Current regression suite: **341 passed, 34 skipped, 1 deprecation warning**.
+Current regression suite: **372 passed, 34 skipped, 1 deprecation warning**.
 Tests use a real isolated PostgreSQL 15 server. They explicitly isolate synthetic
 tests from retained repository snapshots. Twenty private historical-fixture tests
 and fourteen optional legacy libSQL-server tests are skipped, not passed.

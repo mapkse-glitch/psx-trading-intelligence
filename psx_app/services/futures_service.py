@@ -1,9 +1,41 @@
 from psx_app.services.result_cache import persisted_result
-from datetime import datetime
+from datetime import date, datetime, timedelta
+import calendar
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from psx_app.database.repository import Repository
 from psx_app.database.schema import get_connection
+
+
+_MONTHS_LAST_DATA = {name: i for i, name in enumerate(
+    ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'), 1)}
+
+
+def contract_last_friday(contract_month: str, as_of: str) -> Dict[str, Any]:
+    """Requested calendar rule, not a holiday-adjusted exchange expiry calendar.
+
+    Preserve variant letters (OCT/OCTB are distinct rows), but both use the
+    named month. Explicit YY/YYYY years win. A yearless month means its next
+    occurrence, including the data month; a same-month expired rule date never
+    silently rolls forward a year. Invalid month/year is unavailable, never 30.
+    """
+    anchor = date.fromisoformat(as_of)
+    token = re.sub(r'[-_/\s]', '', str(contract_month or '').upper())
+    match = re.fullmatch(r'(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)([A-Z]*)(\d{4}|\d{2})?([A-Z]*)', token)
+    if not match:
+        return {'rule_date':None,'days':None,'year_inferred':False,'days_status':'UNKNOWN_MONTH'}
+    month = _MONTHS_LAST_DATA[match[1]]
+    explicit = match[3]
+    year = (int(explicit) if len(explicit)==4 else 2000+int(explicit)) if explicit else anchor.year + (month < anchor.month)
+    if not 1900 <= year <= 2199:
+        return {'rule_date':None,'days':None,'year_inferred':False,'days_status':'UNKNOWN_YEAR'}
+    last = date(year, month, calendar.monthrange(year, month)[1])
+    friday = last - timedelta(days=(last.weekday()-4) % 7)
+    remaining = (friday-anchor).days
+    return {'rule_date':friday.isoformat(),'days':max(0,remaining),
+            'year_inferred':explicit is None,
+            'days_status':'EXPIRED' if remaining<0 else 'RULE_DAY' if remaining==0 else 'OPEN'}
 
 
 class FuturesService:
@@ -17,12 +49,46 @@ class FuturesService:
       5. Date Filter (Selected Date + Days, full day comparison, sorted by Annualized % asc)
       6. Future Symbol Summary (Symbol/Item across all retained dates, sorted by DATE asc)
       7. Date Summary (Selected Date across all symbols, sorted by SYMBOL asc)
+      8. Last Data (latest imported date, per-contract calendar Days, symbol A-Z)
     Enforces strict same-date matching (never forward-filling missing data; returns 'N/A').
     """
 
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path
         self.repo = Repository(db_path)
+
+    @persisted_result
+    def get_last_data(self) -> Dict[str, Any]:
+        # One latest-date indexed join: no metadata/history scan, per-row queries,
+        # date pins, rolling-window switches or computer-clock dependency.
+        with get_connection(self.db_path) as c:
+            raw = [dict(r) for r in c.execute('''SELECT
+                f.trade_date, f.base_symbol AS symbol, f.contract_month AS contract,
+                f.contract_symbol, e.close AS current_value, e.volume AS current_volume,
+                f.close AS future_value, f.volume AS future_volume, f.high, f.low
+                FROM futures_ohlcv AS f
+                LEFT JOIN equity_ohlcv AS e
+                  ON e.trade_date=f.trade_date AND e.symbol=f.base_symbol
+                WHERE f.trade_date=(SELECT MAX(trade_date) FROM futures_ohlcv)
+                ORDER BY f.base_symbol,f.contract_month,f.contract_symbol''')]
+        rows = []
+        for item in raw:
+            horizon = contract_last_friday(item['contract'], item['trade_date'])
+            spot, future = item['current_value'], item['future_value']
+            valid = spot is not None and spot > 0 and future is not None
+            diff = future-spot if valid else None
+            pct = diff/spot*100 if valid else None
+            days = horizon['days']
+            ann = pct*365/days if pct is not None and days is not None and days > 0 else None
+            rows.append({**item,**horizon,'difference':diff,'difference_pct':pct,'annualized_pct':ann})
+        rows.sort(key=lambda r:(r['symbol'].casefold(),r['rule_date'] or '9999-12-31',r['contract'].casefold(),r['contract_symbol']))
+        return {'view':'last_data','latest_date':raw[0]['trade_date'] if raw else None,
+                'rows':rows,'rows_count':len(rows),
+                'same_date_spot_count':sum(r['current_value'] is not None for r in rows),
+                'missing_same_date_spot_count':sum(r['current_value'] is None for r in rows),
+                'unavailable_annualized_count':sum(r['annualized_pct'] is None for r in rows),
+                'year_inferred_count':sum(r['year_inferred'] for r in rows),
+                'basis':'Latest imported futures date only; same-date cash joins. Calendar days = contract month last Friday minus data date (data day excluded). Yearless month uses next occurrence, current month included; explicit two-digit years mean 2000-2099. Days floor at zero for passed rule dates. Annualized % = Difference % * 365 / Days, unavailable for Days <= 0, unknown month/year or absent/nonpositive cash. High/Low are futures prices; Volume is cash volume. No holiday adjustment.'}
 
     def _get_rolling_cutoff_month(self, max_date_str: Optional[str], rolling_months: int = 2) -> Optional[str]:
         if not max_date_str or rolling_months <= 0:

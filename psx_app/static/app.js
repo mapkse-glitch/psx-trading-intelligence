@@ -1728,10 +1728,34 @@ function openAccountDateDetail(accountId, tradeDate) {
 // Separate per-sheet filter bars matching Futures_Analysis (6).xlsx
 // ============================================================================
 
+function futuresTabs1324(active){
+ const tabs=[['monthly_comparison','Monthly Comparison'],['month_filter','Month Filter'],['symbol_filter','Symbol Filter'],['annualized_comparison','Annualized Comparison'],['date_filter','Date Filter'],['future_symbol_summary','Future Symbol Summary'],['date_summary','Date Summary'],['last_data','Last Data']];
+ return `<div class="subtabs" role="group" aria-label="Futures analysis tabs">${tabs.map(([key,label])=>`<button class="subtab-btn ${active===key?'active':''}" aria-pressed="${active===key}" onclick="switchFuturesTab1324('${key}')">${label}</button>`).join('')}</div>`;
+}
+function switchFuturesTab1324(tab){clearCalendarNotice1311();state.futures.subtab=tab;return renderFuturesView(document.getElementById('viewContainer'));}
+function lastFuturesData1324(report){
+ const text=escapeHtml;
+ const price=v=>fmtNum(v),pct=v=>fmtPct(v,false);
+ const cells=report.rows.map(r=>`<tr><td><b>${text(r.symbol)}</b></td><td><span class="badge badge-blue" title="${text(r.contract_symbol)}">${text(r.contract)}</span><small class="last-contract-date1324">${r.rule_date?'Last Fri '+fmtDate(r.rule_date):'Rule date unavailable'}</small></td><td class="num">${price(r.current_value)}</td><td class="num">${fmtInt(r.current_volume)}</td><td class="num">${price(r.future_value)}</td><td class="num">${fmtInt(r.future_volume)}</td><td class="num pos">${price(r.high)}</td><td class="num neg">${price(r.low)}</td><td class="num ${pnlClass(r.difference)}">${price(r.difference)}</td><td class="num ${pnlClass(r.difference_pct)}">${pct(r.difference_pct)}</td><td class="num last-days1324" title="${text(r.rule_date?`${r.days_status==='EXPIRED'?'Passed rule date. ':''}Calendar days from ${fmtDate(r.trade_date)} to ${fmtDate(r.rule_date)}${r.year_inferred?' · Year inferred from data month':''}`:'Unrecognized contract month/year')}">${fmtInt(r.days)}</td><td class="num ${pnlClass(r.annualized_pct)}" title="${r.annualized_pct==null?'Unavailable: a positive cash close and positive Days with a known rule date are required.':'Difference % × 365 ÷ Days'}">${pct(r.annualized_pct)}</td></tr>`).join('');
+ return `<div class="last-data-summary1324"><section class="card"><span class="eyebrow">Latest imported futures data</span><strong class="last-data-date1324">${report.latest_date?fmtDate(report.latest_date):'Not available'}</strong><span class="badge ${report.latest_date?'badge-green':'badge-amber'}">${report.latest_date?'Auto · latest available':'Awaiting import'}</span></section><section class="card"><span class="eyebrow">Contracts on this date</span><strong>${fmtInt(report.rows_count)}</strong><span>Symbol A–Z · each contract retained</span></section><section class="card"><span class="eyebrow">Same-date cash matches</span><strong>${fmtInt(report.same_date_spot_count)} / ${fmtInt(report.rows_count)}</strong><span>No earlier or later cash price substituted</span></section></div><section class="card"><div class="card-header"><div><h3 class="card-title">Last Data — Futures Comparison</h3><p class="card-subtitle">Prices in PKR · Volume = cash volume · High/Low = futures prices. Days count calendar days from the displayed data date to each contract month’s last Friday.</p></div><button class="btn btn-secondary" onclick="renderFuturesView(document.getElementById('viewContainer'))">Refresh latest</button></div>${!report.latest_date?'<p class="last-data-note1324">No imported futures data yet. Import your authentic futures file to populate this view.</p>':''}<div class="table-wrap last-data-table1324" tabindex="0" role="region" aria-label="Scrollable latest futures comparison"><table class="data-table"><thead><tr>${['Symbol','Contract/Month','Current Value','Volume','Future Value','Future Volume','High','Low','Difference','Difference %','Days','Annualized %'].map((label,i)=>`<th${i>1?' class="num"':''}>${label}</th>`).join('')}</tr></thead><tbody>${cells||'<tr><td colspan="12">No futures records available.</td></tr>'}</tbody></table></div><p class="last-data-note1324">Annualized % = Difference % × 365 ÷ Days. Zero/expired Days or unknown rule dates are not annualized.${report.year_inferred_count?' Yearless months use the next occurrence from the data date, including the current month.':''}${report.missing_same_date_spot_count?' Missing cash matches remain unavailable.':''}</p></section>`;
+}
+
 async function renderFuturesView(container) {
   const ticket = beginViewRender(container);
   const f = state.futures;
+  if(f.subtab==='rolling_window')f.subtab='last_data';
+  container.setAttribute('aria-busy','true');
+  if(container.dataset.futuresTab!==f.subtab){container.dataset.futuresTab=f.subtab;container.innerHTML=futuresTabs1324(f.subtab)+'<section class="card loading" role="status">Loading futures data…</section>';}
+  try {
+  if(f.subtab==='last_data'){
+    // Always request the current snapshot; one small report, no metadata waterfall.
+    const report=await apiGet('/api/futures/last-data',false);
+    if(currentViewRender(container,ticket)){container.innerHTML=futuresTabs1324('last_data')+lastFuturesData1324(report);enhanceWorkspace();}
+    return;
+  }
+
   const meta = await apiGet(`/api/futures/metadata?apply_rolling=${f.apply_rolling}`);
+  if(!currentViewRender(container,ticket))return;
   f.meta = meta;
   const availDates = TableDisplay.newestFirst(meta.dates || meta.retained_dates);
   const latestDate = meta.latest_date || "";
@@ -1739,18 +1763,6 @@ async function renderFuturesView(container) {
   for (const tab of ['monthly_comparison','month_filter','annualized_comparison','date_filter','date_summary']) {
     if (!f[tab].date_manual) f[tab].selected_date = latestDate;
   }
-
-  // Reference workbook: seven visible sheets; retain existing app policy tab.
-  const subtabs = [
-    ["monthly_comparison", "Monthly Comparison"],
-    ["month_filter", "Month Filter"],
-    ["symbol_filter", "Symbol Filter"],
-    ["annualized_comparison", "Annualized Comparison"],
-    ["date_filter", "Date Filter"],
-    ["future_symbol_summary", "Future Symbol Summary"],
-    ["date_summary", "Date Summary"],
-    ["rolling_window", "2-Month Rolling Retention"],
-  ];
 
   let filterBarHtml = "";
   let contentHtml = "";
@@ -2023,45 +2035,20 @@ async function renderFuturesView(container) {
         </div>
       </div>
     `;
-  } else if (f.subtab === "rolling_window") {
-    const prev = await apiGet("/api/futures/rolling-window-preview?months=2");
-    filterBarHtml = `
-      <div class="filter-bar">
-        <span class="badge badge-blue">RETENTION POLICY</span>
-        <div class="filter-group">
-          <label>Active Rolling Policy:</label>
-          <select onchange="state.futures.apply_rolling=(this.value==='true');renderFuturesView(document.getElementById('viewContainer'))">
-            <option value="true" ${f.apply_rolling ? "selected" : ""}>Enforce rolling retention (latest imported window)</option>
-            <option value="false" ${!f.apply_rolling ? "selected" : ""}>Show full imported database history</option>
-          </select>
-        </div>
-        ${exportBtnHtml}
-      </div>
-    `;
-    contentHtml = `
-      <div class="card">
-        <div class="card-header"><div class="card-title">2-Month Rolling Data Retention Policy Preview</div></div>
-        <div class="grid-4">
-          <div class="kpi-box"><div class="kpi-label">Latest Date in Dataset</div><div class="kpi-value">${fmtDate(prev.latest_date)}</div></div>
-          <div class="kpi-box"><div class="kpi-label">2-Month Cutoff Date</div><div class="kpi-value">${fmtDate(prev.cutoff_date)}</div></div>
-          <div class="kpi-box"><div class="kpi-label">Active Retained Futures Rows</div><div class="kpi-value pos">${fmtInt(prev.futures_rows_retained_in_active_window)}</div></div>
-          <div class="kpi-box"><div class="kpi-label">Older Futures Rows (Before Cutoff)</div><div class="kpi-value">${fmtInt(prev.futures_rows_older_than_cutoff)}</div></div>
-        </div>
-        <p style="color:var(--text-muted);">${prev.note}</p>
-      </div>
-    `;
   }
 
   if (!currentViewRender(container, ticket)) return;
   container.innerHTML = `
-    <div class="subtabs">
-      ${subtabs.map(([k, lbl]) => `
-        <button class="subtab-btn ${f.subtab === k ? "active" : ""}" onclick="clearCalendarNotice1311();state.futures.subtab='${k}';renderFuturesView(document.getElementById('viewContainer'))">${lbl}</button>
-      `).join("")}
-    </div>
+    ${futuresTabs1324(f.subtab)}
     ${filterBarHtml}
     ${contentHtml}
   `;
+  } catch(error) {
+    if(currentViewRender(container,ticket))container.innerHTML=futuresTabs1324(f.subtab)+`<section class="card"><h3>Futures data unavailable</h3><p>${escapeHtml(error.message)}</p><button class="btn btn-secondary" onclick="renderFuturesView(document.getElementById('viewContainer'))">Retry</button></section>`;
+  } finally {
+    if(currentViewRender(container,ticket))container.removeAttribute('aria-busy');
+  }
+
 }
 
 function renderFuturesComparisonTableCard(title, subtitle, rows) {
