@@ -49,7 +49,6 @@ async function renderTechnicalView(container){
  const tab=state.technical.subtab;
  if(!['ideas','analyst','forecasts','coverage','ideas_and_analyst'].includes(tab)){await renderTechnicalLegacy(container);if(container.isConnected){const nav=container.querySelector('.subtabs');if(nav)nav.outerHTML=techNav139(tab);}return;}
  const ticket=beginViewRender(container);container.setAttribute('aria-busy','true');
- if(container.dataset.marketTab!==m.tab){container.dataset.marketTab=m.tab;container.innerHTML=marketTabs1321(m.tab)+skeleton139();}
  if(!container.querySelector('.card'))container.innerHTML=techNav139(tab)+skeleton139();
  else container.classList.add('refreshing139');
  try {

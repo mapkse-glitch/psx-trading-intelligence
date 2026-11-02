@@ -1,11 +1,11 @@
 {
-  "version": "1.3.25",
+  "version": "1.3.26",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 411,
+    "passed": 412,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
@@ -33,7 +33,10 @@
     "last_futures_snapshot_calendar_days_annualization_and_retention_tab_removal_tested": true,
     "latest_futures_revision_cache_and_indexed_join_tested": true,
     "market_performance_fiscal_weekday_charts_tested": true,
-    "market_performance_postgres_revision_cache_tested": true
+    "market_performance_postgres_revision_cache_tested": true,
+    "technical_renderer_regression_tested": true,
+    "technical_browser_test": "Local Chromium with synthetic data: all five visible Technical Analysis tabs rendered; no page errors. The regression test fails against the v1.3.25 baseline and passes with this fix.",
+    "v1326_live_read_only_scope": "Live v1.3.25 pages and account, futures, Market Explorer and Market Performance tabs checked read-only. Technical view reproduced m is not defined; repaired build not deployed. No mutation workflows or production-data reconciliation tested."
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -53,8 +56,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 108445,
-      "sha256": "f7c60503bf4704836d2020ae95c6231cb163a47dce51470b384002c48ff425d4"
+      "bytes": 109941,
+      "sha256": "113e6a0126b4620241dbafaab16465163b3f91f425f5636e2e4bff5eeeffdc9a"
     },
     "api/index.py": {
       "bytes": 29,
@@ -102,7 +105,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "57dd6597eb303e95162b522bae53f37f3b507d26a0e65c1dd830e2c4b4bef72d"
+      "sha256": "6d4fde90fa52fad8eba9379faf5eff1df1de74bc74a394fe8d1053897df0a616"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -254,7 +257,7 @@
     },
     "psx_app/static/index.html": {
       "bytes": 5484,
-      "sha256": "7b75a6f3623e2b00332a670fda5028ac693fb366dcf29d55f6affe647cea5b76"
+      "sha256": "ed4c63e5c624cfff2cf5454a0b70dacda29fba40c54fb62fae9bddc68178d45f"
     },
     "psx_app/static/market1321.js": {
       "bytes": 13364,
@@ -273,8 +276,8 @@
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 48042,
-      "sha256": "6d81c0f8480184c88e4ddf85d72b5288fcb0f8da7831fc5facc0f0de60ae434c"
+      "bytes": 47909,
+      "sha256": "b25d217b179b1264e3c1839668e146e5ab833b3333baaf11f63e7d69d0044855"
     },
     "psx_app/upgrade_routes.py": {
       "bytes": 4232,
@@ -346,19 +349,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "7753e9e8407db1d47bfb5304a579255f36100ff1cdea85a12968cd5f05512b68"
+      "sha256": "a970e0908f5e0526e546c1aa6e9053a5cc8c4c6bd9216df1784c869c2965ee0d"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "e0534f56610a13378970302864a0d1d229daa6d47b872e34632860234b19179d"
+      "sha256": "e59dafdad6f4e2434bfc4dfe29571b13f44ea9955fdede137cb3ef03b20e5230"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "9bc97fddd49c70b366a92ac3cfb67e455ea604cb3b3debbe1369d93953663561"
+      "sha256": "2813eccd9e09b64cc374fe6afa3ab079bc1c94434cc6e75362643cb2ec3f4d7f"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "8e26949390e1f9fca58f248618bebc5a19b7ce1d393938aaeb8fc4d8024b6ebf"
+      "sha256": "2364866e7d668c6d9095e148e76f4a9eadfa36f8687f62e9cfd6c6af7243de70"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -390,7 +393,7 @@
     },
     "tests/test_v1321_frontend.py": {
       "bytes": 3599,
-      "sha256": "e4b6335deca5704c29297aea4ac7c8501835160721fb2e88cef68e274f8398e5"
+      "sha256": "9e7556f8bf2423272498a2353a38def4a819f65b94426bb1a7ecc418e85aea99"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
@@ -418,11 +421,15 @@
     },
     "tests/test_v1325_performance.py": {
       "bytes": 13965,
-      "sha256": "7cddd1ef2d7c32117a0e415a908b798995c2d3b6effbff5e4d5adfff9d73de88"
+      "sha256": "64ca2b02a2674facabf04d584133a28b3befcedd8ba4276783c168acc474a2d7"
     },
     "tests/test_v1325_postgres.py": {
       "bytes": 1477,
       "sha256": "a3444cc4ddaa13437069cf3a3248049320edb81867abd7d52ee48ccd05173ccb"
+    },
+    "tests/test_v1326_technical_render.py": {
+      "bytes": 2879,
+      "sha256": "e0d96723c21be38915ba5f7869d870c1b200119693a479433c14c30935c7314d"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -481,7 +488,7 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
   },
-  "patch_base": "PSX_v1.3.24_Futures_Last_Data_Update.zip",
+  "patch_base": "PSX_v1.3.25_Market_Performance_Update.zip",
   "local_benchmark": {
     "rows": 1000000,
     "symbols": 1000,

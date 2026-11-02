@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.25
+# PSX Intelligence v1.3.26
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,33 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.25 — Market Performance
+## Current update: v1.3.26 — Technical Analysis repair
+
+This partial update for **v1.3.25** repairs the Technical Analysis view error
+`m is not defined`. It removes an accidentally copied Market Explorer loading
+line from the Technical Analysis renderer. The five Technical Analysis tabs and
+Market Explorer retain their existing behavior. No schema, historical records,
+settings, credentials or import workflow are changed.
+
+### Install v1.3.26
+
+1. Keep your current commit for rollback and extract the update ZIP.
+2. Merge/overwrite the included files and folders into the existing **v1.3.25**
+   repository root. These are partial folders: **do not delete existing folders**.
+3. Commit through your normal GitHub workflow, let Vercel deploy, then hard-refresh
+   with Ctrl+Shift+R. Confirm **v1.3.26** in the sidebar or `/api/health`.
+4. Open Technical Analysis and verify its tabs. No re-import, database maintenance
+   or new environment variables are required.
+
+The regression suite passed **412 tests**, with **34 skipped** and one existing
+third-party deprecation warning, using a disposable local PostgreSQL database.
+Local Chromium checked all five Technical Analysis tabs with synthetic data.
+Read-only live checks covered dashboard pages and account, futures, Market
+Explorer and Market Performance tabs. The repair itself has not been deployed
+or tested on live production; destructive actions, actual imports, backups and
+complete financial-data reconciliation were not tested.
+
+## Previous update: v1.3.25 — Market Performance
 
 This **partial source update for v1.3.24** adds **10 • Market Performance** below
 Market Explorer. Settings moves to menu 11; its functionality is unchanged.
