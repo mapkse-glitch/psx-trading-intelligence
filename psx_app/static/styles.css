@@ -1343,3 +1343,14 @@ hr{border:0;border-top:1px solid var(--separator-color)}
 @media(prefers-reduced-motion:reduce){.performance-bar1325 rect,.performance-stack1325{transition:none;}}
 
 .performance-scroll1325{font-size:11px;color:var(--text-muted);margin:0 0 12px;line-height:1.5;}
+
+/* v1.3.27: search for long native filter lists, without changing selection until chosen. */
+.select-search-wrap1327{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%}
+.select-search1327{display:flex;flex-direction:column;gap:3px;min-width:0}
+.select-search1327 input{width:100%;min-width:160px;max-width:100%;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px}
+.select-search-status1327{font-size:12px;color:var(--text-muted);line-height:1.3}
+.select-search-status1327:empty{display:none}
+@media(max-width:650px){.select-search-wrap1327{width:100%}.select-search-wrap1327 select,.select-search1327 input{width:100%;min-width:0}}
+.match1-filters1327 input[type="number"]{width:130px}.match1-scope1327{display:flex;align-items:center;gap:7px}.match1-error1327{color:var(--neg-red);flex-basis:100%;margin:0}.match1-error1327:empty{display:none}.match1-pages1327{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+.price-range-note1327{font-size:12px;color:var(--text-muted);line-height:1.45;margin:10px 0 0}

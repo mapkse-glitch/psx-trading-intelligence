@@ -72,6 +72,45 @@ class MarketPanels:
             rows = [dict(r) for r in c.execute('SELECT sector,COUNT(*) AS symbols FROM company_reference WHERE list_name=? GROUP BY sector ORDER BY sector', (name,))]
         return {'status':'OK','source':name,'sectors':rows}
 
+    def matching_range(self, symbol, low, high, page=1, include_recent=False):
+        """All matching closes in deterministic pages; gaps count every stored session."""
+        import math
+        symbol = symbol.strip().upper()
+        if not math.isfinite(low) or not math.isfinite(high) or low < 0 or high < low:
+            raise ValueError('Enter a valid nonnegative range with start no greater than end.')
+        page = int(page)
+        if page < 1 or page > 1000000:
+            raise ValueError('Invalid page number.')
+        page_size = 100
+        with get_connection(self.db_path) as c:
+            latest = c.execute('SELECT trade_date,close FROM equity_ohlcv WHERE symbol=? ORDER BY trade_date DESC LIMIT 1', (symbol,)).fetchone()
+            if not latest:
+                return {'status':'NO_DATA','symbol':symbol,'rows':[],'latest':None,'latest_index':None,'total':0,'page':page,'page_size':page_size,'include_recent':include_recent}
+            latest = dict(latest)
+            cutoff = month_before(latest['trade_date'])
+            idx = c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC LIMIT 1', (latest['trade_date'],)).fetchone()
+            idx = dict(idx) if idx else None
+            # Rank before filtering, so the gap includes all stored records.
+            date_limit = latest['trade_date'] if include_recent else cutoff
+            date_op = '<=' if include_recent else '<'
+            where = f'symbol=? AND trade_date{date_op}? AND close>=? AND close<=?'
+            total = c.execute(f'SELECT COUNT(*) FROM equity_ohlcv WHERE {where}', (symbol,date_limit,low,high)).fetchone()[0]
+            # One indexed symbol scan, exact-date index join and bounded page.
+            rows = [dict(r) for r in c.execute(f'''WITH history AS (
+                SELECT trade_date,close,ROW_NUMBER() OVER (ORDER BY trade_date DESC)-1 AS sessions_ago
+                FROM equity_ohlcv WHERE symbol=? AND trade_date<=?
+            ) SELECT h.trade_date,h.close,h.sessions_ago,i.trade_date AS index_date,i.close AS index_close
+              FROM history h LEFT JOIN index_ohlcv i ON i.trade_date=h.trade_date
+              WHERE h.trade_date{date_op}? AND h.close>=? AND h.close<=?
+              ORDER BY ABS(h.close-?),h.trade_date DESC LIMIT ? OFFSET ?''',
+              (symbol,latest['trade_date'],date_limit,low,high,latest['close'],page_size,(page-1)*page_size))]
+        for row in rows:
+            row.update(latest_close=latest['close'],latest_index_close=idx['close'] if idx else None,
+                       close_difference=difference(latest['close'],row['close']),
+                       index_difference=difference(idx['close'] if idx else None,row['index_close']))
+        return {'status':'OK','symbol':symbol,'latest':latest,'latest_index':idx,'cutoff':cutoff,
+                'rows':rows,'total':total,'page':page,'page_size':page_size,'include_recent':include_recent}
+
     def small_cards(self, sector=None, sessions=14):
         return self.small_cards_v1322(sector, sessions)
 

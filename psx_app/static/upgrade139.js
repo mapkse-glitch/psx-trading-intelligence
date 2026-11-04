@@ -1,6 +1,6 @@
 /* v1.3.9: accountable analysis and native market explorer. No external chart/CDN/API. */
 state.technical.subtab='ideas';
-state.market={tab:'volume',date:null,n:10,symbol:'PRL',days:50};
+state.market={tab:'volume',date:null,n:10,symbol:'PRL',days:14};
 VIEW_TITLES.market='09 • Market Explorer — Volume & Symbol vs Index';
 let analystTimer, analystGeneration=0, ideasGeneration=0;
 const h=escapeHtml;
@@ -129,8 +129,11 @@ function latestMarketCard1317(label,row,identity){
 function priceLimit1318(row){
  const close=row?.close,previous=row?.pr_close;
  if(typeof close!=='number'||!Number.isFinite(close)||close<0||typeof previous!=='number'||!Number.isFinite(previous)||previous<=0)return {status:'UNAVAILABLE',close,previous,upper:null,lower:null};
- const upper=Math.max(previous*1.10,previous+1),lower=Math.min(previous*.90,previous-1);
- // Only absorb floating-point arithmetic noise at exact price boundaries.
+ // Ready-market estimate: circuit limits are rounded to the nearest paisa
+ // before comparing. Keep the source close intact; do not round a genuinely
+ // off-tick close into a lock. Floating-point noise alone is absorbed.
+ const tickRound=v=>Math.round(v*100+Number.EPSILON*Math.max(1,Math.abs(v*100))*8)/100;
+ const upper=tickRound(Math.max(previous*1.10,previous+1)),lower=tickRound(Math.min(previous*.90,previous-1));
  const epsilon=Number.EPSILON*Math.max(1,Math.abs(close),Math.abs(upper),Math.abs(lower))*8;
  return {status:close>=upper-epsilon?'UPPER':close<=lower+epsilon?'LOWER':'WITHIN',close,previous,upper,lower};
 }
@@ -149,18 +152,19 @@ function priceLimitCard1318(row,symbol){
  const statusText={UPPER:'Upper lock reached',LOWER:'Lower lock reached',WITHIN:'Within range',UNAVAILABLE:'Check unavailable'}[range.status];
  const tone=range.status==='UPPER'?'limit-upper1318':range.status==='LOWER'?'limit-lower1318':'limit-neutral1318';
  const price=x=>x==null?'Not available':'PKR '+fmtNum(x);
- const closing=typeof range.close==='number'&&Number.isFinite(range.close)&&range.close>=0?price(range.close):'Not available';
+ const closing=typeof range.close==='number'&&Number.isFinite(range.close)&&range.close>=0?'PKR '+range.close.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:12}):'Not available';
  const direction=available?pnlClass(range.close-range.previous):'';
  const locked=range.status==='UPPER'||range.status==='LOWER';
  const marker=available?`<span class="price-range-marker1319" style="left:${range.position.toFixed(6)}%"><span></span></span>`:'';
- const description=available?`Upper lock ${price(range.upper)} at left; lower lock ${price(range.lower)} at right; closing rate ${price(range.close)}${range.status==='UPPER'||range.status==='LOWER'?'; '+statusText:''}.`:'Price range unavailable: valid closing and positive previous closing prices are required.';
- return `<section class="card latest-close-card1317 price-limit-card1318 price-range-card1319 ${tone}" aria-label="Closing price range"><div class="card-header"><h3>Price Limit Checker</h3><span>${h(symbol)}${row?.trade_date?' · '+fmtDate(row.trade_date):''}</span></div><div class="price-lock-status1320">${priceLockIcon1318(locked)}<strong>${statusText}</strong></div><div class="price-range-labels1319"><div><span>${priceLockIcon1318(true)}Upper Lock</span><strong>${price(range.upper)}</strong></div><div><span>Lower Lock${priceLockIcon1318(true)}</span><strong>${price(range.lower)}</strong></div></div><div class="price-range-track1319 ${available?'':'range-unavailable1319'}" role="img" aria-label="${h(description)}" style="--upper-strength1319:${(18+82*range.upperProximity).toFixed(3)}%;--lower-strength1319:${(18+82*range.lowerProximity).toFixed(3)}%"><div class="price-range-fill1319"></div>${marker}<span class="price-range-mid1319" aria-hidden="true"></span></div><div class="price-range-close-lane1320"><div class="moving-close1320 ${direction}" style="--close-position1320:${available?range.position.toFixed(6):'50'}%"><span>Closing rate</span><strong>${closing}</strong></div></div>${!available?'<p class="price-range-unavailable1319">A valid close and positive previous close are required.</p>':''}</section>`;
+ const description=available?`Upper lock ${price(range.upper)} at left; lower lock ${price(range.lower)} at right; closing rate ${closing}${range.status==='UPPER'||range.status==='LOWER'?'; '+statusText:''}.`:'Price range unavailable: valid closing and positive previous closing prices are required.';
+ return `<section class="card latest-close-card1317 price-limit-card1318 price-range-card1319 ${tone}" aria-label="Closing price range"><div class="card-header"><h3>Price Limit Checker</h3><span>${h(symbol)}${row?.trade_date?' · '+fmtDate(row.trade_date):''}</span></div><div class="price-lock-status1320">${priceLockIcon1318(locked)}<strong>${statusText}</strong></div><div class="price-range-labels1319"><div><span>${priceLockIcon1318(true)}Upper Lock</span><strong>${price(range.upper)}</strong></div><div><span>Lower Lock${priceLockIcon1318(true)}</span><strong>${price(range.lower)}</strong></div></div><div class="price-range-track1319 ${available?'':'range-unavailable1319'}" role="img" aria-label="${h(description)}" style="--upper-strength1319:${(18+82*range.upperProximity).toFixed(3)}%;--lower-strength1319:${(18+82*range.lowerProximity).toFixed(3)}%"><div class="price-range-fill1319"></div>${marker}<span class="price-range-mid1319" aria-hidden="true"></span></div><div class="price-range-close-lane1320"><div class="moving-close1320 ${direction}" style="--close-position1320:${available?range.position.toFixed(6):'50'}%"><span>Closing rate</span><strong>${closing}</strong></div></div><p class="price-range-note1327">Closing-price estimate: 10% or PKR 1, whichever is greater; limits rounded to the nearest PKR 0.01. Special instruments or exchange exceptions may differ.</p>${!available?'<p class="price-range-unavailable1319">A valid close and positive previous close are required.</p>':''}</section>`;
 }
 async function renderMarketView(container){
  const ticket=beginViewRender(container);const m=state.market;container.setAttribute('aria-busy','true');
  if(container.dataset.marketTab!==m.tab){container.dataset.marketTab=m.tab;container.innerHTML=marketTabs1321(m.tab)+skeleton139();}
  if(!container.querySelector('.card'))container.innerHTML=skeleton139();else container.classList.add('refreshing139');
  try{
+ if(m.tab==='matching1'){await renderMatchingOne1327(container,ticket);return;}
  if(m.tab==='matching'||m.tab==='smallcards'){await renderMarketExtra1321(container,ticket);return;}
  // Share metadata and short-lived reports with sibling market tabs.
  const meta=await panelGet1322('/api/v139/market/meta');if(!currentViewRender(container,ticket))return;
@@ -174,7 +178,7 @@ async function renderMarketView(container){
  html+=`<div class="explorer-layout"><aside class="card date-hierarchy calendar-only1312"><h3>Trading date</h3><label>Select date <input type="date" min="${meta.dates.at(-1)}" max="${meta.dates[0]}" value="${m.date}" onchange="marketCalendar1311(this.value)"/></label></aside><div><section class="card"><h3>${h(full)}</h3><div class="top-n139" role="group" aria-label="Top volume count">${Array.from({length:10},(_,i)=>`<button class="subtab-btn ${m.n===i+1?'active':''}" aria-pressed="${m.n===i+1}" onclick="state.market.n=${i+1};marketRefresh139()">${i+1}</button>`).join('')}</div><details class="secondary-note1312"><summary>Data notes</summary><p>${h(r.universe)}</p></details></section><div class="grid-2 volume-charts139"><section class="card"><h3>Top ${r.top_n} stocks account for ${r.top_pct.toFixed(2)}% of total volume</h3>${donut139(r)}</section><section class="card"><h3>Top ${r.top_n} stocks account for ${r.top_pct.toFixed(2)}% of total volume</h3>${columns139(r)}</section></div><section class="card">${smallTable(['Symbol','Volume (M)','Share'],r.parts.map(p=>[h(p.symbol),fmtNum(p.volume/1e6,3)+'M',fmtPct(p.pct,false)]))}<button class="btn btn-secondary" onclick="downloadMarket139()">Download view data</button></section></div></div>`;
  }else{
  const r=await panelGet1322('/api/v139/market/symbol/'+encodeURIComponent(m.symbol)+'?'+new URLSearchParams({n:m.days}));if(!currentViewRender(container,ticket))return;
- html+=`<div class="symbol-filter-row1317"><section class="card filter-bar"><label>Records <input type="number" min="1" max="6000" value="${m.days}" onchange="state.market.days=Math.min(6000,Math.max(1,Math.floor(Number(this.value)||1)));marketRefresh139()"/></label><label>Symbol <select onchange="state.market.symbol=this.value;marketRefresh139()">${meta.symbols.map(s=>`<option ${s===m.symbol?'selected':''}>${h(s)}</option>`).join('')}</select></label></section><section class="card company-card1317" aria-label="Full symbol name"><span class="eyebrow">${h(m.symbol)} · Full company name</span><h2>${h(r.company?.name||'Full company name unavailable')}</h2>${r.company?.sector?`<p>${h(r.company.sector)}</p>`:''}</section></div>`;
+ html+=`<div class="symbol-filter-row1317"><section class="card filter-bar"><label>Records <input type="number" min="1" max="6000" value="${m.days}" onchange="state.market.days=Math.min(6000,Math.max(1,Math.floor(Number(this.value)||14)));marketRefresh139()"/></label><label>Symbol <select onchange="state.market.symbol=this.value;marketRefresh139()">${meta.symbols.map(s=>`<option ${s===m.symbol?'selected':''}>${h(s)}</option>`).join('')}</select></label></section><section class="card company-card1317" aria-label="Full symbol name"><span class="eyebrow">${h(m.symbol)} · Full company name</span><h2>${h(r.company?.name||'Full company name unavailable')}</h2>${r.company?.sector?`<p>${h(r.company.sector)}</p>`:''}</section></div>`;
  if(r.status!=='OK'){container.innerHTML=html+'<section class="card">No symbol records on or before this date.</section>';return;}
  html+=`<div class="grid-2 latest-market1317 latest-market1318">${latestMarketCard1317('Latest Close',r.latest_symbol,m.symbol)}${latestMarketCard1317('Latest Index Close',r.latest_index,'Imported index')}${priceLimitCard1318(r.latest_symbol,m.symbol)}</div><section class="card price-ranges1317" aria-label="Symbol high and low ranges">${r.ranges.map(x=>`<div class="price-range1317"><h3>${h(x.label)}</h3>${rangeBar1321(x)}<small>${fmtDate(x.start)} – ${fmtDate(x.end)}<br>${fmtInt(x.records)} stored sessions</small></div>`).join('')}</section>`;
  const card=(label,v)=>`<div class="kpi-box"><div class="kpi-label">${h(label)}</div><div class="kpi-value ${pnlClass(v?.change)}">${v?.change==null?'Comparison unavailable':fmtNum(v.change)}</div><p class="${pnlClass(v?.pct)}">${v?.pct==null?'Cannot compare: the matching previous price is missing.':fmtPct(v.pct,false)}</p></div>`;

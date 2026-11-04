@@ -1,11 +1,11 @@
 {
-  "version": "1.3.26",
+  "version": "1.3.27",
   "release": "Aiven PostgreSQL / GitHub / Vercel",
   "baseline": "PSX_Intelligence_v1.3.13_Startup_Recovery_Turso_Diagnostics_GitHub",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 412,
+    "passed": 428,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
@@ -36,7 +36,8 @@
     "market_performance_postgres_revision_cache_tested": true,
     "technical_renderer_regression_tested": true,
     "technical_browser_test": "Local Chromium with synthetic data: all five visible Technical Analysis tabs rendered; no page errors. The regression test fails against the v1.3.25 baseline and passes with this fix.",
-    "v1326_live_read_only_scope": "Live v1.3.25 pages and account, futures, Market Explorer and Market Performance tabs checked read-only. Technical view reproduced m is not defined; repaired build not deployed. No mutation workflows or production-data reconciliation tested."
+    "v1326_live_read_only_scope": "Live v1.3.25 pages and account, futures, Market Explorer and Market Performance tabs checked read-only. Technical view reproduced m is not defined; repaired build not deployed. No mutation workflows or production-data reconciliation tested.",
+    "v1327_lock_matching_search": "Local synthetic tests: rounded-paisa lock boundaries and extra precision, inclusive ranges and exact-date joins, both history scopes, 100-row pagination, SQLite and disposable local PostgreSQL, searchable filters, tab race, and Chromium mobile/dark layouts. Production data and live Aiven performance were not validated."
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -56,8 +57,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 109941,
-      "sha256": "113e6a0126b4620241dbafaab16465163b3f91f425f5636e2e4bff5eeeffdc9a"
+      "bytes": 112988,
+      "sha256": "a87ded55560e329a3753bf4cc161ba6b4f0304669b8a95b969919b25ec51daa1"
     },
     "api/index.py": {
       "bytes": 29,
@@ -105,7 +106,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "6d4fde90fa52fad8eba9379faf5eff1df1de74bc74a394fe8d1053897df0a616"
+      "sha256": "67b9e8bb1d92e5e986809fe7346027703be49c55e31ffed146336e87c8bbefa0"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -200,8 +201,8 @@
       "sha256": "94c0adaddb79dbe7707aadc0da665fa64a50fbb51155520a642fa92b43aa17ac"
     },
     "psx_app/services/market_panels.py": {
-      "bytes": 11069,
-      "sha256": "6535a510a895ead8bb20028b4b17a89251c8b11984d2ab16177398d17f96ab51"
+      "bytes": 14023,
+      "sha256": "e9791a539221cdf1caf165232316e4d169f33142a95efab48f2fa3971deded97"
     },
     "psx_app/services/market_performance.py": {
       "bytes": 14822,
@@ -256,32 +257,40 @@
       "sha256": "ce0aa1597d4a724b5092640a5af58e2fa0f602723bb8bbf52f5fbe6f0a778a8d"
     },
     "psx_app/static/index.html": {
-      "bytes": 5484,
-      "sha256": "ed4c63e5c624cfff2cf5454a0b70dacda29fba40c54fb62fae9bddc68178d45f"
+      "bytes": 5586,
+      "sha256": "63648ea6a7dd41b69026104e9cdbabd90023db90c43edfcee4caf602224b7524"
     },
     "psx_app/static/market1321.js": {
-      "bytes": 13364,
-      "sha256": "ed30582927c92193abf2fbc6327f9e927bb78fe8987597167bbcdca2b18fd151"
+      "bytes": 13396,
+      "sha256": "feab7c5213258db995ca5debff368cf2e190aa50fada359f8290b7f0861175ce"
+    },
+    "psx_app/static/matching1327.js": {
+      "bytes": 6102,
+      "sha256": "36e923ffbd17687a582d3eb0c8f2cd469ebcd0264c1a10f7c5a68033c4939001"
     },
     "psx_app/static/performance1325.js": {
       "bytes": 15259,
       "sha256": "4f2d010cc3e6ab0861192c1e947dbfcbb6c618cdf91cb0f6591278108880e25e"
     },
+    "psx_app/static/search1327.js": {
+      "bytes": 3151,
+      "sha256": "f02eec0a5a5b1aef973a83b8372855062afb438c0d1bf25369772c7a73643f29"
+    },
     "psx_app/static/styles.css": {
-      "bytes": 60859,
-      "sha256": "1c276fad4b630a4236dbd3389f2652111044b658b94a48abc8df87d40495bb79"
+      "bytes": 61980,
+      "sha256": "04c436c042a3c04147305ed11c1f2e05cd866995444661376d76c585fd3fd4bc"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 47909,
-      "sha256": "b25d217b179b1264e3c1839668e146e5ab833b3333baaf11f63e7d69d0044855"
+      "bytes": 48503,
+      "sha256": "44bfa7d0b2af208da18d2b45ab54157ce2536e27dad1a1ef58d5cb250469851e"
     },
     "psx_app/upgrade_routes.py": {
-      "bytes": 4232,
-      "sha256": "0ef0f3dd1c53ac222606a7f28ab4a391317c6c81686bf4efd6c9b0d6249d167f"
+      "bytes": 4624,
+      "sha256": "3c64fd9948718cbcf346a699f4bd2fe72a62527c4e701d9b82584ff00f302b30"
     },
     "pytest.ini": {
       "bytes": 42,
@@ -349,19 +358,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "a970e0908f5e0526e546c1aa6e9053a5cc8c4c6bd9216df1784c869c2965ee0d"
+      "sha256": "3db87b101a95656cee0eb23a3b1097adab24fee9e1fd69fb68a34fddb27b8bb7"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "e59dafdad6f4e2434bfc4dfe29571b13f44ea9955fdede137cb3ef03b20e5230"
+      "sha256": "264eba826089b4476e590849cdb426bbb091aa226f543c9a7642fa27aaa3954c"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "2813eccd9e09b64cc374fe6afa3ab079bc1c94434cc6e75362643cb2ec3f4d7f"
+      "sha256": "5ba15813ee63ece8869e3c68dbc9962a98b9a7a1b0733150572dc387b2b2dd20"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "2364866e7d668c6d9095e148e76f4a9eadfa36f8687f62e9cfd6c6af7243de70"
+      "sha256": "38c24eef4cbceccb4101fcc4d8a9d54342f2da5302a3dc57922391998502e2f1"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -393,7 +402,7 @@
     },
     "tests/test_v1321_frontend.py": {
       "bytes": 3599,
-      "sha256": "9e7556f8bf2423272498a2353a38def4a819f65b94426bb1a7ecc418e85aea99"
+      "sha256": "9be558cd3397cca95284861b0799b2b5ade1aa40d3512e15d1820ed62950e1bc"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
@@ -421,7 +430,7 @@
     },
     "tests/test_v1325_performance.py": {
       "bytes": 13965,
-      "sha256": "64ca2b02a2674facabf04d584133a28b3befcedd8ba4276783c168acc474a2d7"
+      "sha256": "bfd2e4fa6a4473bdf705b26998069a86b4aa7e0f887671a5b834d768763ff1cb"
     },
     "tests/test_v1325_postgres.py": {
       "bytes": 1477,
@@ -430,6 +439,22 @@
     "tests/test_v1326_technical_render.py": {
       "bytes": 2879,
       "sha256": "e0d96723c21be38915ba5f7869d870c1b200119693a479433c14c30935c7314d"
+    },
+    "tests/test_v1327_frontend.py": {
+      "bytes": 1386,
+      "sha256": "eb8a2134fea63537b4e1fe5474202c0c0806582c879d8ca00ead259778ef5db8"
+    },
+    "tests/test_v1327_lock.py": {
+      "bytes": 1021,
+      "sha256": "bb2a9bdbc35f8bc64c85e8fa4bd14e8f9dd3e2a3fdfb11d1a6ccd79435b61e5b"
+    },
+    "tests/test_v1327_matching_range.py": {
+      "bytes": 2862,
+      "sha256": "1bcd2ae25233e90be872bc9cc03cb5f8ab18a7ea3ebd2bf83e8ecf4eb1c19e95"
+    },
+    "tests/test_v1327_postgres.py": {
+      "bytes": 1354,
+      "sha256": "77ddb8af889a260e46ee5f2421e8337af4b88acb9488c74c8d1608a0c302c684"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -488,7 +513,7 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
   },
-  "patch_base": "PSX_v1.3.25_Market_Performance_Update.zip",
+  "patch_base": "PSX_v1.3.26_Technical_Analysis_Fix.zip",
   "local_benchmark": {
     "rows": 1000000,
     "symbols": 1000,

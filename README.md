@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.26
+# PSX Intelligence v1.3.27
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,51 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.26 — Technical Analysis repair
+## Current update: v1.3.27 — Matching ranges, locks and searchable filters
+
+Partial source update for **v1.3.26**. No authentic records, database schema,
+credentials or settings are changed. No re-import or new environment variable
+is required. Keep your current commit for rollback; extract and **merge/overwrite**
+the included files into the existing v1.3.26 repository root without deleting
+folders. Commit as usual, let Vercel deploy, hard-refresh, and confirm v1.3.27.
+
+- **Price Limit Checker:** retains the existing user-requested 10% or PKR 1
+  whichever is greater, but rounds the calculated limits to the nearest paisa
+  before comparing the closing rate. Thus a displayed limit and equal valid
+  two-decimal close cannot disagree about the lock. Genuine extra close precision
+  is shown, not rounded into a false lock. PSX Regulation 19.3 states that
+  calculated circuit-breaker prices are rounded to the nearest tick; the ready
+  market one-paisa assumption is based on a PSX notice. This remains an estimate
+  from the imported previous close, not an exchange-confirmed lock; ETF, special
+  instruments, first-day and other exchange exceptions are not modeled.
+- **Matching Rate 1:** initial table duplicates the original ten nearest older
+  matches. Enter an inclusive starting and ending closing price and choose Find
+  prices to see every matching stored record, 100 per page. Matches are ordered
+  by proximity to the latest close, newest first on ties. The default range
+  search includes all stored history, including the latest date; uncheck
+  **Include latest month** to retain the original tab's strictly-before-one-month
+  cutoff. Matching Rate itself is unchanged. The same exact-date index join and
+  stored-session gaps are used, with no fabricated index values.
+- **History filters:** Symbol vs Index defaults to 14 records; Small Cards
+  already defaults to 14 sessions. Futures days-to-expiry and validation holding
+  sessions are separate calculation parameters and remain unchanged.
+- **Long dropdowns:** a search field appears beside native filters containing
+  at least 12 options. Type part of a symbol or option and choose a match;
+  Enter selects a sole match, and Escape clears. Existing select behavior and
+  short lists are retained. No request is sent merely for typing a search.
+
+Verification: 428 tests passed, 34 skipped, and one existing dependency warning
+using local synthetic SQLite and disposable local PostgreSQL. Local Chromium tests
+covered range boundaries, both date scopes, pagination, tab switching, searchable
+filters, dark mode and mobile layouts. Live Aiven performance, all production
+data and exchange-specific exceptions were not validated by these tests.
+
+Sources: PSX Regulations, section 19.3, July 2025,
+https://www.psx.com.pk/psx/themes/psx/uploads/PSX-Rulebook-July-14-2025.pdf ;
+PSX's 7 November 2022 notice on one-paisa Ready Market tick and rounding,
+https://www.psx.com.pk/psx/themes/psx/uploads/N-1100_Proposed_Amendments_-_NTS,_OO_Broker,_BMC_(November_07,_2022).pdf .
+
+## Previous update: v1.3.26 — Technical Analysis repair
 
 This partial update for **v1.3.25** repairs the Technical Analysis view error
 `m is not defined`. It removes an accidentally copied Market Explorer loading
