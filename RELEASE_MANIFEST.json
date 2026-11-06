@@ -1,11 +1,11 @@
 {
-  "version": "1.3.29",
-  "release": "UI alignment, Symbol Insights, connected filters and chart tooltips",
-  "baseline": "1.3.28",
+  "version": "1.3.30",
+  "release": "Visible, keyboard and touch-friendly filter suggestions",
+  "baseline": "1.3.29",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 439,
+    "passed": 440,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
@@ -39,7 +39,8 @@
     "v1326_live_read_only_scope": "Live v1.3.25 pages and account, futures, Market Explorer and Market Performance tabs checked read-only. Technical view reproduced m is not defined; repaired build not deployed. No mutation workflows or production-data reconciliation tested.",
     "v1327_lock_matching_search": "Local synthetic tests: rounded-paisa lock boundaries and extra precision, inclusive ranges and exact-date joins, both history scopes, 100-row pagination, SQLite and disposable local PostgreSQL, searchable filters, tab race, and Chromium mobile/dark layouts. Production data and live Aiven performance were not validated.",
     "v1328_insights_locks_horizontal": "Local synthetic tests: extrema, exact anchor, missing and tied values, index/symbol differences, lock examples, SQLite and disposable PostgreSQL; Chromium all seven performance tabs and new symbol view at 320/390/768/1440px, dark mode, caching and tab-race. No live Aiven performance or production-data reconciliation.",
-    "v1329_ui": "Read-only live review; local synthetic Chromium all 11 initial views, Market Explorer, Futures and Technical tabs at mobile and desktop; seven performance tabs and responsive layouts; local SQLite and disposable PostgreSQL regression suite. Empty synthetic accounts and futures do not verify populated production views. No production-data reconciliation, deployment or live Aiven performance test."
+    "v1329_ui": "Read-only live review; local synthetic Chromium all 11 initial views, Market Explorer, Futures and Technical tabs at mobile and desktop; seven performance tabs and responsive layouts; local SQLite and disposable PostgreSQL regression suite. Empty synthetic accounts and futures do not verify populated production views. No production-data reconciliation, deployment or live Aiven performance test.",
+    "v1330_suggestions": "Local synthetic Chromium: visible prefix-first suggestions, contains grouping, click/touch selection, keyboard and no-match behavior, disabled options, search dismissal, small separately-labeled filters and scrollable touch list. 11 initial pages and four sets of tabs reviewed at mobile and desktop. Live v1.3.29 initial pages reviewed read-only; some remained loading and production data was not reconciled."
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -59,8 +60,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 117343,
-      "sha256": "2ebb0fb4f96bec020ed3e217cec276b3ed102d936e53025ca3e30258566c1900"
+      "bytes": 118207,
+      "sha256": "da331bd07d0dad7fe31b15a0bdbc414e8255058b72dc0df5ee1dc520b5432892"
     },
     "api/index.py": {
       "bytes": 29,
@@ -108,7 +109,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "adee0cfa4284c6c504f5ea88749671e6b5204a136069fbd417478057b1831cb6"
+      "sha256": "598d3f04435ccbfb8611e7ea26cce9cb7100b936e01f2fa5c29fda5010a88dbb"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -268,7 +269,7 @@
     },
     "psx_app/static/index.html": {
       "bytes": 5691,
-      "sha256": "8ca390ca9d48fcff74e1f77a53a739b86f3258be29acb858f8aaea32ba07ef2f"
+      "sha256": "af8b312c4e01730253cc2d2eca252ba3462ec5918aebd17f1640615b1966baee"
     },
     "psx_app/static/insights1328.js": {
       "bytes": 8923,
@@ -287,12 +288,12 @@
       "sha256": "ff1363b03c4a807ce35a91e97efa258d9dc955a81081112aedc4235441e452e4"
     },
     "psx_app/static/search1327.js": {
-      "bytes": 3717,
-      "sha256": "60cef8c58aa370793445c6d2e5805efc22a1a49f2a7b00b514aa17723149305f"
+      "bytes": 7292,
+      "sha256": "210c1488c5533929988a4783e487b8f99e323615cfbfb5577a857c0f469ac545"
     },
     "psx_app/static/styles.css": {
-      "bytes": 70419,
-      "sha256": "4f1cb5892f2afae57f935dd067ed5b15aafbb023e75e1827061145912318a853"
+      "bytes": 71177,
+      "sha256": "98ce0f8dbd039fb80e0cc97dc922bccb4e278566d25df405ca2f5daf926152c5"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
@@ -372,19 +373,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "38fd13107b22146ec4a0ec812c2feb902790b060affbd924078ab9af895bba42"
+      "sha256": "4b5fb1ed282e73768c0629a21a4d22d4bcbaad5f348c3f33ca7ee2c6fe7558fe"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "1c1531dc2d5e364852e7768bf95b1ae6ff8910dcc38ae22055e3aacd09972f9e"
+      "sha256": "314b548053ec98ba30baf26843e9105c3e5d39eed3257f96e3e03105222569de"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "ba5cae624bf8e2053577a6b0b910c95f88907fba81eabb08fba439297f5cff09"
+      "sha256": "05859933ada958f9d68f0fe00d17b7033481fb4c4ccfe897860b2ed625d15b19"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "8dc2b36f5c82c28963653176c8f65c1117ee58b240cb7c5170fbb6599dec98ec"
+      "sha256": "0a4c87286f5351e8b22565f191d0772b69bc83e198dc3ddb8096a8f4797be560"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -416,7 +417,7 @@
     },
     "tests/test_v1321_frontend.py": {
       "bytes": 3599,
-      "sha256": "ab46ba783c1ca3b3a4dd910cc1b9cbfe86e1c245d9a265c2f8f334b6c1f9aca2"
+      "sha256": "20530449a4509603e5a81bef0c787c3eedd4e466dc9799154f863e23c214748e"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
@@ -444,7 +445,7 @@
     },
     "tests/test_v1325_performance.py": {
       "bytes": 13965,
-      "sha256": "f7c9201d06f7e58d5395a88b85632b9ccb52d23f0ff86361ae1160e041077fb3"
+      "sha256": "68c34206e3f2970cce8e5859df5f6f04ee4e934c42624793f4fee23e495eebe4"
     },
     "tests/test_v1325_postgres.py": {
       "bytes": 1477,
@@ -456,7 +457,7 @@
     },
     "tests/test_v1327_frontend.py": {
       "bytes": 1386,
-      "sha256": "50c91e8114dac952d1444cb22c112c4635c038b4a3be480502d7512759522edb"
+      "sha256": "49bb60be007fd117232914618a89b4a56554ad6e2f6ab15e668cf32e76dab2a6"
     },
     "tests/test_v1327_lock.py": {
       "bytes": 1021,
@@ -472,7 +473,7 @@
     },
     "tests/test_v1328_insights.py": {
       "bytes": 6889,
-      "sha256": "314db794578466cafc5fc905784f43fafad823c7d962ea671d9926c6e63f1a9b"
+      "sha256": "740e38e4ccb02b9f4dd411a899acca83fc92e7b31741808ee24b7bb15f768158"
     },
     "tests/test_v1328_postgres.py": {
       "bytes": 929,
@@ -480,7 +481,11 @@
     },
     "tests/test_v1329_ui.py": {
       "bytes": 3155,
-      "sha256": "92b8be676e2fd67fe4f8954e2923b45b10025258e76ccb46e300ebe1ec8c4186"
+      "sha256": "0c3b2b524f7e5ef52028c0ff01e3144087b64f3f921de0f00390990e740595c2"
+    },
+    "tests/test_v1330_suggestions.py": {
+      "bytes": 1049,
+      "sha256": "3e3775a9e05da35fa38d45bad88c856eb0bc3cafa88db3b1bdb71eda735e0d95"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -539,7 +544,7 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
   },
-  "patch_base": "Cumulative partial update for v1.3.25, v1.3.26, v1.3.27 or v1.3.28",
+  "patch_base": "Partial update for v1.3.29",
   "local_benchmark": {
     "rows": 1000000,
     "symbols": 1000,

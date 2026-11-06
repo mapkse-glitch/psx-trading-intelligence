@@ -1393,3 +1393,10 @@ hr{border:0;border-top:1px solid var(--separator-color)}
 [data-chart-tip1329],.perf-hrow1328,.performance-stack1325,.performance-dot1325,.perf-combo-dot1328{cursor:help}
 .insight-swipe1329{display:none;color:var(--text-muted);font-size:11px;line-height:1.4;margin:8px 2px 0}
 @media(max-width:1350px){.insight-swipe1329{display:block}}
+
+/* v1.3.30: visible matching choices, usable with touch and keyboard. */
+.search-suggestions1330{max-height:240px;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-card);box-shadow:var(--card-hover-shadow1329);padding:4px;min-width:0}
+.search-suggestions1330[hidden]{display:none}
+.search-suggestion1330{padding:9px 10px;border-radius:5px;cursor:pointer;color:var(--text-main);font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.search-suggestion1330:hover,.search-suggestion1330[aria-selected="true"]{background:var(--bg-card-alt);outline:1px solid var(--border-highlight)}
+.search-suggestion-heading1330{padding:7px 10px 3px;font-size:11px;font-weight:600;color:var(--text-muted)}

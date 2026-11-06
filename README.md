@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.29
+# PSX Intelligence v1.3.30
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,22 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.29 — alignment and chart details
+## Current update: v1.3.30 — visible filter suggestions
+
+Partial update for **v1.3.29**. Merge the included files into the existing
+repository root without deleting folders; commit and deploy as usual, then
+hard-refresh. No database schema, imported records, settings or credentials are
+changed and no re-import is needed.
+
+- Searchable filters show matching choices while typing, with prefix matches
+  first. Click or tap a choice, or use arrow keys and Enter; Escape clears the
+  search. No matching choices is explicitly shown. Typing alone does not change
+  the selection or request data. The native dropdown remains available.
+- Symbol and ticker filters with fewer options also get the same search, while
+  other small dropdowns are left simple. Choices come from the existing filter
+  options; no external service or additional data import is required.
+
+## Previous update: v1.3.29 — alignment and chart details
 
 Cumulative partial update for **v1.3.25 through v1.3.28**. Merge and overwrite
 included files into the existing repository root; do not delete folders. Keep a
