@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.28
+# PSX Intelligence v1.3.29
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,13 +17,39 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.28 — Symbol Insights and horizontal charts
+## Current update: v1.3.29 — alignment and chart details
+
+Cumulative partial update for **v1.3.25 through v1.3.28**. Merge and overwrite
+included files into the existing repository root; do not delete folders. Keep a
+rollback commit, deploy normally and hard-refresh. No imported data, schema,
+credentials or settings are changed; no re-import is needed.
+
+- Symbol vs Index places Lock between Change % and Volume. Symbol Insights
+  presents each summary in one row, with horizontal scrolling inside the card
+  on narrow screens; the latest record uses a lock icon instead of cap values.
+- Max and min reference closes use green and red respectively. A current close
+  is red when lower than its previous imported close, green otherwise, and
+  neutral if that reference is unavailable, for both symbol and index.
+- Search and its selector are visually connected. Shared cards have restrained
+  depth and hover effects; chart marks provide concise hover/focus information.
+  Price-lock icons remain close-based estimates, not confirmed order-book locks.
+
+### Design guidance for future pages
+
+Reuse the shared theme, typography, yellow dividers, positive/negative colors,
+connected searchable selectors and revision-scoped caching. Keep cards aligned,
+responsive and readable in both themes, contain wide content within its card,
+and provide labels and keyboard access. Use restrained hover effects, respect
+reduced-motion preferences, and give chart marks short, accurate descriptions.
+Never imply unavailable financial data is present or alter imported records.
+
+## Previous update: v1.3.28 — Symbol Insights and horizontal charts
 
 Cumulative partial source update for **v1.3.25, v1.3.26, or v1.3.27**.
 No authentic records, database schema, credentials or settings are changed. No re-import or new environment variable
 is required. Keep your current commit for rollback; extract and **merge/overwrite**
 the included files into the existing repository root without deleting folders.
-Commit as usual, let Vercel deploy, hard-refresh, and confirm v1.3.28.
+Those were the v1.3.28 instructions; use the current update instructions above.
 
 - **Symbol Insights** in Market Explorer has searchable symbol and session
   controls (14 sessions by default), company identity, the latest imported row,

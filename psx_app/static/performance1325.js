@@ -10,7 +10,7 @@ function perfChart1325(chart){
  const heading=`<header class="performance-chart-head1325"><h3>${h(chart.title)}</h3><span>${h(chart.unit)}</span></header>`;
  if(note)return `<article class="card performance-chart1325">${heading}<p class="performance-empty1325">${h(note)}</p></article>`;
  const max=Math.max(...rows.map(r=>Math.abs(r.value)),1),negative=chart.tone==='neg';
- const bars=rows.map(r=>{const full=`${r.name}: ${perfValue1325(r.value,chart.unit)}${r.eligible!=null?`; ${r.eligible} of ${r.members} members`:''}`;
+ const bars=rows.map(r=>{const full=`${r.name}: ${perfValue1325(r.value,chart.unit)}${chart.unit==='shares'?' shares':chart.unit==='PKR'?' PKR':''}${r.eligible!=null?`; ${r.eligible} of ${r.members} members`:''}`;
   return `<div class="perf-hrow1328" tabindex="0" role="img" aria-label="${h(full)}" title="${h(full)}"><span class="perf-hlabel1328">${h(r.name)}</span><div class="perf-htrack1328 ${negative?'perf-hnegative1328':''}"><i class="performance-fill-${h(chart.tone)}1325" style="width:${Math.min(100,Math.abs(r.value)/max*100)}%"></i></div><strong class="perf-hvalue1328">${h(perfValue1325(r.value,chart.unit))}</strong></div>`;
  }).join('');
  return `<article class="card performance-chart1325">${heading}<div class="perf-hbars1328" aria-label="${h(chart.title)} horizontal bars">${bars}</div><p class="performance-note1325">${negative?'Bars extend left from zero for losses.':'Bars start at zero.'} Focus a bar for exact figures.</p><details class="performance-data1325" data-chart="${h(chart.id)}" ontoggle="perfData1325(this)"><summary>Chart data · ${rows.length} ${rows.length===1?'leader':'leaders'}</summary><div class="performance-table1325"></div></details></article>`;

@@ -141,7 +141,7 @@ def test_backend_read_only_and_single_batched_scan(market_db):
 def test_frontend_navigation_theme_race_guards_and_no_external_assets():
  js=(ROOT/'psx_app/static/performance1325.js').read_text();html=(ROOT/'psx_app/static/index.html').read_text();app=(ROOT/'psx_app/static/app.js').read_text()
  assert html.index('data-view="market"')<html.index('data-view="performance"')<html.index('data-view="settings"')
- assert 'performance1325.js?v=1.3.28' in html and 'renderPerformance1325(container)' in app
+ assert 'performance1325.js?v=1.3.29' in html and 'renderPerformance1325(container)' in app
  for text in ['panelGet1322','currentViewRender','beginViewRender','prefers']:
   if text!='prefers':assert text in js
  assert 'https://' not in js and 'http://' not in js

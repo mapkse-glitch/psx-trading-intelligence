@@ -1022,7 +1022,7 @@ async function renderTop5View(container) {
   container.innerHTML = `
     <div class="filter-bar">
       <div class="filter-group">
-        <label>Ticker:</label>
+        <label for="top5TickerSelect">Ticker:</label>
         <select id="top5TickerSelect" onchange="updateTop5Filter()">
           <option value="ALL" ${f.ticker === "ALL" ? "selected" : ""}>ALL 23 TICKERS</option>
           ${data.available_tickers.map((t) => `<option value="${t}" ${f.ticker === t ? "selected" : ""}>${t}</option>`).join("")}
@@ -1151,7 +1151,7 @@ function renderTop5SvgChart(trend) {
     const x = padL + i * stepX;
     const bh = (d.top5_total_volume / maxVol) * plotH;
     const y = padT + plotH - bh;
-    return `<rect x="${x - 4}" y="${y}" width="8" height="${bh}" fill="rgba(56,189,248,0.35)" rx="2"><title>${fmtDate(d.trade_date)}: Top 5 Vol=${fmtInt(d.top5_total_volume)}, Rank1 Rate=${fmtNum(d.rank1_rate)}</title></rect>`;
+    return `<rect class="top5-mark1329" tabindex="0" role="img" x="${x - 4}" y="${y}" width="8" height="${bh}" fill="rgba(56,189,248,0.35)" rx="2"><title>${escapeHtml(fmtDate(d.trade_date))}: Top 5 volume ${fmtInt(d.top5_total_volume)} shares · Rank 1 rate ${fmtNum(d.rank1_rate)} PKR</title></rect>`;
   }).join("");
 
   const pts = trend.map((d, i) => {
@@ -2431,6 +2431,7 @@ function renderTechnicalSvgChart(series) {
       <line x1="${padL}" y1="${yRsi(30)}" x2="${w - padR}" y2="${yRsi(30)}" stroke="rgba(16,185,129,0.4)" stroke-dasharray="3,3" />
       <polyline fill="none" stroke="#03D815" stroke-width="1.8" points="${rsiPts}" />
       <text x="${padL}" y="${rsiTop + 10}" fill="#03D815" font-size="10">Wilder RSI(14) — Overbought 70 / Oversold 30</text>
+      ${series.map((d,i)=>{const tip=`${fmtDate(d.trade_date)} · Close ${fmtNum(d.close)} PKR · RSI ${fmtNum(d.rsi14)} · EMA21 ${fmtNum(d.ema21)} · EMA50 ${fmtNum(d.ema50)}`;return `<rect data-chart-tip1329="${escapeHtml(tip)}" role="img" aria-label="${escapeHtml(tip)}" tabindex="${i%10===0||i===series.length-1?'0':'-1'}" x="${padL+i*stepX-stepX/2}" y="${padT}" width="${stepX}" height="${totalH-padT-10}" fill="transparent"/>`;}).join('')}
     </svg>
   `;
 }
