@@ -89,9 +89,9 @@ def test_no_data_and_fallback_company_name(market_db):
     assert 'Attock' in r['company']['name']
     assert r['ranges'][0]['high'] is None and r['ranges'][0]['low'] is None
 
-def test_frontend_symbol_and_index_headers_have_nine_and_eight_columns():
+def test_frontend_symbol_and_index_headers_include_lock_column():
     js=(Path(__file__).resolve().parents[1]/'psx_app/static/upgrade139.js').read_text()
-    assert "['Date','High','Low','Average','Close','Change','Change %','Volume','Volume (% Change)']" in js
+    assert "['Date','Lock','High','Low','Average','Close','Change','Change %','Volume','Volume (% Change)']" in js
     assert "['Date','Close','High','Low','Change','Change %','Volume','Volume (% Change)']" in js
     assert 'company-card1317' in js and 'latestMarketCard1317' in js and 'price-ranges1317' in js
 

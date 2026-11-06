@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.27
+# PSX Intelligence v1.3.28
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,47 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.27 — Matching ranges, locks and searchable filters
+## Current update: v1.3.28 — Symbol Insights and horizontal charts
+
+Cumulative partial source update for **v1.3.25, v1.3.26, or v1.3.27**.
+No authentic records, database schema, credentials or settings are changed. No re-import or new environment variable
+is required. Keep your current commit for rollback; extract and **merge/overwrite**
+the included files into the existing repository root without deleting folders.
+Commit as usual, let Vercel deploy, hard-refresh, and confirm v1.3.28.
+
+- **Symbol Insights** in Market Explorer has searchable symbol and session
+  controls (14 sessions by default), company identity, the latest imported row,
+  and extrema for the requested sessions, all history, 1 Oct 2023 onward and
+  27 Feb 2026 onward. Source averages are not calculated from high/low/close.
+  Each extreme shows its latest date; tied observations are counted.
+- Four symbol comparison cards and four corresponding index cards use the exact
+  27 Feb 2026 row as the baseline. “After 27 Feb” means 28 Feb onward, with the
+  latest stored record included. Differences are later/current value minus the
+  stated reference; percentages divide by that reference. Missing baselines,
+  extrema and nonpositive percentage denominators are marked unavailable.
+  Index comparisons use its latest stored date on or before the symbol's latest
+  date, explicitly dated. Index average and index-traded volume are not supplied.
+- Symbol vs Index records have a lock icon per row using the existing tick-rounded,
+  close-based estimator. Green = upper, red = lower, gray open = within range;
+  unavailable inputs are distinguished. These are estimates, not confirmed
+  exchange order-book locks, and exchange exceptions may differ.
+- All eight Market Performance rankings use responsive horizontal bars without
+  horizontal chart scrolling. For monthly, quarterly, half-year, nine-month and
+  yearly charts, the sector-volume bars run horizontally with the index change
+  line preserved on its separate point scale. The weekly Index change & sector
+  volume combination remains unchanged. Chart data tables and exports stay intact.
+- Reads are indexed per symbol, with the existing bounded, revision-scoped cache;
+  no per-symbol network request loop or source data edits are introduced.
+
+Verification: 437 tests passed, 34 skipped, and one existing dependency warning.
+Local tests cover date boundaries, tied extrema, missing anchors,
+percentage signs and zero denominators, the provided lock examples, SQLite and
+disposable PostgreSQL, as well as all seven performance periods in Chromium at
+320/390/768/1440 px, dark mode, cache reuse and stale-response protection. Live
+Aiven speed and the correctness or completeness of production imports were not
+verified by these tests.
+
+## Previous update: v1.3.27 — Matching ranges, locks and searchable filters
 
 Partial source update for **v1.3.26**. No authentic records, database schema,
 credentials or settings are changed. No re-import or new environment variable

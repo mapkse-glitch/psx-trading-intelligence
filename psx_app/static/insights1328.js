@@ -1,0 +1,43 @@
+/* Symbol Insights: read-only imported history; comparison anchors remain explicit. */
+function insightMetric1328(label,value,detail='',tone=''){
+ return `<div class="insight-metric1328"><span>${h(label)}</span><strong class="${tone}">${value}</strong>${detail?`<small>${detail}</small>`:''}</div>`;
+}
+function insightValue1328(value,volume=false){return value==null?'Not available':volume?fmtInt(value):fmtNum(value);}
+function insightExtreme1328(label,item,volume=false){
+ const note=item?.date?fmtDate(item.date)+(item.ties>1?` · ${fmtInt(item.ties)} tied dates; latest shown`:''):'Date unavailable';
+ return insightMetric1328(label,insightValue1328(item?.value,volume),h(note),label.startsWith('Max')?'pos':'neg');
+}
+function insightWindow1328(title,w,detail){
+ const m=w.metrics,items=[['Max high','max_high'],['Max close','max_close'],['Min low','min_low'],['Min close','min_close'],['Max average','max_average'],['Min average','min_average'],['Max volume','max_volume'],['Min volume','min_volume']];
+ return `<section class="card insight-window1328"><div class="card-header"><h3>${h(title)}</h3><span>${h(detail)}</span></div><p class="insight-coverage1328">${fmtInt(w.count)} stored sessions${w.count?' · '+fmtDate(w.first)+' – '+fmtDate(w.last):' · no imported records in this period'}</p><div class="insight-grid1328">${items.map(([label,key])=>insightExtreme1328(label,m[key],key.includes('volume'))).join('')}</div></section>`;
+}
+function insightDiff1328(label,d,unit){return insightMetric1328(label,d?.value==null?'Not available':`<span class="${pnlClass(d.value)}">${fmtNum(d.value)} ${unit}</span>`,d?.pct==null?'Percentage unavailable':`<span class="${pnlClass(d.pct)}">${fmtPct(d.pct,false)}</span>`);}
+function insightRaw1328(label,value,date,tone=''){return insightMetric1328(label,insightValue1328(value),date?h(fmtDate(date)):'Date unavailable',tone);}
+function insightCompare1328(name,c,unit){
+ const a=c.anchor||{},n=c.latest||{},m=c.after.metrics,ext=(label,key,tone)=>insightExtreme1328(label,m[key],false);
+ const card=(title,body)=>`<article class="card insight-compare-card1328"><div class="card-header"><h3>${h(title)}</h3><span>${unit==='points'?'Index points':'PKR'}</span></div><div class="insight-grid1328 insight-pairs1328">${body}</div></article>`;
+ let cards=card('Max High / Close vs 27 Feb 2026',insightRaw1328('High on 27 Feb 2026',a.high,a.trade_date,'pos')+insightRaw1328('Close on 27 Feb 2026',a.close,a.trade_date)+ext('Max high after 27 Feb','max_high')+ext('Max close after 27 Feb','max_close')+insightDiff1328('Max high − 27 Feb high',c.max_high_vs_anchor,unit)+insightDiff1328('Max close − 27 Feb close',c.max_close_vs_anchor,unit));
+ cards+=card('Min Low / Close vs 27 Feb 2026',insightRaw1328('Low on 27 Feb 2026',a.low,a.trade_date,'neg')+insightRaw1328('Close on 27 Feb 2026',a.close,a.trade_date)+ext('Min low after 27 Feb','min_low')+ext('Min close after 27 Feb','min_close')+insightDiff1328('Min low − 27 Feb low',c.min_low_vs_anchor,unit)+insightDiff1328('Min close − 27 Feb close',c.min_close_vs_anchor,unit));
+ cards+=card('Current Rate vs 27 Feb 2026',insightRaw1328('Current high',n.high,n.trade_date,'pos')+insightRaw1328('High on 27 Feb 2026',a.high,a.trade_date)+insightRaw1328('Current close',n.close,n.trade_date)+insightRaw1328('Close on 27 Feb 2026',a.close,a.trade_date)+insightDiff1328('Current high − 27 Feb high',c.current_high_vs_anchor,unit)+insightDiff1328('Current close − 27 Feb close',c.current_close_vs_anchor,unit));
+ cards+=card('Max High After 27 Feb vs Current',insightRaw1328('Current high',n.high,n.trade_date,'pos')+insightRaw1328('Current close',n.close,n.trade_date)+ext('Max high after 27 Feb','max_high')+ext('Max close after 27 Feb','max_close')+insightDiff1328('Current high − max high',c.current_high_vs_max,unit)+insightDiff1328('Current close − max close',c.current_close_vs_max,unit));
+ return `<section class="insight-comparisons1328"><div class="insight-section-head1328"><div><span class="eyebrow">27 FEBRUARY 2026 BASELINE</span><h2>${h(name)} comparisons</h2></div><span>${c.after.count} later stored sessions${a.trade_date?'':' · baseline record unavailable'}</span></div><div class="insight-compare-grid1328">${cards}</div></section>`;
+}
+async function renderSymbolInsights1328(container,ticket){
+ const m=state.market;m.insight_sessions=Math.max(1,Math.min(6000,Math.floor(Number(m.insight_sessions)||14)));
+ const candidate=m.symbol,n=m.insight_sessions,current=()=>currentViewRender(container,ticket)&&m.tab==='insights'&&m.symbol===candidate&&m.insight_sessions===n;
+ const path=s=>'/api/v139/market/symbol-insights/'+encodeURIComponent(s)+'?'+new URLSearchParams({sessions:n});
+ const [meta,pre]=await Promise.all([panelGet1322('/api/v139/market/meta'),candidate?panelGet1322(path(candidate)):Promise.resolve(null)]);if(!current())return;
+ if(!meta.symbols.length){container.innerHTML=marketTabs1321('insights')+'<section class="card">No imported symbol records are available.</section>';enhanceWorkspace();return;}
+ if(!meta.symbols.includes(candidate)){m.symbol=meta.symbols[0];return renderMarketView(container);}
+ const r=pre,filter=`<div class="symbol-filter-row1317"><section class="card filter-bar"><label>Records / sessions <input type="number" min="1" max="6000" value="${n}" onchange="state.market.insight_sessions=Math.max(1,Math.min(6000,Math.floor(Number(this.value)||14)));marketRefresh139()"/></label><label>Symbol <select aria-label="Symbol" onchange="state.market.symbol=this.value;marketRefresh139()">${meta.symbols.map(s=>`<option ${s===candidate?'selected':''}>${h(s)}</option>`).join('')}</select></label></section><section class="card company-card1317" aria-label="Full symbol name"><span class="eyebrow">${h(candidate)} · Full company name</span><h2>${h(r.company?.name||'Full company name unavailable')}</h2>${r.company?.sector?`<p>${h(r.company.sector)}</p>`:''}</section></div>`;
+ if(r.status!=='OK'){container.innerHTML=marketTabs1321('insights')+filter+'<section class="card">No imported symbol records are available.</section>';enhanceWorkspace();return;}
+ const l=r.latest,lock=priceLimit1318(l),change=l.close!=null&&l.pr_close>0?l.close-l.pr_close:null,pct=change==null?null:change/l.pr_close*100;
+ const stat={UPPER:'Upper lock reached',LOWER:'Lower lock reached',WITHIN:'Within range',UNAVAILABLE:'Check unavailable'}[lock.status],tone=lock.status==='UPPER'?'pos':lock.status==='LOWER'?'neg':'';
+ let html=marketTabs1321('insights')+filter+`<section class="card insight-latest1328"><div class="card-header"><h3>Latest record</h3><span>${h(candidate)} · ${fmtDate(l.trade_date)}</span></div><div class="insight-grid1328">`;
+ html+=insightMetric1328('Open',insightValue1328(l.open))+insightMetric1328('High',insightValue1328(l.high),'','pos')+insightMetric1328('Low',insightValue1328(l.low),'','neg')+insightMetric1328('Close',insightValue1328(l.close))+insightMetric1328('Average',insightValue1328(l.avg_price),'Imported source average')+insightMetric1328('Upper cap',insightValue1328(lock.upper),'Nearest paisa')+insightMetric1328('Lower cap',insightValue1328(lock.lower),'Nearest paisa')+insightMetric1328('Lock status',h(stat),'Closing-price estimate',tone)+insightDiff1328('Change from previous close',{value:change,pct},'PKR')+insightMetric1328('Volume',insightValue1328(l.volume,true),'shares');
+ html+='</div><p class="insight-coverage1328">Price limits are close-based estimates using 10% or PKR 1, whichever is greater; exchange exceptions may differ.</p></section>';
+ html+=insightWindow1328('Session input',r.windows.session,`Requested ${fmtInt(n)} sessions`)+insightWindow1328('All available records',r.windows.all,'Imported history')+insightWindow1328('Since 1 Oct 2023',r.windows.since_2023,'Inclusive')+insightWindow1328('Since 27 Feb 2026',r.windows.since_2026,'Inclusive');
+ html+=`<p class="insight-explain1328">“After 27 Feb” excludes the baseline date. Differences are first value minus reference; percentages use the reference as denominator. Ties show the latest matching date and count.</p>`;
+ html+=insightCompare1328(candidate,r.symbol_comparison,'PKR')+`<p class="insight-explain1328">${h(r.index_note)}</p>`+insightCompare1328('Imported Index',r.index_comparison,'points');
+ if(current()){container.innerHTML=html;enhanceWorkspace();}
+}

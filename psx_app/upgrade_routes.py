@@ -26,6 +26,12 @@ def matching_rates(symbol:str):return MarketPanels(DB_PATH).matching(symbol)
 def matching_range(symbol:str, low:float=Query(...,ge=0,allow_inf_nan=False), high:float=Query(...,ge=0,allow_inf_nan=False), page:int=Query(1,ge=1,le=1000000), include_recent:bool=False):
     try:return MarketPanels(DB_PATH).matching_range(symbol,low,high,page,include_recent)
     except ValueError as error:raise HTTPException(422,str(error))
+from psx_app.services.symbol_insights import SymbolInsights
+
+@router.get('/market/symbol-insights/{symbol}')
+def symbol_insights(symbol:str, sessions:int=Query(14,ge=1,le=6000)):
+    return SymbolInsights(DB_PATH).report(symbol,sessions)
+
 @router.get('/market/selected-sectors')
 def selected_sectors():return MarketPanels(DB_PATH).sectors()
 @router.get('/market/small-cards')
