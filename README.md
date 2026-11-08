@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.36
+# PSX Intelligence v1.3.37
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,13 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.36 — Sector Performance Intelligence
+## Current update: v1.3.37 — Navigation and alignment corrections
+
+Partial update for **v1.3.36**. Merge the included files into the repository root without deleting existing folders, commit, deploy and hard-refresh. No database migration, trading data or credentials are included.
+
+Market Explorer now contains separate Symbol High-Low Analysis and Monthly Performance tabs; Monthly Performance retains separate sector and index views. Data Quality and Settings remain separate pages under the expandable Data & System Management sidebar group. The sector table shows monthly absolute and percentage changes; its existing previous-calendar-month baseline and missing-data behavior remain unchanged. High/low labels, numerical alignment and cursor behavior have been corrected; the unrequested sector-rating methodology section has been removed.
+
+## Previous update: v1.3.36 — Sector Performance Intelligence
 
 Partial update for **v1.3.35**. Merge the included files into the existing repository root without deleting folders, commit, deploy and hard-refresh. No database migration, user data, or credentials are included.
 

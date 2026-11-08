@@ -209,9 +209,13 @@ async function refreshCurrentView() {
 
 async function switchView(view) {
   if (view === "exports") { exportCurrentModule(); return; }
+  // Keep existing programmatic view names working after moving their navigation.
+  if (view === 'highlow') { state.market.tab='highLow'; view='market'; }
+  else if (view === 'monthlysector' || view === 'monthlyindex') { state.market.tab='monthlyPerformance'; analytics1335.monthlyView=view==='monthlysector'?'sector':'index'; view='market'; }
   state.currentView = view;
+  if (view === 'reconciliation' || view === 'settings') document.getElementById('systemManagementNav').open=true;
   toggleMenu(false);
-  document.querySelectorAll(".nav-btn").forEach((b) => {
+  document.querySelectorAll(".nav-btn[data-view]").forEach((b) => {
     b.classList.toggle("active", b.dataset.view === view);
   });
   document.getElementById("viewTitle").textContent = VIEW_TITLES[view] || "Dashboard";
@@ -2767,7 +2771,7 @@ async function applyDateNormalization() {
   }
 }
 
-document.querySelectorAll(".nav-btn").forEach((btn) => {
+document.querySelectorAll(".nav-btn[data-view]").forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 
@@ -2937,6 +2941,8 @@ async function refreshIfCloudChanged() {
 }
 function exportCurrentModule() {
   if (state.currentView==='market' && state.market.tab==='sectorIntelligence') {exportSectorIntelligence1336();return;}
+  if (state.currentView==='market' && state.market.tab==='highLow') {exportAnalytics1335('high');return;}
+  if (state.currentView==='market' && state.market.tab==='monthlyPerformance') {exportAnalytics1335(analytics1335.monthlyView);return;}
   if (state.currentView==='market' && state.market.tab==='symbolChart') {exportAnalytics1335('chart');return;}
   if (['highlow','monthlysector','monthlyindex'].includes(state.currentView)){exportAnalytics1335(({highlow:'high',monthlysector:'sector',monthlyindex:'index'})[state.currentView]);return;}
   if (state.currentView === 'market' && state.market.tab === 'comparison') {exportComparison1333();return;}

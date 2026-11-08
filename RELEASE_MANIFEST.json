@@ -1,52 +1,17 @@
 {
-  "version": "1.3.36",
-  "release": "Sector Performance Intelligence",
-  "baseline": "1.3.35",
+  "version": "1.3.37",
+  "release": "Dashboard Navigation and Alignment Corrections",
+  "baseline": "1.3.36",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 473,
+    "passed": 476,
     "skipped": 34,
     "warnings": 1,
+    "database": "Isolated local PostgreSQL and SQLite; no production connection",
+    "browser_test": "Local synthetic data, Chromium: navigation, sector and index views, filters, charts and overlapping-label stress test, tooltip, 12 Market Explorer tabs, 11 existing views, 1440/768/390/320px in light and dark modes; no page errors or HTTP 5xx.",
     "live_aiven_tested": false,
-    "browser_test": "v1.3.25 local synthetic Chromium: seven fiscal/weekday tabs, eight rankings each, daily/monthly combined buckets, shared light/dark colors and yellow dividers, human-readable dates, lazy chart data tables, CSV export, one initial report request and zero repeated requests within cache TTL; 1600/1200/768/390/320px without document overflow; no JavaScript errors. No live login, GitHub push, deployment or Aiven changes.",
-    "isolated_full_snapshot_restore_tested": true,
-    "production_isolated_restore_tested": true,
-    "bulk_and_interrupted_restore_tested": true,
-    "volume_direct_labels_and_read_only_storage_audit_tested": true,
-    "guarded_storage_cleanup_tested": true,
-    "production_guarded_storage_cleanup_verified": true,
-    "weekly_account_summaries_and_exports_tested": true,
-    "sticky_tables_mobile_print_tested": true,
-    "batched_index_and_selective_invalidation_tested": true,
-    "symbol_identity_ranges_and_volume_change_tested": true,
-    "price_lock_and_tied_extrema_tested": true,
-    "horizontal_price_range_and_removals_tested": true,
-    "restored_lock_moving_close_and_basic_motion_tested": true,
-    "matching_rate_sector_cards_range_bars_and_keyboard_filters_tested": true,
-    "batched_sector_reads_and_new_panel_shared_cache_tested": true,
-    "compact_horizontal_cards_shared_index_and_universal_display_tested": true,
-    "bounded_sector_query_financial_parity_benchmarked": true,
-    "quote_units_opaque_gradients_and_restrained_hover_tested": true,
-    "parallel_matching_shared_market_cache_and_global_get_dedup_tested": true,
-    "matching_query_output_parity_tested": true,
-    "last_futures_snapshot_calendar_days_annualization_and_retention_tab_removal_tested": true,
-    "latest_futures_revision_cache_and_indexed_join_tested": true,
-    "market_performance_fiscal_weekday_charts_tested": true,
-    "market_performance_postgres_revision_cache_tested": true,
-    "technical_renderer_regression_tested": true,
-    "technical_browser_test": "Local Chromium with synthetic data: all five visible Technical Analysis tabs rendered; no page errors. The regression test fails against the v1.3.25 baseline and passes with this fix.",
-    "v1326_live_read_only_scope": "Live v1.3.25 pages and account, futures, Market Explorer and Market Performance tabs checked read-only. Technical view reproduced m is not defined; repaired build not deployed. No mutation workflows or production-data reconciliation tested.",
-    "v1327_lock_matching_search": "Local synthetic tests: rounded-paisa lock boundaries and extra precision, inclusive ranges and exact-date joins, both history scopes, 100-row pagination, SQLite and disposable local PostgreSQL, searchable filters, tab race, and Chromium mobile/dark layouts. Production data and live Aiven performance were not validated.",
-    "v1328_insights_locks_horizontal": "Local synthetic tests: extrema, exact anchor, missing and tied values, index/symbol differences, lock examples, SQLite and disposable PostgreSQL; Chromium all seven performance tabs and new symbol view at 320/390/768/1440px, dark mode, caching and tab-race. No live Aiven performance or production-data reconciliation.",
-    "v1329_ui": "Read-only live review; local synthetic Chromium all 11 initial views, Market Explorer, Futures and Technical tabs at mobile and desktop; seven performance tabs and responsive layouts; local SQLite and disposable PostgreSQL regression suite. Empty synthetic accounts and futures do not verify populated production views. No production-data reconciliation, deployment or live Aiven performance test.",
-    "v1330_suggestions": "Local synthetic Chromium: visible prefix-first suggestions, contains grouping, click/touch selection, keyboard and no-match behavior, disabled options, search dismissal, small separately-labeled filters and scrollable touch list. 11 initial pages and four sets of tabs reviewed at mobile and desktop. Live v1.3.29 initial pages reviewed read-only; some remained loading and production data was not reconciled.",
-    "v1331_daily_summary": "Local synthetic SQLite and disposable PostgreSQL: previous cash-session comparisons, breadth, missing data, verified-limit touch/close logic, cache invalidation, endpoint validation. Local Chromium responsive pages and filters. Official historical limits are not stored and cap/status fields remain unavailable. No production data verification or deployment.",
-    "v1332_daily_refinements": "Synthetic SQLite and disposable PostgreSQL: dated standard-band estimates, limit rounding, touch versus close, missing and inconsistent prices, grouping, sort, dates, filters, logo, light/dark and responsive browser checks. Estimates are not official exception-aware limits; no live production data reconciliation or deployment.",
-    "v1333_comparison": "Local synthetic SQLite and disposable PostgreSQL: aligned common-session baselines, percent changes, drawdown, missing data, index extrema and endpoint validation. Local Chromium: 11 initial pages, Daily Summary, Symbol Insights and comparison controls, responsive light/dark layouts, search, chart focus tooltips and CSV. Production not tested, reconciled, or deployed.",
-    "v1334_insights": "Local synthetic SQLite and Chromium: four index extrema, both all-time comparison colors, and 1440/768/390/320px in light/dark. PostgreSQL tests skipped; no live production verification or deployment.",
-    "v1335_analytics": "Local synthetic SQLite and disposable loopback PostgreSQL: session comparisons, OHLC extrema, prior-month and year baseline calculations, missing data and API validation. Local Chromium: all initial pages and Market Explorer tabs, chart filters and tooltips, themes, responsive sizes and CSV. No live production reconciliation or deployment.",
-    "v1336_sector_intelligence": "Synthetic SQLite and disposable local PostgreSQL: period boundaries, missing data, peer scoring, ties, zero volume, equivalent-session comparisons, API validation and revision cache. Local Chromium: 14 existing views, 10 Market Explorer tabs, all five timeframes, sector search, year filter, sorting, chart tips, CSV and responsive light/dark. No production data reconciliation, live performance testing or deployment."
+    "github_or_deployment_changed": false
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -66,8 +31,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 127535,
-      "sha256": "712169089545b3812e37feb4045a4347b433fe412172befcbecc839ba61c3a21"
+      "bytes": 128385,
+      "sha256": "c6fbed72245f98ba740eaa0aa7a7ce1a13260cb3f45de92b76a07e37a8443f4a"
     },
     "api/index.py": {
       "bytes": 29,
@@ -115,7 +80,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "2cc0c9b6380dd6175e4dcda66a2fe2de148a41fc20bc91a2945c86a78ef1789f"
+      "sha256": "fa251dd0b360eff7848ac581650b8a89ec92b54bda2cb5dc5a5622f53f6c70e0"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -278,12 +243,12 @@
       "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75"
     },
     "psx_app/static/analytics1335.js": {
-      "bytes": 14173,
-      "sha256": "87d7267d41c8d1ccdc952d6b2323014f2ea09da290ab4e8e365ed35d193988f1"
+      "bytes": 15501,
+      "sha256": "04cfea07864b41ad929b9bcc3d5ba6bf51dfa59973355f8d3861300680917afe"
     },
     "psx_app/static/app.js": {
-      "bytes": 187054,
-      "sha256": "63b2a6d3aa9676d60979a7e5515a2b30d22e91101230b5499293be723b26557e"
+      "bytes": 187776,
+      "sha256": "4d9e8f683a25a073d838c12079541e9d5a50866f0851ffd26e006f8a264ec3f1"
     },
     "psx_app/static/charttips1329.js": {
       "bytes": 2763,
@@ -302,16 +267,16 @@
       "sha256": "ce0aa1597d4a724b5092640a5af58e2fa0f602723bb8bbf52f5fbe6f0a778a8d"
     },
     "psx_app/static/index.html": {
-      "bytes": 6554,
-      "sha256": "1b28fbed6c780cda7d9b030af32bb6af11a7026c5178bd77c4c79518fd3a751a"
+      "bytes": 6378,
+      "sha256": "ac636d4986f7631baa59e4bceba71699b877a446e187bd8b104f3351a1ff0d4c"
     },
     "psx_app/static/insights1328.js": {
       "bytes": 9805,
       "sha256": "8b822685e0ff7cbe09c1024b8f6aabe4c2a2838aa4a90b8b8da7c6e1bff3b02b"
     },
     "psx_app/static/market1321.js": {
-      "bytes": 13601,
-      "sha256": "7f0647af7fde6220fc53f760540f9cbeafd29ed7fb8214772a3dc8e2c5d0132c"
+      "bytes": 13685,
+      "sha256": "6ad8014ae8f8c91a38dda9c751304fe9b18032f921104fe814f40a8e01892dc4"
     },
     "psx_app/static/matching1327.js": {
       "bytes": 6102,
@@ -330,20 +295,20 @@
       "sha256": "935d547c0804ba29019e20c436a9032a7cc21c556e3ca605bdee6c2e9eee1922"
     },
     "psx_app/static/sectorIntelligence1336.js": {
-      "bytes": 16547,
-      "sha256": "84808bbbccbc331988602617855fd15de48810f3b321242661926e526bddb8c9"
+      "bytes": 14935,
+      "sha256": "b4cf32d2549a35260cb483a400d492165e1888cfd99dd09d34df090d9016500d"
     },
     "psx_app/static/styles.css": {
-      "bytes": 83110,
-      "sha256": "19dc19561a017de2b82442bc32256923fa3aa5106350c45a811433ec2fd13d21"
+      "bytes": 83899,
+      "sha256": "023eb112c7fcfc0fa7087c7429d5b7abf047180bd383ef5892d16a8a24595264"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 50202,
-      "sha256": "c5a967fe72b51e7b42fd6fc4d733e837f78173946d8a4caf2386c73de725088e"
+      "bytes": 50398,
+      "sha256": "9012809a2b1c7dab3587b76ed19a78f67bb2c340b98ee4f955d916f1a11961fb"
     },
     "psx_app/upgrade_routes.py": {
       "bytes": 7055,
@@ -415,19 +380,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "dfa6e02b0777e6a6471a92fbe6e5954d3c56b73da9b7ae99c6ad30168f3b335b"
+      "sha256": "b4ffdf9f8a8649b3a0f5b303003a56b0233979ca6256af6c02efc8c089fd98a6"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "b00996354a9b81c79781d0874723a7c9a7deb4855c35c69aa764f74fc0584197"
+      "sha256": "f6ac9dc28b28f4a507f8567cc032d403e5a8df9eb33c74af145e7d3c45b6315c"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "850ffed9da1bf73e58a080306a2518aa35f5605eb5b2759fb900219c2e8c0be7"
+      "sha256": "11bc86cf31193e27acd0923f0e297036709fe17e386ca2d26566bf0995044421"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "ab6a394d124a23221459f428181fe1585b58ec0488ab13dd45f768332ded1c82"
+      "sha256": "5c465ccd902f4946a162dae7b54772bc7441856b85563e510ffb6318ee8bc948"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -459,7 +424,7 @@
     },
     "tests/test_v1321_frontend.py": {
       "bytes": 3599,
-      "sha256": "fdf3cda2e451dff88ab4ce269ab5afaac8882bff88463a7f9cc3e28a3b97160e"
+      "sha256": "fc8cfffc9efd85a2af3ce028e661491bbc50a9906e16bf61ff499b104c6e8716"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
@@ -487,7 +452,7 @@
     },
     "tests/test_v1325_performance.py": {
       "bytes": 13965,
-      "sha256": "031b3989d5944b2a17b3d789a3c801e3912ecdcb7f925699f96efc653c53e257"
+      "sha256": "69509024d9abbaee4bc4d00e563b9c28b97050d1cb596df4f2bd11278f75c496"
     },
     "tests/test_v1325_postgres.py": {
       "bytes": 1477,
@@ -499,7 +464,7 @@
     },
     "tests/test_v1327_frontend.py": {
       "bytes": 1386,
-      "sha256": "5c460f37dd8db7ad27cbe3d66d73f82639cb033d4e7bec3c01d5a880d6bb9040"
+      "sha256": "c8b66b5726e5f4b2f7581a115204b321ec2729e1fc8a5ddc852ec77d6b8d3252"
     },
     "tests/test_v1327_lock.py": {
       "bytes": 1021,
@@ -515,7 +480,7 @@
     },
     "tests/test_v1328_insights.py": {
       "bytes": 6889,
-      "sha256": "cf202dc8f94d92023a8e2f401c58fa4cf554cc5575c623c1d1483b7dfff07281"
+      "sha256": "cc5cde8ff977dc54b2443d8c59c646341186623296f08df18a54ffa3b101f730"
     },
     "tests/test_v1328_postgres.py": {
       "bytes": 929,
@@ -523,7 +488,7 @@
     },
     "tests/test_v1329_ui.py": {
       "bytes": 3155,
-      "sha256": "9995a11f05784b217512c5445a8dd9720c2b187edabdec5fd86744890c4eeae3"
+      "sha256": "6bf86ea4b2463ed976d03fcf989fe87cf3c36b37cbbc51e338f58575196084b4"
     },
     "tests/test_v1330_suggestions.py": {
       "bytes": 1049,
@@ -604,92 +569,11 @@
     "vercel.json": {
       "bytes": 158,
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
+    },
+    "tests/test_v1337_navigation.py": {
+      "bytes": 1837,
+      "sha256": "36158a326c28a0e09ba9d64c702476f5b1991b3efe4db484804b90cc02f47d20"
     }
   },
-  "patch_base": "PSX v1.3.35",
-  "local_benchmark": {
-    "rows": 1000000,
-    "symbols": 1000,
-    "sessions": 1000,
-    "backend": "local SQLite synthetic, not live Aiven",
-    "reports": {
-      "daily": {
-        "milliseconds": [
-          68.2,
-          68.2
-        ],
-        "bytes": 104166,
-        "charts": 8,
-        "buckets": 0
-      },
-      "weekly": {
-        "milliseconds": [
-          75.6,
-          76.4
-        ],
-        "bytes": 34531,
-        "charts": 8,
-        "buckets": 5
-      },
-      "monthly": {
-        "milliseconds": [
-          102.2,
-          103.1
-        ],
-        "bytes": 24636,
-        "charts": 8,
-        "buckets": 23
-      },
-      "quarterly": {
-        "milliseconds": [
-          98.1,
-          97.9
-        ],
-        "bytes": 15995,
-        "charts": 8,
-        "buckets": 3
-      },
-      "halfyear": {
-        "milliseconds": [
-          216.7,
-          247.1
-        ],
-        "bytes": 16129,
-        "charts": 8,
-        "buckets": 6
-      },
-      "ninemonth": {
-        "milliseconds": [
-          323.2,
-          268.6
-        ],
-        "bytes": 16325,
-        "charts": 8,
-        "buckets": 9
-      },
-      "yearly": {
-        "milliseconds": [
-          271.7,
-          225.9
-        ],
-        "bytes": 16643,
-        "charts": 8,
-        "buckets": 12
-      }
-    }
-  },
-  "last_data_query_plan": [
-    "SEARCH f USING INDEX idx_fut_date_base (trade_date=?)",
-    "SCALAR SUBQUERY 1",
-    "SEARCH futures_ohlcv USING COVERING INDEX idx_fut_date_month",
-    "SEARCH e USING INDEX sqlite_autoindex_equity_ohlcv_1 (trade_date=? AND symbol=?) LEFT-JOIN",
-    "USE TEMP B-TREE FOR RIGHT PART OF ORDER BY"
-  ],
-  "market_performance_query_plan": {
-    "date_options": "covering date indexes",
-    "baseline": "idx_eq_sym_date (symbol=?, trade_date<?)",
-    "period_aggregate": "idx_eq_date_sym (trade_date range); bounded group by symbol",
-    "network_reads": "batched SQL, no network call per symbol",
-    "raw_ohlcv_sent_to_browser": false
-  }
+  "patch_base": "PSX v1.3.36"
 }

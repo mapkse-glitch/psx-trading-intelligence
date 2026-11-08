@@ -98,7 +98,7 @@ def test_frontend_tab_and_assets_are_wired():
  from test_v1321_frontend import frontend
  root=Path(__file__).resolve().parents[1];html=frontend("marketTabs1321('insights')")
  assert html.index('Symbol vs Index')<html.index('Symbol Insights')<html.index('Matching Rate')
- assert 'insights1328.js?v=1.3.36' in (root/'psx_app/static/index.html').read_text()
+ assert 'insights1328.js?v=1.3.37' in (root/'psx_app/static/index.html').read_text()
  js=(root/'psx_app/static/upgrade139.js').read_text()
  assert "['Date','High','Low','Average','Close','Change','Change %','Lock'" in js and 'priceLockCell1328(x)' in js
  assert 'renderSymbolInsights1328(container,ticket)' in js
