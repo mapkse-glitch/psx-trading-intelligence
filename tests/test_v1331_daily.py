@@ -2,7 +2,7 @@
 from datetime import date
 import pytest
 from psx_app.database.schema import init_db,get_connection
-from psx_app.services.daily_summary import DailySummary,official_limit_flags,movement
+from psx_app.services.daily_summary import DailySummary,official_limit_flags,movement,standard_band,estimated_limit_flags
 from test_v1314_postgres import remote
 
 @pytest.fixture
@@ -28,8 +28,9 @@ def check(r):
     assert rows['UP']['volume_change']==200 and rows['UP']['volume_change_pct']==200
     assert rows['DOWN']['volume_change_pct']==-50 and rows['DOWN']['change']==-2
     assert rows['NEW']['volume_change_pct'] is None and rows['NEW']['sector']=='Unmapped'
-    assert all(x['status']=='UNAVAILABLE' for x in rows.values())
-    assert all(v=={'count':None,'checked':0,'total':4} for v in r['caps'].values())
+    assert rows['EVEN']['status']=='NORMAL'
+    assert all(rows[x]['status']=='UNAVAILABLE' for x in ('UP','DOWN','NEW'))
+    assert all(v=={'count':0,'checked':1,'total':4} for v in r['caps'].values())
 
 def test_daily_report_reconciles_previous_session_and_unavailable_data(daily_db):
     check(DailySummary(daily_db).report('2026-11-02'))
@@ -72,3 +73,32 @@ def test_index_does_not_skip_missing_previous_cash_session(daily_db):
     r=DailySummary(daily_db).report('2026-11-02')
     assert r['index']['close']==1050 and r['index']['baseline_date'] is None
     assert r['index']['change'] is None and r['index']['pct'] is None
+
+
+def test_standard_bands_historical_rounding_and_exceptions():
+    from decimal import Decimal as D
+    assert standard_band('2026-11-04',25.41)==(D('27.95'),D('22.87'))
+    assert estimated_limit_flags({'high':27.95,'low':22.870000000000004,'close':22.870000000000004},'2026-11-04',25.41)['lower_close']
+    assert not estimated_limit_flags({'high':27.95,'low':22.8701,'close':22.8701},'2026-11-04',25.41)['lower_close']
+    assert standard_band('2026-11-04',5)==(D('6.00'),D('4.00'))
+    assert standard_band('2024-05-26',100)==(D('107.50'),D('92.50'))
+    for day,up in [('2024-05-27','108.00'),('2024-06-10','108.50'),('2024-06-24','109.00'),('2024-07-08','109.50'),('2024-07-22','110.00')]:
+        assert standard_band(day,100)[0]==D(up)
+    assert standard_band('2020-01-01',100) is None
+    assert standard_band('2026-01-01',0.5) is None
+    assert estimated_limit_flags({'high':110,'low':99,'close':105},'2026-01-01',100)['upper_touch'] is True
+    assert estimated_limit_flags({'high':110,'low':99,'close':105},'2026-01-01',100)['upper_close'] is False
+    f=estimated_limit_flags({'high':110,'low':90,'close':90},'2026-01-01',100)
+    assert f['upper_touch'] and f['lower_touch'] and f['lower_close'] and not f['upper_close']
+    assert estimated_limit_flags({'high':111,'low':99,'close':105},'2026-01-01',100)['status']=='UNAVAILABLE'
+    assert estimated_limit_flags({'high':None,'low':99,'close':110},'2026-01-01',100)['upper_touch'] is None
+
+
+def test_estimated_counts_from_prices_and_distinct_touch_close(daily_db):
+    with get_connection(daily_db) as c:
+        for sym,high,low,close,ref in [('A',110,98,105,100),('B',110,99,110,100),('C',101,90,95,100),('D',110,90,90,100),('E',111,99,100,100)]:
+            c.execute('INSERT INTO equity_ohlcv(trade_date,symbol,high,low,close,pr_close,volume) VALUES (?,?,?,?,?,?,?)',('2026-11-03',sym,high,low,close,ref,10))
+    r=DailySummary(daily_db).report('2026-11-03')
+    assert [r['caps'][k]['count'] for k in ('upper_touch','upper_close','lower_touch','lower_close')]==[3,1,2,1]
+    assert all(r['caps'][k]['checked']==4 for k in r['caps'])
+    assert {x['symbol']:x['status'] for x in r['rows']}=={'A':'NORMAL','B':'UPPER','C':'NORMAL','D':'LOWER','E':'UNAVAILABLE'}

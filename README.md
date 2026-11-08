@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.31
+# PSX Intelligence v1.3.32
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,17 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.31 — Daily Summary
+## Current update: v1.3.32 — Daily Summary refinements
+
+Partial update for **v1.3.31**. Merge into the existing repository root, without deleting folders; commit, deploy, and hard-refresh. No data, schema, settings, or credentials are changed.
+
+Daily Summary groups stocks by sector, sorts within groups, keeps each sector on one page, and exports all filtered rows. Date navigation and the shared search controls are retained. Typography is modestly enlarged via shared styles; the PSX logo is transparent.
+
+**Cap figures are standard-band estimates, not exchange-confirmed caps.** The selected date's imported reference close is used, or the previous cash-session symbol close if absent. The model uses 7.5% or Re 1 (whichever is higher) from 27 Jan 2021, the PSX phase-in from 27 May 2024 and 10% or Re 1 from 22 July 2024, rounded to the nearest paisa. Before 27 Jan 2021, where the baseline is missing, or where an observed price violates the assumed band, results remain unavailable. The number assessed is shown for each measure. Security-specific exceptions, historic exchange limit files, corporate-action adjustments, ETF NAV and special listing conditions are not stored; estimates may therefore differ from official limits even where the price falls inside the model band. Accurate exception-aware counts require the exchange's per-symbol, per-date limits or a complete historical exceptions and reference-price source. No official status is inferred.
+
+Sources: PSX/N-477 https://www.psx.com.pk/psx/files/?file=231960-1.pdf ; historical 7.5% regulation https://www.psx.com.pk/psx/themes/psx/uploads/N-117_Proposed_amendments_in_respect_of_various_matters_(January_27,_2021).pdf ; tick rounding https://www.psx.com.pk/psx/files/?file=197540-1.pdf .
+
+## Previous update: v1.3.31 — Daily Summary
 
 Partial update for **v1.3.30**. Merge the included files into the existing
 repository root without deleting folders, commit and deploy normally, then

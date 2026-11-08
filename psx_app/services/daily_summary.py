@@ -1,6 +1,6 @@
 """Daily imported cash-market summary; no assumed exchange circuit breakers."""
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import math,re
 from psx_app.database.schema import get_connection
 from psx_app.services.result_cache import persisted_result
@@ -30,23 +30,60 @@ def official_limit_flags(row,upper,lower):
         except (InvalidOperation,ValueError,TypeError): return None
     upper,lower=num(upper),num(lower);high,low,close=(num(row.get(k)) for k in ('high','low','close'))
     if upper is not None and lower is not None and upper<=lower:return {'upper_touch':None,'upper_close':None,'lower_touch':None,'lower_close':None,'status':'UNAVAILABLE'}
-    flags={'upper_touch':high>=upper if upper is not None and high is not None else None,
-           'upper_close':close==upper if upper is not None and close is not None else None,
-           'lower_touch':low<=lower if lower is not None and low is not None else None,
-           'lower_close':close==lower if lower is not None and close is not None else None}
+    noise=Decimal('0.00000001')
+    flags={'upper_touch':high>=upper-noise if upper is not None and high is not None else None,
+           'upper_close':abs(close-upper)<=noise if upper is not None and close is not None else None,
+           'lower_touch':low<=lower+noise if lower is not None and low is not None else None,
+           'lower_close':abs(close-lower)<=noise if lower is not None and close is not None else None}
     # Never label unknown data Normal, and don't silently classify impossible close values.
-    if upper is None or lower is None or close is None or close>upper or close<lower: status='UNAVAILABLE'
+    if upper is None or lower is None or close is None or close>upper+noise or close<lower-noise: status='UNAVAILABLE'
     elif flags['upper_close']: status='UPPER'
     elif flags['lower_close']: status='LOWER'
     else: status='NORMAL'
     flags['status']=status;return flags
 
 
+def standard_band(selected, reference):
+    """Estimated standard ready-market band; exceptions require exchange data.
+
+    2024 phase-in: PSX/N-477; earlier 7.5% from PSX 2021 rule text.
+    Earlier schedules are deliberately not assumed. The application does not
+    store security-specific exceptions or authoritative daily band values.
+    """
+    phases=(('2024-07-22','0.10'),('2024-07-08','0.095'),('2024-06-24','0.09'),('2024-06-10','0.085'),('2024-05-27','0.08'),('2021-01-27','0.075'))
+    rate=next((Decimal(x) for day,x in phases if selected>=day),None)
+    try:
+        ref=Decimal(str(reference))
+        if rate is None or not ref.is_finite() or ref<=0:return None
+        shift=max(ref*rate,Decimal('1'))
+        upper=(ref+shift).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+        lower=(ref-shift).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+        if lower<=0 or upper<=lower:return None
+        return upper,lower
+    except (InvalidOperation,ValueError,TypeError):return None
+
+
+def estimated_limit_flags(row,selected,reference):
+    band=standard_band(selected,reference)
+    if not band:return official_limit_flags(row,None,None)
+    upper,lower=band
+    # An observed price outside the assumed band indicates a potential
+    # exception, bad data, or an adjusted reference. Do not classify it.
+    for k in ('high','low','close'):
+        v=finite(row.get(k))
+        if v is not None and (Decimal(str(v)) > upper+Decimal('0.00000001') or Decimal(str(v)) < lower-Decimal('0.00000001')):
+            return official_limit_flags(row,None,None)
+    return official_limit_flags(row,upper,lower)
+
+
 class DailySummary:
     def __init__(self,db_path=None):self.db_path=db_path
 
-    @persisted_result
     def report(self,selected=None):
+        return self.report_v1332(selected)
+
+    @persisted_result
+    def report_v1332(self,selected=None):
         if selected is not None:
             try:
                 if len(selected)!=10 or date.fromisoformat(selected).isoformat()!=selected:raise ValueError()
@@ -85,8 +122,8 @@ class DailySummary:
             row['change_baseline']='source previous close' if baseline is not None and baseline==row['pr_close'] else ('previous cash session' if row['change'] is not None else None)
             row['volume_change'],row['volume_change_pct']=movement(row['volume'],row['previous_volume'],positive_previous=False)
             v=row['change']; breadth['unclassified' if v is None else 'advancing' if v>0 else 'declining' if v<0 else 'unchanged']+=1
-            # No historical official upper/lower limits are stored by this app.
-            row['limits']=official_limit_flags(row,None,None)
+            # Standard-band estimate, not an exchange-provided limit.
+            row['limits']=estimated_limit_flags(row,selected,baseline)
             row['status']=row['limits']['status']
         total=sum(r['volume'] for r in rows)
         diff,pct=movement(total,prior_total,positive_previous=False)
@@ -100,7 +137,8 @@ class DailySummary:
         return {'status':'OK','date':selected,'previous_cash_date':previous,'latest':latest,'rows':rows,
                 'index':index,'volume':{'current':total,'previous':prior_total,'change':diff,'pct':pct},
                 'breadth':{'total':len(rows),**breadth},'caps':cap,'reference_sources':{'company':comp_name,'fallback':kse_name},
+                'cap_basis':'standard_estimate',
                 'notes':['Only imported cash symbols with positive reported volume are counted as traded; totals may be incomplete if imports are incomplete.',
                          'Stock changes use the imported previous close; if missing, an exact prior stored market-session close is used. Volume changes use the same prior market date, not an older symbol record.',
                          'Index uses the selected date and exact previous stored cash session; if either index close is missing, change is unavailable. Missing imports cannot be distinguished from holidays. Sector references are current imported lists, not historical classifications.',
-                         'Official security-specific historical price limits are not stored. Cap touch/close and stock status are unavailable; the separate price-limit checker is an estimate, not exchange data.']}
+                         'Cap figures are standard-band estimates, not exchange-confirmed: exception history and adjusted reference-price information are not stored. Prices outside the assumed band are excluded. Before 27 Jan 2021 no band is assumed.']}
