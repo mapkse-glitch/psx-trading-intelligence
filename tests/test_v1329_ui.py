@@ -15,16 +15,16 @@ def test_comparison_close_colors_follow_card_and_daily_change():
  html=insight_js('insightCompare1328("Symbol",'+json.dumps(data)+',"PKR")')
  import re
  cards=re.findall(r'<article class="card insight-compare-card1328">(.*?)</article>',html)
- assert len(cards)==4
+ assert len(cards)==5
  assert 'Close on 27 Feb 2026</span><strong class="pos">205.00' in cards[0]
  assert 'Close on 27 Feb 2026</span><strong class="neg">205.00' in cards[1]
  for card in cards[2:]: assert 'Current close</span><strong class="neg">200.00' in card
  data['latest']['pr_close']=190
  html=insight_js('insightCompare1328("Index",'+json.dumps(data)+',"points")')
- assert html.count('Current close</span><strong class="pos">200.00')==2
+ assert html.count('Current close</span><strong class="pos">200.00')==3
  data['latest']['pr_close']=None
  html=insight_js('insightCompare1328("Index",'+json.dumps(data)+',"points")')
- assert html.count('Current close</span><strong class="">200.00')==2
+ assert html.count('Current close</span><strong class="">200.00')==3
 
 def test_lock_order_single_rows_search_and_tooltip_assets():
  js=(ROOT/'psx_app/static/upgrade139.js').read_text();ins=(ROOT/'psx_app/static/insights1328.js').read_text();css=(ROOT/'psx_app/static/styles.css').read_text();idx=(ROOT/'psx_app/static/index.html').read_text()
@@ -32,6 +32,6 @@ def test_lock_order_single_rows_search_and_tooltip_assets():
  assert 'Upper cap' not in ins and 'Lower cap' not in ins and "insightMetric1328('Lock',priceLockCell1328(l)" in ins
  assert 'insight-strip1329' in ins and 'repeat(8,minmax(122px,1fr))' in css
  assert 'select-search-group1329' in (ROOT/'psx_app/static/search1327.js').read_text()
- assert 'charttips1329.js?v=1.3.32' in idx
+ assert 'charttips1329.js?v=1.3.33' in idx
  for name in ['insights1328.js','search1327.js','charttips1329.js','app.js','upgrade139.js']:
   subprocess.run(['node','--check',str(ROOT/'psx_app/static'/name)],check=True)

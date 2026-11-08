@@ -38,7 +38,7 @@ def test_no_price_reference_symbol_still_has_one_card():
 
 def test_assets_scoped_css_and_no_changed_cache_namespace():
  html=(ROOT/'psx_app/static/index.html').read_text();css=(ROOT/'psx_app/static/styles.css').read_text()
- assert '/market1321.js?v=1.3.32' in html
+ assert '/market1321.js?v=1.3.33' in html
  assert '.sector-cards1321,.index-rail1322{display:flex;flex-wrap:nowrap;overflow-x:auto' in css
  assert '--pos-green: #03D815' in css and '--neg-red: #F63131' in css
  assert 'range-window-bar1321' in css and 'var(--pos-green)' in css and 'var(--neg-red)' in css

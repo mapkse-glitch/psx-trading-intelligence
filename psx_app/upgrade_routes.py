@@ -39,6 +39,13 @@ from psx_app.services.symbol_insights import SymbolInsights
 def symbol_insights(symbol:str, sessions:int=Query(14,ge=1,le=6000)):
     return SymbolInsights(DB_PATH).report(symbol,sessions)
 
+from psx_app.services.performance_comparison import PerformanceComparison
+
+@router.get('/market/performance-comparison')
+def market_performance_comparison(start:str=Query(...,max_length=10), end:str=Query(...,max_length=10), first:str=Query(...,min_length=1,max_length=24), second:str=Query(...,min_length=1,max_length=24), stock:str=Query(...,min_length=1,max_length=24)):
+    try:return PerformanceComparison(DB_PATH).report(start,end,first,second,stock)
+    except ValueError as error:raise HTTPException(422,str(error))
+
 @router.get('/market/selected-sectors')
 def selected_sectors():return MarketPanels(DB_PATH).sectors()
 @router.get('/market/small-cards')

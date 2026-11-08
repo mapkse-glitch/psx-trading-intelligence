@@ -46,8 +46,9 @@ def comparison(anchor,latest,after):
 
 class SymbolInsights:
     def __init__(self,db_path=None):self.db_path=db_path
+    def report(self,symbol,sessions=14):return self.report_v1333(symbol,sessions)
     @persisted_result
-    def report(self,symbol,sessions=14):
+    def report_v1333(self,symbol,sessions=14):
         symbol=symbol.strip().upper();sessions=max(1,min(6000,int(sessions)))
         windows={name:empty_window() for name in ('session','all','since_2023','since_2026','after_anchor')}
         latest=None;anchor=None;count=0
@@ -76,13 +77,14 @@ class SymbolInsights:
                 company={'name':r['company'] if r else None,'sector':r['sector'] if r else None}
             idx_latest_raw=c.execute('SELECT trade_date,open,high,low,close,pr_close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC LIMIT 1',(latest['trade_date'],)).fetchone()
             idx_latest=dict(idx_latest_raw) if idx_latest_raw else None
-            idx_anchor=None;idx_after=empty_window()
+            idx_anchor=None;idx_after=empty_window();idx_all=empty_window()
             if idx_latest:
-                for raw in c.execute('SELECT trade_date,open,high,low,close,pr_close FROM index_ohlcv WHERE trade_date>=? AND trade_date<=? ORDER BY trade_date DESC',(ANCHOR,idx_latest['trade_date'])):
-                    row=dict(raw)
+                for raw in c.execute('SELECT trade_date,open,high,low,close,pr_close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC',(idx_latest['trade_date'],)):
+                    row=dict(raw);add(idx_all,row)
                     if row['trade_date']==ANCHOR:idx_anchor=row
                     elif row['trade_date']>ANCHOR:add(idx_after,row)
         return {'status':'OK','symbol':symbol,'requested':sessions,'company':company,'latest':latest,'windows':windows,
+                'index_all':idx_all,'symbol_all':windows['all'],
                 'symbol_comparison':comparison(anchor,latest,windows['after_anchor']),
                 'index_comparison':comparison(idx_anchor,idx_latest,idx_after),
                 'index_note':'Imported index through the selected symbol’s latest stored date; a different latest date is shown explicitly. Index average and index-traded volume are not supplied.'}

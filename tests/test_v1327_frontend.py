@@ -13,7 +13,7 @@ def test_matching_tab_is_adjacent_and_existing_tab_remains():
 def test_search_and_range_assets_and_default_records():
  index=(ROOT/'psx_app/static/index.html').read_text()
  for name in ['matching1327.js','search1327.js']:
-  assert name+'?v=1.3.32' in index
+  assert name+'?v=1.3.33' in index
   subprocess.run(['node','--check',str(ROOT/'psx_app/static'/name)],check=True)
  search=(ROOT/'psx_app/static/search1327.js').read_text()
  assert 'select.options.length<12' in search and "input.type='search'" in search

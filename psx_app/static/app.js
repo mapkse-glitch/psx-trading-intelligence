@@ -2930,6 +2930,7 @@ async function refreshIfCloudChanged() {
   }
 }
 function exportCurrentModule() {
+  if (state.currentView === 'market' && state.market.tab === 'comparison') {exportComparison1333();return;}
   if (state.currentView === 'market' && state.market.tab === 'dailySummary') {exportDailySummary1331();return;}
   if (state.currentView === 'performance') {exportPerformance1325();return;}
   const account = state.currentView === 'acc91404' ? '91404' : state.currentView === 'acc91269' ? '91269' : null;

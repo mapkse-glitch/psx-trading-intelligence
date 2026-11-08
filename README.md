@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.32
+# PSX Intelligence v1.3.33
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,15 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.32 — Daily Summary refinements
+## Current update: v1.3.33 — Performance Comparison
+
+Partial update for **v1.3.32**. Merge included files into the existing repository without deleting folders, commit, deploy and hard-refresh. No data, schema, settings or credentials are changed.
+
+Market Explorer → Performance Comparison uses imported close prices and the single stored index series. Each pair is normalized on its first shared valid session and compared through its last shared session in the chosen range. Missing observations remain gaps; a pair with no shared sessions is unavailable. A stock or index may have missing sessions between the shared endpoints. Highest/lowest return and maximum observed peak-to-trough drawdown are calculated within those endpoints, not corporate-action- or dividend-adjusted total returns. The index table does not identify multiple indices, so no additional benchmark is invented. CSV export contains the displayed aligned observations.
+
+Symbol Insights now includes index extrema through the selected symbol's latest stored date, and all-history max comparisons for both series; index average and volume remain unavailable because the imported index has no such fields. Daily Summary lock icons reuse Symbol vs Index's closing-price estimate, which can differ from Daily Summary's date-specific standard-band estimates. Neither proves official security-specific limits.
+
+## Previous update: v1.3.32 — Daily Summary refinements
 
 Partial update for **v1.3.31**. Merge into the existing repository root, without deleting folders; commit, deploy, and hard-refresh. No data, schema, settings, or credentials are changed.
 
