@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.35
+# PSX Intelligence v1.3.36
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,17 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.35 — Historical market analytics
+## Current update: v1.3.36 — Sector Performance Intelligence
+
+Partial update for **v1.3.35**. Merge the included files into the existing repository root without deleting folders, commit, deploy and hard-refresh. No database migration, user data, or credentials are included.
+
+Market Explorer now has a searchable sector tab with daily, Monday–Friday weekly, monthly, calendar-quarterly and selectable calendar-year comparisons. It reports observed activity, current and previous period returns and volumes, equivalent prior-period sessions where available, sortable company comparisons, charts, component scores and CSV export. The page uses current imported COMP_LIST sector membership (KSE100 fallback), not historical sector reconstitution.
+
+Returns compare a period-end close on the last stored market session with the last valid stored stock close before the period; the baseline date is displayed. Period coverage depends on imported market dates; a final weekday or missing date does not prove completeness or identify holidays. Observed volume with incomplete coverage is marked; ratings require complete stored-session records, a valid baseline and comparable previous-period volume. Ranks are independently computed for current and previous periods. Equivalent comparisons use the first N stored sessions of the previous period, with N equal to the current period's sessions. Zero previous volume makes volume growth unavailable.
+
+The equal-weight peer mean uses companies with valid returns; component scores are price: clamp(50 + 2.5 × return %, 0, 100), activity: peer percentile of volume, volume momentum: peer percentile of volume change, relative performance: peer percentile of return minus mean, and consistency: fraction of up sessions (flat counts half). Weights are 35/20/20/15/10 percent. Ties receive equal average percentiles and shared ranks; a negative return caps the score at 79. Missing score inputs produce Insufficient data. This is a descriptive heuristic, not an investment recommendation. Trading value is unavailable because verified trading value is not stored; no average-price estimate is presented as official value. These are price-only returns, not adjusted total returns.
+
+## Previous update: v1.3.35 — Historical market analytics
 
 Partial update for **v1.3.34**. Merge included files into the existing repository root without deleting folders, commit, deploy and hard-refresh. No database migration, credentials or market data are included; imports remain under the owner's control.
 

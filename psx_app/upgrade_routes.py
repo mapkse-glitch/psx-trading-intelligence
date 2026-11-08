@@ -114,3 +114,9 @@ def analytics_sector_monthly(sector:str=Query(...,min_length=1,max_length=150),y
 @router.get('/analytics/index-monthly')
 def analytics_index_monthly(year:int=Query(...,ge=1901,le=9998)):
     return MarketAnalytics1335(DB_PATH).index_monthly(year)
+
+from psx_app.services.sector_intelligence1336 import SectorIntelligence1336
+@router.get('/sector-intelligence')
+def sector_intelligence(sector:str=Query(...,min_length=1,max_length=150),period:Literal['daily','weekly','monthly','quarterly','yearly']='daily',year:int|None=Query(None,ge=1904,le=9996)):
+    try:return SectorIntelligence1336(DB_PATH).report(sector,period,year)
+    except ValueError as e:raise HTTPException(422,str(e))

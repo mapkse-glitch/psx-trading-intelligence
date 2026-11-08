@@ -2936,6 +2936,7 @@ async function refreshIfCloudChanged() {
   }
 }
 function exportCurrentModule() {
+  if (state.currentView==='market' && state.market.tab==='sectorIntelligence') {exportSectorIntelligence1336();return;}
   if (state.currentView==='market' && state.market.tab==='symbolChart') {exportAnalytics1335('chart');return;}
   if (['highlow','monthlysector','monthlyindex'].includes(state.currentView)){exportAnalytics1335(({highlow:'high',monthlysector:'sector',monthlyindex:'index'})[state.currentView]);return;}
   if (state.currentView === 'market' && state.market.tab === 'comparison') {exportComparison1333();return;}

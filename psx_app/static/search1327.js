@@ -8,7 +8,7 @@
   if(!label){const group=select.closest('.filter-group');const labels=group?.querySelectorAll('label');if(group&&labels.length===1&&group.querySelectorAll('input,select,textarea').length===1&&!labels[0].htmlFor&&!labels[0].querySelector('input,select,textarea'))label=labels[0];}
   let name=select.getAttribute('aria-label')||'';
   if(!name&&label)name=[...label.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join(' ').replace(/\s+/g,' ').replace(/[:：]\s*$/,'').trim();
-  if(select.options.length<12&&!/symbol|ticker/i.test(name+' '+select.id))return;
+  if(select.options.length<12&&!select.hasAttribute('data-searchable')&&!/symbol|ticker/i.test(name+' '+select.id))return;
   select.dataset.search1327='1';name=name||'options';
   const target=label&&label.contains(select)&&label.querySelectorAll('input,select,textarea').length===1?label:select;
   const wrap=document.createElement('div');wrap.className='select-search-wrap1327';

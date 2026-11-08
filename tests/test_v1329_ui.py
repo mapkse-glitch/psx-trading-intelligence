@@ -32,6 +32,6 @@ def test_lock_order_single_rows_search_and_tooltip_assets():
  assert 'Upper cap' not in ins and 'Lower cap' not in ins and "insightMetric1328('Lock',priceLockCell1328(l)" in ins
  assert 'insight-strip1329' in ins and 'repeat(8,minmax(122px,1fr))' in css
  assert 'select-search-group1329' in (ROOT/'psx_app/static/search1327.js').read_text()
- assert 'charttips1329.js?v=1.3.35' in idx
+ assert 'charttips1329.js?v=1.3.36' in idx
  for name in ['insights1328.js','search1327.js','charttips1329.js','app.js','upgrade139.js']:
   subprocess.run(['node','--check',str(ROOT/'psx_app/static'/name)],check=True)
