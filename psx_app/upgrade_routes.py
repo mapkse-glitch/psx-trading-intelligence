@@ -16,6 +16,13 @@ class ForecastRequest(BaseModel): symbol:str=Field(min_length=1,max_length=24)
 def metadata():return MarketExplorer(DB_PATH).metadata()
 @router.get('/market/volume')
 def volume(date:str|None=None,n:int=Query(10,ge=1,le=10)):return MarketExplorer(DB_PATH).volume(date,n)
+from psx_app.services.daily_summary import DailySummary
+
+@router.get('/market/daily-summary')
+def daily_summary(date:str|None=Query(None,max_length=10)):
+    try:return DailySummary(DB_PATH).report(date)
+    except ValueError as error:raise HTTPException(422,str(error))
+
 @router.get('/market/symbol/{symbol}')
 def symbol(symbol:str,n:int=Query(50,ge=1,le=6000),end:str|None=None):return MarketExplorer(DB_PATH).symbol(symbol,n,end)
 from psx_app.services.market_panels import MarketPanels

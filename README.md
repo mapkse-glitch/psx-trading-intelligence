@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.30
+# PSX Intelligence v1.3.31
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,35 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.30 — visible filter suggestions
+## Current update: v1.3.31 — Daily Summary
+
+Partial update for **v1.3.30**. Merge the included files into the existing
+repository root without deleting folders, commit and deploy normally, then
+hard-refresh. No imported data, schema, credentials or settings are changed.
+The page uses the existing revision-scoped market cache and stored cash/index
+records. It does not import or fetch live quotes.
+
+Market Explorer → Daily Summary uses each selected exact date. Only symbols
+with positive imported volume count as traded. Market-volume comparisons use
+the previous stored cash session; symbol volume comparisons use the same
+session, not a stale older quote. Stock change uses the source previous close,
+or the exact previous cash-session close when missing. Index compares against
+the exact previous stored cash session. Missing dates and baselines stay unavailable;
+missing imports cannot be distinguished from exchange holidays. Sector labels
+come from current imported COMP_LIST with KSE100 fallback, not historical sector
+membership. Breadth includes an explicit unknown bucket if comparison is missing.
+
+**Cap counts and stock status are unavailable:** no official historical per-stock
+price limits are stored in the current schema. The existing 10%/PKR 1 checker is
+an estimate and is not represented here as an exchange-confirmed limit. An
+authoritative historical source would be needed to enable those statistics.
+Pause the ticker or use reduced-motion preferences to stop scrolling. Table
+filters, sorting, pagination and the top-bar CSV export use the selected date.
+
+The PSX logo asset is a static frame of the public PSX site logo at
+https://www.psx.com.pk/psx/themes/psx/images/logo-animated-75y.gif.
+
+## Previous update: v1.3.30 — visible filter suggestions
 
 Partial update for **v1.3.29**. Merge the included files into the existing
 repository root without deleting folders; commit and deploy as usual, then
