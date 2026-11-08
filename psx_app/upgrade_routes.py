@@ -98,3 +98,19 @@ from psx_app.services.market_performance import MarketPerformance
 def market_performance(period:Literal['daily','weekly','monthly','quarterly','halfyear','ninemonth','yearly']='daily',key:str|None=Query(None,max_length=32)):
     try: return MarketPerformance(DB_PATH).report(period,key)
     except ValueError as error: raise HTTPException(422,str(error))
+
+from psx_app.services.market_analytics1335 import MarketAnalytics1335
+@router.get('/analytics/metadata')
+def analytics_metadata():return MarketAnalytics1335(DB_PATH).metadata()
+@router.get('/analytics/symbol-chart')
+def analytics_symbol_chart(symbol:str=Query(...,min_length=1,max_length=24),sessions:int=Query(14,ge=1,le=6000)):
+    return MarketAnalytics1335(DB_PATH).symbol_chart(symbol,sessions)
+@router.get('/analytics/high-low')
+def analytics_high_low(symbol:str=Query(...,min_length=1,max_length=24)):
+    return MarketAnalytics1335(DB_PATH).high_low(symbol)
+@router.get('/analytics/sector-monthly')
+def analytics_sector_monthly(sector:str=Query(...,min_length=1,max_length=150),year:int=Query(...,ge=1901,le=9998)):
+    return MarketAnalytics1335(DB_PATH).sector_monthly(sector,year)
+@router.get('/analytics/index-monthly')
+def analytics_index_monthly(year:int=Query(...,ge=1901,le=9998)):
+    return MarketAnalytics1335(DB_PATH).index_monthly(year)

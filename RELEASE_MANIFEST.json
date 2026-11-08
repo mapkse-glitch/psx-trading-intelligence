@@ -1,11 +1,11 @@
 {
-  "version": "1.3.33",
-  "release": "Performance Comparison and Market Explorer refinements",
-  "baseline": "1.3.32",
+  "version": "1.3.35",
+  "release": "Historical market analytics",
+  "baseline": "1.3.34",
   "contains_trading_database": false,
   "contains_live_credentials": false,
   "tests": {
-    "passed": 451,
+    "passed": 461,
     "skipped": 34,
     "warnings": 1,
     "live_aiven_tested": false,
@@ -43,7 +43,9 @@
     "v1330_suggestions": "Local synthetic Chromium: visible prefix-first suggestions, contains grouping, click/touch selection, keyboard and no-match behavior, disabled options, search dismissal, small separately-labeled filters and scrollable touch list. 11 initial pages and four sets of tabs reviewed at mobile and desktop. Live v1.3.29 initial pages reviewed read-only; some remained loading and production data was not reconciled.",
     "v1331_daily_summary": "Local synthetic SQLite and disposable PostgreSQL: previous cash-session comparisons, breadth, missing data, verified-limit touch/close logic, cache invalidation, endpoint validation. Local Chromium responsive pages and filters. Official historical limits are not stored and cap/status fields remain unavailable. No production data verification or deployment.",
     "v1332_daily_refinements": "Synthetic SQLite and disposable PostgreSQL: dated standard-band estimates, limit rounding, touch versus close, missing and inconsistent prices, grouping, sort, dates, filters, logo, light/dark and responsive browser checks. Estimates are not official exception-aware limits; no live production data reconciliation or deployment.",
-    "v1333_comparison": "Local synthetic SQLite and disposable PostgreSQL: aligned common-session baselines, percent changes, drawdown, missing data, index extrema and endpoint validation. Local Chromium: 11 initial pages, Daily Summary, Symbol Insights and comparison controls, responsive light/dark layouts, search, chart focus tooltips and CSV. Production not tested, reconciled, or deployed."
+    "v1333_comparison": "Local synthetic SQLite and disposable PostgreSQL: aligned common-session baselines, percent changes, drawdown, missing data, index extrema and endpoint validation. Local Chromium: 11 initial pages, Daily Summary, Symbol Insights and comparison controls, responsive light/dark layouts, search, chart focus tooltips and CSV. Production not tested, reconciled, or deployed.",
+    "v1334_insights": "Local synthetic SQLite and Chromium: four index extrema, both all-time comparison colors, and 1440/768/390/320px in light/dark. PostgreSQL tests skipped; no live production verification or deployment.",
+    "v1335_analytics": "Local synthetic SQLite and disposable loopback PostgreSQL: session comparisons, OHLC extrema, prior-month and year baseline calculations, missing data and API validation. Local Chromium: all initial pages and Market Explorer tabs, chart filters and tooltips, themes, responsive sizes and CSV. No live production reconciliation or deployment."
   },
   "files": {
     ".github/workflows/import-existing-snapshot.yml": {
@@ -63,8 +65,8 @@
       "sha256": "24ea8f7f751fc148f241759d9c62623bd71a20e5682fd6281a78564fd7ae1603"
     },
     "README.md": {
-      "bytes": 123077,
-      "sha256": "56b012a272a4995b81300b8afe97ef82f7ab1cb093c6b6ae064602ea29bac7ca"
+      "bytes": 125313,
+      "sha256": "a7848a25f94b7dead3f15fe175c54e758e20ade8dc5bd84daa646413dad92f19"
     },
     "api/index.py": {
       "bytes": 29,
@@ -112,7 +114,7 @@
     },
     "psx_app/main.py": {
       "bytes": 46060,
-      "sha256": "ecc8421b80ca45dd7ef312d663d7e70186281358c975f73d64430b124443883c"
+      "sha256": "b422d4182b4775bf1c1007d55d31fca26fb3b0204566a9d21509f343eda7e9f0"
     },
     "psx_app/parsers/__init__.py": {
       "bytes": 58,
@@ -206,6 +208,10 @@
       "bytes": 4365,
       "sha256": "040489a9ac136ad0aac27fd002a2ac26b56a777f2c1bbe489b03ecde74e5c242"
     },
+    "psx_app/services/market_analytics1335.py": {
+      "bytes": 8090,
+      "sha256": "99508c40b00ec66eb18679fd085f9d6610615bcbb85dd867375f88f0be1c7a51"
+    },
     "psx_app/services/market_explorer.py": {
       "bytes": 11044,
       "sha256": "94c0adaddb79dbe7707aadc0da665fa64a50fbb51155520a642fa92b43aa17ac"
@@ -266,9 +272,13 @@
       "bytes": 2507,
       "sha256": "c282c3c3d4adf431adf9aa502cc0f5424e4b20cce0374915f60331a19b895e75"
     },
+    "psx_app/static/analytics1335.js": {
+      "bytes": 14173,
+      "sha256": "87d7267d41c8d1ccdc952d6b2323014f2ea09da290ab4e8e365ed35d193988f1"
+    },
     "psx_app/static/app.js": {
-      "bytes": 186177,
-      "sha256": "e78a0b7a24e50293faf870f99f0147d73cc86ca14ae48dc7f7c9667985470394"
+      "bytes": 186934,
+      "sha256": "9dc6625d13041096297c55e565dd1c128285be97c9bd55a59b86bc4aa92b20fd"
     },
     "psx_app/static/charttips1329.js": {
       "bytes": 2763,
@@ -287,16 +297,16 @@
       "sha256": "ce0aa1597d4a724b5092640a5af58e2fa0f602723bb8bbf52f5fbe6f0a778a8d"
     },
     "psx_app/static/index.html": {
-      "bytes": 5981,
-      "sha256": "3475369c7cf7d66927f8131d88b9018b72f582a144d6b1be43d4238ca97194af"
+      "bytes": 6492,
+      "sha256": "8ef2d8241e9da1a3ddfe0c13d78738aca0e7beffb24eea3699e0a0555179218f"
     },
     "psx_app/static/insights1328.js": {
-      "bytes": 9669,
-      "sha256": "171202728d1b23fb550dfcb93089a090b7b119de3d22dfe21ec229a7f6c53014"
+      "bytes": 9805,
+      "sha256": "8b822685e0ff7cbe09c1024b8f6aabe4c2a2838aa4a90b8b8da7c6e1bff3b02b"
     },
     "psx_app/static/market1321.js": {
-      "bytes": 13513,
-      "sha256": "563e3841b92e5bdef90df9de950bcbdaec9901435e508be21b074b18da6b2aa5"
+      "bytes": 13544,
+      "sha256": "afb18298ebd6c7ba42577725319092227537ca54afa8c2231ba29ff2eef70986"
     },
     "psx_app/static/matching1327.js": {
       "bytes": 6102,
@@ -315,20 +325,20 @@
       "sha256": "210c1488c5533929988a4783e487b8f99e323615cfbfb5577a857c0f469ac545"
     },
     "psx_app/static/styles.css": {
-      "bytes": 78771,
-      "sha256": "75ea5a62f756d258aafebb4d0255bb85e99fb13dd691d470d06a391a8eb08ce2"
+      "bytes": 80315,
+      "sha256": "eeffba7103cf2fa354f28772ccb494322c94b4a02c9b65a6758491c4a37afe8d"
     },
     "psx_app/static/table_display.js": {
       "bytes": 1793,
       "sha256": "5a8d7b0704ccd60276de1356ae2534a39202718c127080ec89c28c9c908ae34a"
     },
     "psx_app/static/upgrade139.js": {
-      "bytes": 50018,
-      "sha256": "4cb2cccecf76dfb72fb706e494b68ecc8a817c7b604a9ef475490f6eeca4f98b"
+      "bytes": 50106,
+      "sha256": "61a3e1326bf7d4dea4ca27df007fd51b27e7a3302d7a1c33d65e23803a9a6935"
     },
     "psx_app/upgrade_routes.py": {
-      "bytes": 5660,
-      "sha256": "013085378f213e6159c6646ba2ba1eb13966950965752d2d37b3f5963c49d1f2"
+      "bytes": 6619,
+      "sha256": "44a76f3e128b0643d28c7e04c2838360e356fbe2563ee5cff8fb2b9ba3426e4b"
     },
     "pytest.ini": {
       "bytes": 42,
@@ -396,19 +406,19 @@
     },
     "tests/test_v1310_coverage.py": {
       "bytes": 9236,
-      "sha256": "8e7348ed237a96e618d3d57db407ae9d005e86512a91a88f2b04bcd96c94412d"
+      "sha256": "def9c5ea14563a275b7a61f6ba06796ffead76c7efa6e2bdae80f8e7f7bee751"
     },
     "tests/test_v1311_plain_language.py": {
       "bytes": 9300,
-      "sha256": "208dd4532a8b6c1826f5e259ea25a5884425ad9ae0bd8464bcfbe5bc9957960a"
+      "sha256": "2da1a829636af2d85cbf2354b1931477a56eb303d10c9f365246554dba8ab221"
     },
     "tests/test_v1312_market_layout.py": {
       "bytes": 2086,
-      "sha256": "c529bbdf6a773df50ac5e99a7311fb1e75b047ba4b853f4757c90c253e2c0d09"
+      "sha256": "bf0b2f89c04f3597f39f66820bee1b9e47d4a65fabe56943473be016709b8cd5"
     },
     "tests/test_v1313_startup_recovery.py": {
       "bytes": 6929,
-      "sha256": "77cfdaa2368ba37243aa76c26f718b53e8f3270195a9c6b81043a3285cad15c2"
+      "sha256": "1af08c59b354b4ed74728c37b94bf9f394ca634673bdb44fee7c7cd9b3e70af7"
     },
     "tests/test_v1314_configuration.py": {
       "bytes": 3337,
@@ -440,7 +450,7 @@
     },
     "tests/test_v1321_frontend.py": {
       "bytes": 3599,
-      "sha256": "d1fce45bbaceb7bddba35b9923ca22ad2900429a7786d62a8d4f25100ef4d45b"
+      "sha256": "3eed1ebc70ccd355edc9a3a870ae94fd934dc9ad994c91149bf33416b998fb27"
     },
     "tests/test_v1321_market_panels.py": {
       "bytes": 9001,
@@ -468,7 +478,7 @@
     },
     "tests/test_v1325_performance.py": {
       "bytes": 13965,
-      "sha256": "aa17dfea18f60e7c1d36f3ddce6c53bfee4250cf6b05fad209f22355a1c5f682"
+      "sha256": "0d3314535099f5dc81ed0c502c120a04256393810f4c5baa180c916defac1443"
     },
     "tests/test_v1325_postgres.py": {
       "bytes": 1477,
@@ -480,7 +490,7 @@
     },
     "tests/test_v1327_frontend.py": {
       "bytes": 1386,
-      "sha256": "120625de86cd451a164e1f440399b9e12845d86a3abacb74877866c6fe8e6425"
+      "sha256": "467feadf33618198959851845f8b12778e29cda5c0bbacd383651a4fc1ff9591"
     },
     "tests/test_v1327_lock.py": {
       "bytes": 1021,
@@ -496,7 +506,7 @@
     },
     "tests/test_v1328_insights.py": {
       "bytes": 6889,
-      "sha256": "c808281f112f90412764c2612af5e754e33c6418161e042d0b463d1d9918eec2"
+      "sha256": "fc510c8cc878c37cb2b6bdb03033fadb10408dbb1e9fcd0edd1212fc1cf143de"
     },
     "tests/test_v1328_postgres.py": {
       "bytes": 929,
@@ -504,7 +514,7 @@
     },
     "tests/test_v1329_ui.py": {
       "bytes": 3155,
-      "sha256": "3964b9e31a41b5720b53f2ed34c94ed3ec582ac2d488abb13f6f7a92e9c274cc"
+      "sha256": "b2ab59019a4081c47189506fad7ec4d5d216b0e875368daf8e42670980ae8225"
     },
     "tests/test_v1330_suggestions.py": {
       "bytes": 1049,
@@ -517,6 +527,14 @@
     "tests/test_v1333_comparison.py": {
       "bytes": 2990,
       "sha256": "979640846eb20b4ba1108153a9b140a8ccce63b04a91f3ea68e454c1f848aa4b"
+    },
+    "tests/test_v1334_insights.py": {
+      "bytes": 1580,
+      "sha256": "006566a10e7d5847c8f875ffa0f396cc213f6fc839b46677afd10314112aaabc"
+    },
+    "tests/test_v1335_analytics.py": {
+      "bytes": 4549,
+      "sha256": "9d3d0f8ca1dc480b2b3d33728778289e1d9e05ce471aabe9443d6948b2a93ba8"
     },
     "tests/test_v133_import_and_latest.py": {
       "bytes": 5448,
@@ -575,7 +593,7 @@
       "sha256": "31aa311315533aa44dfeef780817e2aee38a78be0b4d022d76bac67d5637cdbf"
     }
   },
-  "patch_base": "PSX v1.3.32",
+  "patch_base": "PSX v1.3.34",
   "local_benchmark": {
     "rows": 1000000,
     "symbols": 1000,

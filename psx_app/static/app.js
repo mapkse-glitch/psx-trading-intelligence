@@ -98,6 +98,9 @@ const VIEW_TITLES = {
   exports: "09 • Exports & reports",
   performance: "10 • Market Performance",
   settings: "11 • Settings, Rule Versioning & Database Backup",
+  highlow: "12 • Symbol High-Low Analysis",
+  monthlysector: "13 • Monthly Sector Performance",
+  monthlyindex: "14 • Monthly Index Performance",
 };
 
 function fmtNum(v, decimals = 2) {
@@ -233,6 +236,9 @@ async function switchView(view) {
     else if (view === "technical") await renderTechnicalView(container);
     else if (view === "market") await renderMarketView(container);
     else if (view === "performance") await renderPerformance1325(container);
+    else if (view === "highlow") await renderAnalytics1335(container,'high');
+    else if (view === "monthlysector") await renderAnalytics1335(container,'sector');
+    else if (view === "monthlyindex") await renderAnalytics1335(container,'index');
     else if (view === "reconciliation") await renderReconciliationView(container);
     else if (view === "exports") await renderExportsView(container);
     else if (view === "settings") await renderSettingsView(container);
@@ -2889,7 +2895,7 @@ function enhanceWorkspace() {
 async function renderLatestBadge(view) {
   const dates = await apiGet('/api/data-dates');
   if (state.currentView !== view) return;
-  const key = ({top5:'top5',futures:'futures',technical:'cash',market:'cash',performance:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
+  const key = ({top5:'top5',futures:'futures',technical:'cash',market:'cash',performance:'cash',highlow:'cash',monthlysector:'cash',monthlyindex:'cash',acc91404:'acc91404',acc91269:'acc91269'})[view] || 'latest';
   let badge = document.getElementById('moduleLatestBadge');
   if (!badge) {badge = document.createElement('span');badge.id='moduleLatestBadge';badge.className='badge badge-green';document.getElementById('viewTitle').after(badge);}
   badge.textContent = dates[key] ? 'Auto → Latest: '+fmtDate(dates[key]) : 'No imported data';
@@ -2930,6 +2936,8 @@ async function refreshIfCloudChanged() {
   }
 }
 function exportCurrentModule() {
+  if (state.currentView==='market' && state.market.tab==='symbolChart') {exportAnalytics1335('chart');return;}
+  if (['highlow','monthlysector','monthlyindex'].includes(state.currentView)){exportAnalytics1335(({highlow:'high',monthlysector:'sector',monthlyindex:'index'})[state.currentView]);return;}
   if (state.currentView === 'market' && state.market.tab === 'comparison') {exportComparison1333();return;}
   if (state.currentView === 'market' && state.market.tab === 'dailySummary') {exportDailySummary1331();return;}
   if (state.currentView === 'performance') {exportPerformance1325();return;}

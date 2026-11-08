@@ -1435,3 +1435,11 @@ body{font-size:15px;line-height:1.5}
 @media(max-width:650px){.compare-stats1333{grid-template-columns:1fr}.compare-fields1333 label{flex:1 1 145px}.compare-fields1333 label .select-search-wrap1327{max-width:100%}}
 /* The shared searchable control moves its label into a vertical wrapper. */
 .compare-fields1333>.select-search-wrap1327>label{flex:0 0 auto;min-width:0}
+
+/* Four available index metrics share the row without empty placeholders. */
+.insight-window1328 .insight-index-strip1334{grid-template-columns:repeat(4,minmax(122px,1fr))}
+@media(min-width:650px){.insight-index-strip1334+.insight-swipe1329{display:none}}
+
+/* v1.3.35 historical analytics; shared dashboard palette and cards. */
+.analytic-card1335{margin-top:18px}.analytic-summary-grid1335{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}.analytic-summary1335{margin-top:18px}.analytic-summary1335 h3{border-bottom:1px solid var(--separator-color);padding-bottom:10px}.analytic-summary1335 p{margin:10px 0}.analytic-note1335,.analytic-legend1335{color:var(--text-muted);font-size:13px;margin:12px 0}.analytic-plot1335{width:100%;overflow-x:auto;overscroll-behavior-inline:contain}.analytic-plot1335 svg{display:block;width:100%;height:auto}.analytic-axis1335{fill:var(--text-muted);font:12px var(--font-sans)}.analytic-grid1335{stroke:var(--border-color);stroke-width:1}.analytic-bar-up1335{fill:var(--pos-green)}.analytic-bar-down1335{fill:var(--neg-red)}.analytic-bar-neutral1335{fill:var(--text-muted)}.analytic-line1335{fill:none;stroke:#397bd9;stroke-width:2.2}.analytic-dot1335{fill:#397bd9}.analytic-plot1335 [tabindex="0"]:focus{stroke:var(--text-main);stroke-width:2;outline:none}.analytic-card1335 .data-table td,.analytic-card1335 .data-table th{white-space:nowrap}.analytic-card1335 .daily-pages1331{margin-top:14px}
+@media(max-width:650px){.analytic-summary-grid1335{grid-template-columns:1fr}}

@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.33
+# PSX Intelligence v1.3.35
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,22 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.33 — Performance Comparison
+## Current update: v1.3.35 — Historical market analytics
+
+Partial update for **v1.3.34**. Merge included files into the existing repository root without deleting folders, commit, deploy and hard-refresh. No database migration, credentials or market data are included; imports remain under the owner's control.
+
+- Market Explorer → Symbol Chart uses the most recent requested stored symbol sessions. Daily movement compares each close to the preceding stored symbol close; its stock and index summaries use the exact selected start/end dates. Missing index endpoints remain unavailable.
+- Symbol High-Low Analysis uses imported high/low values, grouped by year and month. Monthly Sector Performance uses current imported COMP_LIST sector membership (KSE100 fallback), not historically reconstructed sectors. Each monthly return uses the last close of that month and the previous calendar month's last stored close; missing months are not filled. Months with no reported sector data are omitted.
+- Monthly Index Performance uses the single imported index series, whose identity the owner must confirm. Its year-to-date baseline is the last valid stored close in the prior calendar year. The first available month uses this same prior-year baseline; subsequent months use the previous calendar month's last stored close. Missing baselines remain unavailable; a prior-year baseline may span a gap.
+- All figures are imported close-price returns, not dividend- or corporate-action-adjusted total returns. Imported records do not certify complete exchange coverage or distinguish missing imports from holidays. No live-data or production-performance guarantee is made.
+
+## Previous update: v1.3.34 — Index card refinements
+
+Partial update for **v1.3.33**. Merge the included files into the existing repository root without deleting folders; commit, deploy and hard-refresh. No schema, data or credentials are changed.
+
+Symbol Insights displays only the four available price extrema in the all-records Index card; index average and traded volume are not supplied in the imported index data. All-time max high and close use green in both stock and index comparison cards. Data Quality & Reconciliation remains in its existing position.
+
+## Previous update: v1.3.33 — Performance Comparison
 
 Partial update for **v1.3.32**. Merge included files into the existing repository without deleting folders, commit, deploy and hard-refresh. No data, schema, settings or credentials are changed.
 
