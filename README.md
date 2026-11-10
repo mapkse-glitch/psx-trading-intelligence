@@ -1,4 +1,4 @@
-# PSX Intelligence v1.3.37
+# PSX Intelligence v1.3.38
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.
 One current README covers setup, imports, operation and verification. No Google
@@ -17,7 +17,13 @@ Drive, credentials or user trading database is included in the release archive.
 - [Verification and performance](#verification-and-performance)
 - [Rollback](#deployment-rollback-versus-data-restore)
 
-## Current update: v1.3.37 — Navigation and alignment corrections
+## Current update: v1.3.38 — Market table and closing-high refinements
+
+Partial update for **v1.3.37**. Merge the included files into the existing repository root without deleting folders, commit, deploy and hard-refresh. No database migration, market data or credentials are included.
+
+Daily Summary cards have equal heights. Symbol vs Index and Symbol Insights flag a new closing high only when the latest valid close exceeds every earlier valid imported close; a tie or missing earlier close is not flagged. This is relative to available imported history. Monthly sector and index tables show year-to-date before reverse-ordered months; sector YTD uses the previous year's latest available close and selected year's latest available close. Sector comparison keeps rank and symbol visible when scrolling. Changed report caches use new versioned keys to avoid stale responses.
+
+## Previous update: v1.3.37 — Navigation and alignment corrections
 
 Partial update for **v1.3.36**. Merge the included files into the repository root without deleting existing folders, commit, deploy and hard-refresh. No database migration, trading data or credentials are included.
 

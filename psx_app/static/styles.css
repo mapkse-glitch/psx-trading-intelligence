@@ -1460,3 +1460,14 @@ body{font-size:15px;line-height:1.5}
 .analytic-label-high1337 {fill:var(--pos-green)}
 .analytic-label-low1337 {fill:var(--neg-red)}
 @media(prefers-reduced-motion:reduce){.nav-group-arrow1337{transition:none}}
+
+/* Equal summary cards, current closing high and pinned sector identifiers. */
+.daily-cards1331 {align-items:stretch;grid-auto-rows:1fr}
+.new-closing1338 {display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:4px 8px;border:1px solid var(--pos-green);border-radius:999px;color:var(--pos-green);font:600 12px var(--font-sans);vertical-align:middle;white-space:nowrap}
+.new-closing1338 svg {width:14px;height:14px;fill:currentColor;flex:none}
+.new-closing-icon1338 {padding:2px;margin-left:6px;border:0}
+.si-table1336 th:first-child,.si-table1336 td:first-child {position:sticky;left:0;min-width:76px;width:76px;max-width:76px;box-sizing:border-box;background:var(--bg-card)!important;z-index:2}
+.si-table1336 th:nth-child(2),.si-table1336 td:nth-child(2) {position:sticky;left:76px;min-width:110px;background:var(--bg-card)!important;z-index:2;box-shadow:2px 0 3px rgba(0,0,0,.08)}
+.si-table1336 thead th:first-child,.si-table1336 thead th:nth-child(2) {z-index:5;background:var(--bg-card-alt)!important}
+
+.si-table1336 th.num .daily-sort1331 {text-align:right}

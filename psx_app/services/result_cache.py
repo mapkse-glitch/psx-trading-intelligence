@@ -13,6 +13,13 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 
+# Only reports whose response shape changed need a new cache namespace.
+CACHE_VERSION_OVERRIDES = {
+    'psx_app.services.market_explorer.MarketExplorer.symbol': '1.3.38',
+    'psx_app.services.symbol_insights.SymbolInsights.report_v1333': '1.3.38',
+    'psx_app.services.market_analytics1335.MarketAnalytics1335.sector_monthly': '1.3.38',
+}
+
 def persisted_result(fn):
     sig=inspect.signature(fn)
     @functools.wraps(fn)
@@ -22,7 +29,12 @@ def persisted_result(fn):
         from psx_app.database.schema import get_connection
         bound=sig.bind(*args,**kwargs);bound.apply_defaults()
         values={k:v for k,v in bound.arguments.items() if k!='self'}
-        key=hashlib.sha256(json.dumps([fn.__module__,fn.__qualname__,values,'1.3.17',datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()],sort_keys=True,default=str).encode()).hexdigest()
+        cache_version=CACHE_VERSION_OVERRIDES.get(fn.__module__+'.'+fn.__qualname__)
+        day=datetime.now(ZoneInfo('Asia/Karachi')).date().isoformat()
+        if cache_version:
+            key=hashlib.sha256(json.dumps([fn.__module__,fn.__qualname__,values,cache_version,day],sort_keys=True,default=str).encode()).hexdigest()
+        else:
+            key=hashlib.sha256(json.dumps([fn.__module__,fn.__qualname__,values,'1.3.17',day],sort_keys=True,default=str).encode()).hexdigest()
         path=getattr(args[0],'db_path',None) if args else None
         with get_connection(path) as c:
             rev=c.execute("SELECT value FROM psx_runtime WHERE key='revision'").fetchone()[0]

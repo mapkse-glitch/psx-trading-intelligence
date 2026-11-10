@@ -93,9 +93,16 @@ class MarketAnalytics1335:
             if not source:return {'status':'NO_REFERENCE','rows':[],'months':[]}
             members=[dict(r) for r in c.execute('SELECT symbol,company FROM company_reference WHERE list_name=? AND sector=? ORDER BY symbol',(source,sector))]
             rows=[dict(r) for r in c.execute('''SELECT symbol,trade_date,close FROM (SELECT e.symbol,e.trade_date,e.close,ROW_NUMBER() OVER(PARTITION BY e.symbol,SUBSTR(e.trade_date,1,7) ORDER BY e.trade_date DESC) AS rn FROM equity_ohlcv e JOIN company_reference cr ON e.symbol=cr.symbol AND cr.list_name=? AND cr.sector=? WHERE e.trade_date>=? AND e.trade_date<?) x WHERE rn=1 ORDER BY symbol,trade_date''',(source,sector,f'{year-1:04d}-12-01',f'{year+1:04d}-01-01'))]
+            annual=[dict(r) for r in c.execute('''SELECT symbol,trade_date,close FROM (SELECT e.symbol,e.trade_date,e.close,ROW_NUMBER() OVER(PARTITION BY e.symbol,SUBSTR(e.trade_date,1,4) ORDER BY e.trade_date DESC) AS rn FROM equity_ohlcv e JOIN company_reference cr ON e.symbol=cr.symbol AND cr.list_name=? AND cr.sector=? WHERE e.trade_date>=? AND e.trade_date<? AND e.close>0) x WHERE rn=1''',(source,sector,f'{year-1:04d}-01-01',f'{year+1:04d}-01-01'))]
         by={}
         for r in rows:by.setdefault(r['symbol'],[]).append(r)
-        for m in members:m['months']=monthly_cells(by.get(m['symbol'],[]),year)
+        annual_by={}
+        for row in annual:
+            annual_by.setdefault(row['symbol'],{})[row['trade_date'][:4]]=row
+        for m in members:
+            m['months']=monthly_cells(by.get(m['symbol'],[]),year)
+            prices=annual_by.get(m['symbol'],{});base=prices.get(str(year-1));last=prices.get(str(year))
+            m['ytd']={'baseline_date':base['trade_date'] if base else None,'date':last['trade_date'] if last else None,**movement(last['close'] if last else None,base['close'] if base else None)}
         months=sorted({int(k) for r in members for k in r['months']})
         return {'status':'OK','year':year,'sector':sector,'source':source,'months':months,'rows':members}
     @persisted_result
