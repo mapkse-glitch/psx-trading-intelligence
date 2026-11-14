@@ -35,6 +35,12 @@ def new_highs_route(date:str=Query(...,max_length=10)):
     try:return new_highs(DB_PATH,date)
     except ValueError as error:raise HTTPException(422,str(error))
 
+@router.get('/records/estimated-caps')
+def estimated_caps_route(date:str=Query(...,max_length=10)):
+    from psx_app.services.records1339 import estimated_caps
+    try:return estimated_caps(DB_PATH,date)
+    except ValueError as error:raise HTTPException(422,str(error))
+
 @router.get('/top-symbol-volumes')
 def top_symbol_volumes_route(date:str=Query(...,max_length=10),symbol:str=Query('',max_length=24)):
     from psx_app.services.top_volume1339 import top_volumes

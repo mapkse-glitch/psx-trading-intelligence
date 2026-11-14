@@ -99,7 +99,7 @@ const VIEW_TITLES = {
   performance: "10 • Market Performance",
   companyrecords: "Alphabetical Company Records",
   topvolumes: "Top Symbol Volumes",
-  records: "Records",
+  records: "12 • Records",
   settings: "11 • Settings, Rule Versioning & Database Backup",
   highlow: "12 • Symbol High-Low Analysis",
   monthlysector: "13 • Monthly Sector Performance",

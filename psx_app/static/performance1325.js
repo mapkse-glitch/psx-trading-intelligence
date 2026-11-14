@@ -16,27 +16,39 @@ function perfChart1325(chart){
  return `<article class="card performance-chart1325">${heading}<div class="perf-hbars1328" aria-label="${h(chart.title)} horizontal bars">${bars}</div><p class="performance-note1325">${negative?'Bars extend left from zero for losses.':'Bars start at zero.'} Focus a bar for exact figures.</p><details class="performance-data1325" data-chart="${h(chart.id)}" ontoggle="perfData1325(this)"><summary>Chart data · ${rows.length} ${rows.length===1?'leader':'leaders'}</summary><div class="performance-table1325"></div></details></article>`;
 }
 const perfStackColors1325=['#3979D6','#86B8F7','#9764C9','#D4A72C','#5DB3B6','#8795AA','#C777A1'];
+function perfCardinal1340(points){
+ if(!points.length)return '';
+ let path=`M ${points[0][0]} ${points[0][1]}`;
+ for(let i=0;i<points.length-1;i++){
+  const p0=points[Math.max(0,i-1)],p1=points[i],p2=points[i+1],p3=points[Math.min(points.length-1,i+2)];
+  // Cardinal spline with tension 0.5; separate segments preserve missing sessions.
+  const k=1/12;
+  path+=` C ${(p1[0]+(p2[0]-p0[0])*k).toFixed(2)} ${(p1[1]+(p2[1]-p0[1])*k).toFixed(2)} ${(p2[0]-(p3[0]-p1[0])*k).toFixed(2)} ${(p2[1]-(p3[1]-p1[1])*k).toFixed(2)} ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+ }
+ return path;
+}
 function perfCombo1325(combo,kind){
  if(!combo)return '';
- if(kind!=='weekly')return perfComboHorizontal1328(combo,kind);
+
  const rows=combo.buckets,W=Math.max(780,rows.length*48+150),H=335,L=82,R=W-88,T=35,B=251;
  const maxV=Math.max(...rows.map(r=>r.volume||0),1)*1.12;
  const changes=rows.map(r=>r.index_change).filter(v=>v!=null),minP=Math.min(0,...changes),maxP=Math.max(0,...changes),pad=Math.max((maxP-minP)*.12,1),low=minP-pad,high=maxP+pad;
  const yP=v=>B-(v-low)/(high-low)*(B-T),yV=v=>B-v/maxV*(B-T),step=(R-L)/Math.max(1,rows.length);
- let svg=`<svg viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Index change in points as a line, and imported cash-market volume as stacked sector columns"><text class="performance-axis1325" x="${L}" y="17">Index change · points</text><text class="performance-axis1325" x="${R}" y="17" text-anchor="end">Volume · shares</text>`;
- for(let i=0;i<=4;i++){const yy=T+(B-T)*i/4;svg+=`<line class="performance-grid1325" x1="${L}" x2="${R}" y1="${yy}" y2="${yy}"/><text class="performance-axis1325" x="${L-8}" y="${yy+4}" text-anchor="end">${h(perfCompact1325(high-(high-low)*i/4))}</text><text class="performance-axis1325" x="${R+8}" y="${yy+4}">${h(perfCompact1325(maxV*(1-i/4)))}</text>`;}
- let path='',pen=false;
+ let svg=`<svg viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Index change in points as a line, and imported cash-market volume as stacked sector columns"><text class="performance-axis1325" x="${L}" y="17">Volume · shares</text><text class="performance-axis1325" x="${R}" y="17" text-anchor="end">Index change · points</text>`;
+ for(let i=0;i<=4;i++){const yy=T+(B-T)*i/4;svg+=`<line class="performance-grid1325" x1="${L}" x2="${R}" y1="${yy}" y2="${yy}"/><text class="performance-axis1325" x="${L-8}" y="${yy+4}" text-anchor="end">${h(perfCompact1325(maxV*(1-i/4)))}</text><text class="performance-axis1325" x="${R+8}" y="${yy+4}">${h(perfCompact1325(high-(high-low)*i/4))}</text>`;}
+ let segments=[],seg=[];
  rows.forEach((r,i)=>{const x=L+step*(i+.5);let cumulative=0;
   if(r.sectors){combo.sectors.forEach((s,j)=>{const v=r.sectors[s]||0,yy=yV(cumulative+v),hh=(B-T)*v/maxV;
    if(v)svg+=`<rect class="performance-stack1325" tabindex="0" x="${x-step*.29}" y="${yy}" width="${step*.58}" height="${hh}" fill="${perfStackColors1325[j%perfStackColors1325.length]}"><title>${h(fmtDate(r.date)+' · '+s+': '+fmtInt(v)+' shares')}</title></rect>`;cumulative+=v;});}
   else svg+=`<text class="performance-axis1325" x="${x}" y="${B-8}" text-anchor="middle">—</text>`;
-  if(r.index_change!=null){path+=`${pen?'L':'M'}${x},${yP(r.index_change)} `;pen=true;}else pen=false;
+  if(r.index_change!=null){seg.push([x,yP(r.index_change)]);}else if(seg.length){segments.push(seg);seg=[];}
   const label=kind==='weekly'||kind==='monthly'?fmtDate(r.date).replace(/ \d{4}$/,''):fmtDate(r.date).replace(/^\d+ /,'');
   svg+=`<text class="performance-category1325" transform="translate(${x},${B+22}) rotate(35)" text-anchor="start">${h(label)}</text>`;
  });
- svg+=`<path class="performance-line1325" d="${path}"/>`;
+ if(seg.length)segments.push(seg);const path=segments.map(perfCardinal1340).join(' ');
+ svg+=`<path class="index-line-halo1340" d="${path}"/><path class="performance-line1325" d="${path}"/>`;
  rows.forEach((r,i)=>{if(r.index_change!=null)svg+=`<circle class="performance-dot1325" tabindex="0" cx="${L+step*(i+.5)}" cy="${yP(r.index_change)}" r="4"><title>${h(fmtDate(r.date)+': '+fmtNum(r.index_change)+' points; '+(r.volume==null?'volume unavailable':fmtInt(r.volume)+' shares')+'; index date '+fmtDate(r.index_date)+'; baseline '+fmtDate(r.baseline_date))}</title></circle>`;});svg+='</svg>';
- return `<article class="card performance-combo1325"><header class="performance-chart-head1325"><h3>Index change &amp; sector volume</h3><span>${kind==='weekly'||kind==='monthly'?'Daily':'Monthly'} observations</span></header><div class="performance-legend1325"><span><i class="performance-line-key1325"></i>Index change · points (left axis)</span>${combo.sectors.map((s,j)=>`<span><i style="background:${perfStackColors1325[j%perfStackColors1325.length]}"></i>${h(s)}</span>`).join('')}</div><div class="performance-plot1325" tabindex="0" role="region" aria-label="Scrollable index change and volume chart">${svg}</div><p class="performance-note1325">${h(combo.volume_source)} (right axis). Missing observations are gaps, not zero. Index changes use each bucket’s last close versus the last stored close before it began.</p><details class="performance-data1325" data-chart="combo" ontoggle="perfData1325(this)"><summary>Chart data &amp; source dates</summary><div class="performance-table1325"></div></details></article>`;
+ return `<article class="card performance-combo1325"><header class="performance-chart-head1325"><h3>Index change &amp; sector volume</h3><span>${kind==='weekly'||kind==='monthly'?'Daily':'Monthly'} observations</span></header><div class="performance-legend1325"><span><i class="performance-line-key1325"></i>Index change · points (right axis)</span>${combo.sectors.map((s,j)=>`<span><i style="background:${perfStackColors1325[j%perfStackColors1325.length]}"></i>${h(s)}</span>`).join('')}</div><div class="performance-plot1325" tabindex="0" role="region" aria-label="Scrollable index change and volume chart">${svg}</div><p class="performance-note1325">${h(combo.volume_source)} (left axis). Missing observations are gaps, not zero. Index changes use each bucket’s last close versus the last stored close before it began.</p><details class="performance-data1325" data-chart="combo" ontoggle="perfData1325(this)"><summary>Chart data &amp; source dates</summary><div class="performance-table1325"></div></details></article>`;
 }
 // Horizontal sector stacks with an index-point line; weekly retains its original chart.
 function perfComboHorizontal1328(combo,kind){

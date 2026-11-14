@@ -1,3 +1,5 @@
+> **WORK IN PROGRESS — NOT A RELEASE:** See `WORK_IN_PROGRESS_README.txt` and `MASTER_PROJECT_CONTEXT_DOCUMENT.md` for current status, test failures, safety and omissions. Historical release notes below do not describe this working copy.
+
 # PSX Intelligence v1.3.38
 
 A historical-data dashboard hosted on **GitHub → Vercel → Aiven PostgreSQL**.

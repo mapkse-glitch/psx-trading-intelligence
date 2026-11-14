@@ -71,7 +71,7 @@ async def lifespan(app_instance: FastAPI):
 app = FastAPI(
     title="PSX Trading Intelligence Dashboard",
     description="PostgreSQL / Legacy Turso / Local Development Pakistan Stock Exchange Trading, Futures, Volume Register & Technical Intelligence Platform",
-    version="1.3.38",
+    version="1.3.40-wip",
     lifespan=lifespan,
 )
 
