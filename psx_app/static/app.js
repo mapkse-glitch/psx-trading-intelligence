@@ -97,6 +97,9 @@ const VIEW_TITLES = {
   reconciliation: "08 • Data Quality & Legacy Reconciliation",
   exports: "09 • Exports & reports",
   performance: "10 • Market Performance",
+  companyrecords: "Alphabetical Company Records",
+  topvolumes: "Top Symbol Volumes",
+  records: "Records",
   settings: "11 • Settings, Rule Versioning & Database Backup",
   highlow: "12 • Symbol High-Low Analysis",
   monthlysector: "13 • Monthly Sector Performance",
@@ -240,6 +243,9 @@ async function switchView(view) {
     else if (view === "technical") await renderTechnicalView(container);
     else if (view === "market") await renderMarketView(container);
     else if (view === "performance") await renderPerformance1325(container);
+    else if (view === "companyrecords") await renderCompanyRecords1339(container);
+    else if (view === "topvolumes") await renderTopVolume1339(container);
+    else if (view === "records") await renderRecords1339(container);
     else if (view === "highlow") await renderAnalytics1335(container,'high');
     else if (view === "monthlysector") await renderAnalytics1335(container,'sector');
     else if (view === "monthlyindex") await renderAnalytics1335(container,'index');
@@ -1748,8 +1754,8 @@ function switchFuturesTab1324(tab){clearCalendarNotice1311();state.futures.subta
 function lastFuturesData1324(report){
  const text=escapeHtml;
  const price=v=>fmtNum(v),pct=v=>fmtPct(v,false);
- const cells=report.rows.map(r=>`<tr><td><b>${text(r.symbol)}</b></td><td><span class="badge badge-blue" title="${text(r.contract_symbol)}">${text(r.contract)}</span><small class="last-contract-date1324">${r.rule_date?'Last Fri '+fmtDate(r.rule_date):'Rule date unavailable'}</small></td><td class="num">${price(r.current_value)}</td><td class="num">${fmtInt(r.current_volume)}</td><td class="num">${price(r.future_value)}</td><td class="num">${fmtInt(r.future_volume)}</td><td class="num pos">${price(r.high)}</td><td class="num neg">${price(r.low)}</td><td class="num ${pnlClass(r.difference)}">${price(r.difference)}</td><td class="num ${pnlClass(r.difference_pct)}">${pct(r.difference_pct)}</td><td class="num last-days1324" title="${text(r.rule_date?`${r.days_status==='EXPIRED'?'Passed rule date. ':''}Calendar days from ${fmtDate(r.trade_date)} to ${fmtDate(r.rule_date)}${r.year_inferred?' · Year inferred from data month':''}`:'Unrecognized contract month/year')}">${fmtInt(r.days)}</td><td class="num ${pnlClass(r.annualized_pct)}" title="${r.annualized_pct==null?'Unavailable: a positive cash close and positive Days with a known rule date are required.':'Difference % × 365 ÷ Days'}">${pct(r.annualized_pct)}</td></tr>`).join('');
- return `<div class="last-data-summary1324"><section class="card"><span class="eyebrow">Latest imported futures data</span><strong class="last-data-date1324">${report.latest_date?fmtDate(report.latest_date):'Not available'}</strong><span class="badge ${report.latest_date?'badge-green':'badge-amber'}">${report.latest_date?'Auto · latest available':'Awaiting import'}</span></section><section class="card"><span class="eyebrow">Contracts on this date</span><strong>${fmtInt(report.rows_count)}</strong><span>Symbol A–Z · each contract retained</span></section><section class="card"><span class="eyebrow">Same-date cash matches</span><strong>${fmtInt(report.same_date_spot_count)} / ${fmtInt(report.rows_count)}</strong><span>No earlier or later cash price substituted</span></section></div><section class="card"><div class="card-header"><div><h3 class="card-title">Last Data — Futures Comparison</h3><p class="card-subtitle">Prices in PKR · Volume = cash volume · High/Low = futures prices. Days count calendar days from the displayed data date to each contract month’s last Friday.</p></div><button class="btn btn-secondary" onclick="renderFuturesView(document.getElementById('viewContainer'))">Refresh latest</button></div>${!report.latest_date?'<p class="last-data-note1324">No imported futures data yet. Import your authentic futures file to populate this view.</p>':''}<div class="table-wrap last-data-table1324" tabindex="0" role="region" aria-label="Scrollable latest futures comparison"><table class="data-table"><thead><tr>${['Symbol','Contract/Month','Current Value','Volume','Future Value','Future Volume','High','Low','Difference','Difference %','Days','Annualized %'].map((label,i)=>`<th${i>1?' class="num"':''}>${label}</th>`).join('')}</tr></thead><tbody>${cells||'<tr><td colspan="12">No futures records available.</td></tr>'}</tbody></table></div><p class="last-data-note1324">Annualized % = Difference % × 365 ÷ Days. Zero/expired Days or unknown rule dates are not annualized.${report.year_inferred_count?' Yearless months use the next occurrence from the data date, including the current month.':''}${report.missing_same_date_spot_count?' Missing cash matches remain unavailable.':''}</p></section>`;
+ const cells=report.rows.map(r=>`<tr><td><b>${text(r.symbol)}</b></td><td><span class="badge badge-blue" title="${text(r.contract_symbol)}">${text(r.contract)}</span><small class="last-contract-date1324">${r.rule_date?'Last Fri '+fmtDate(r.rule_date):'Rule date unavailable'}</small></td><td class="num">${price(r.current_value)}</td><td class="num">${fmtInt(r.current_volume)}</td><td class="num">${price(r.future_value)}</td><td class="num">${fmtInt(r.future_volume)}</td><td class="num">${r.future_vs_ready_pct==null?'N/A':fmtPct(r.future_vs_ready_pct,false)}</td><td class="num pos">${price(r.high)}</td><td class="num neg">${price(r.low)}</td><td class="num ${pnlClass(r.difference)}">${price(r.difference)}</td><td class="num ${pnlClass(r.difference_pct)}">${pct(r.difference_pct)}</td><td class="num last-days1324" title="${text(r.rule_date?`${r.days_status==='EXPIRED'?'Passed rule date. ':''}Calendar days from ${fmtDate(r.trade_date)} to ${fmtDate(r.rule_date)}${r.year_inferred?' · Year inferred from data month':''}`:'Unrecognized contract month/year')}">${fmtInt(r.days)}</td><td class="num ${pnlClass(r.annualized_pct)}" title="${r.annualized_pct==null?'Unavailable: a positive cash close and positive Days with a known rule date are required.':'Difference % × 365 ÷ Days'}">${pct(r.annualized_pct)}</td></tr>`).join('');
+ return `<div class="last-data-summary1324"><section class="card"><span class="eyebrow">Latest imported futures data</span><strong class="last-data-date1324">${report.latest_date?fmtDate(report.latest_date):'Not available'}</strong><span class="badge ${report.latest_date?'badge-green':'badge-amber'}">${report.latest_date?'Auto · latest available':'Awaiting import'}</span></section><section class="card"><span class="eyebrow">Contracts on this date</span><strong>${fmtInt(report.rows_count)}</strong><span>Symbol A–Z · each contract retained</span></section><section class="card"><span class="eyebrow">Same-date cash matches</span><strong>${fmtInt(report.same_date_spot_count)} / ${fmtInt(report.rows_count)}</strong><span>No earlier or later cash price substituted</span></section></div><section class="card"><div class="card-header"><div><h3 class="card-title">Last Data — Futures Comparison</h3><p class="card-subtitle">Prices in PKR · Volume = cash volume · High/Low = futures prices. Days count calendar days from the displayed data date to each contract month’s last Friday.</p></div><button class="btn btn-secondary" onclick="renderFuturesView(document.getElementById('viewContainer'))">Refresh latest</button></div>${!report.latest_date?'<p class="last-data-note1324">No imported futures data yet. Import your authentic futures file to populate this view.</p>':''}<div class="table-wrap last-data-table1324" tabindex="0" role="region" aria-label="Scrollable latest futures comparison"><table class="data-table"><thead><tr>${['Symbol','Contract/Month','Current Value','Ready Volume','Future Value','Future Volume','Future vs Ready Volume (%)','High','Low','Difference','Difference %','Days','Annualized %'].map((label,i)=>`<th${i>1?' class="num"':''}>${label}</th>`).join('')}</tr></thead><tbody>${cells||'<tr><td colspan="13">No futures records available.</td></tr>'}</tbody></table></div><p class="last-data-note1324">Annualized % = Difference % × 365 ÷ Days. Zero/expired Days or unknown rule dates are not annualized.${report.year_inferred_count?' Yearless months use the next occurrence from the data date, including the current month.':''}${report.missing_same_date_spot_count?' Missing cash matches remain unavailable.':''}</p></section>`;
 }
 
 async function renderFuturesView(container) {
@@ -1983,7 +1989,7 @@ async function renderFuturesView(container) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>DATE</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
+              <tr><th>DATE</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">Ready Volume</th><th class="num">Future Volume</th><th class="num">Future vs Ready Volume (%)</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
               ${TableDisplay.newestFirst(res.rows, r => r.DATE).map((r) => `
@@ -1995,7 +2001,9 @@ async function renderFuturesView(container) {
                   <td class="num">${fmtNum(r.LOW)}</td>
                   <td class="num">${fmtNum(r.AVG)}</td>
                   <td class="num">${fmtNum(r.CLOSE)}</td>
+                  <td class="num">${r.READY_VOLUME==null?'N/A':fmtInt(r.READY_VOLUME)}</td>
                   <td class="num">${fmtInt(r.VOLUME)}</td>
+                  <td class="num">${r.FUTURE_VS_READY_PCT==null?'N/A':fmtPct(r.FUTURE_VS_READY_PCT,false)}</td>
                   <td class="num ${pnlClass(r.Change)}">${fmtNum(r.Change)}</td>
                 </tr>
               `).join("")}
@@ -2025,7 +2033,7 @@ async function renderFuturesView(container) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>DATE</th><th>SYMBOL</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">VOLUME</th><th class="num">Change</th></tr>
+              <tr><th>DATE</th><th>SYMBOL</th><th class="num">PR_CL</th><th class="num">OPEN</th><th class="num">High</th><th class="num">LOW</th><th class="num">AVG</th><th class="num">CLOSE</th><th class="num">Ready Volume</th><th class="num">Future Volume</th><th class="num">Future vs Ready Volume (%)</th><th class="num">Change</th></tr>
             </thead>
             <tbody>
               ${TableDisplay.newestFirst(res.rows, r => r.DATE).map((r) => `
@@ -2038,7 +2046,9 @@ async function renderFuturesView(container) {
                   <td class="num">${fmtNum(r.LOW)}</td>
                   <td class="num">${fmtNum(r.AVG)}</td>
                   <td class="num">${fmtNum(r.CLOSE)}</td>
+                  <td class="num">${r.READY_VOLUME==null?'N/A':fmtInt(r.READY_VOLUME)}</td>
                   <td class="num">${fmtInt(r.VOLUME)}</td>
+                  <td class="num">${r.FUTURE_VS_READY_PCT==null?'N/A':fmtPct(r.FUTURE_VS_READY_PCT,false)}</td>
                   <td class="num ${pnlClass(r.Change)}">${fmtNum(r.Change)}</td>
                 </tr>
               `).join("")}
@@ -2079,7 +2089,7 @@ function renderFuturesComparisonTableCard(title, subtitle, rows) {
             <tr>
               <th>Date</th><th>Symbol</th><th>Contract/Month</th>
               <th class="num">Current Value</th><th class="num">Future Value</th>
-              <th class="num">Volume</th><th class="num">High</th><th class="num">Low</th>
+              <th class="num">Ready Volume</th><th class="num">Future Volume</th><th class="num">Future vs Ready Volume (%)</th><th class="num">High</th><th class="num">Low</th>
               <th class="num">Difference</th><th class="num">Difference %</th>
               <th class="num">Days</th><th class="num">Annualized %</th>
             </tr>
@@ -2092,7 +2102,9 @@ function renderFuturesComparisonTableCard(title, subtitle, rows) {
                 <td><span class="badge badge-blue">${r.contract}</span></td>
                 <td class="num">${fmtNum(r.current_value)}</td>
                 <td class="num">${fmtNum(r.future_value)}</td>
-                <td class="num">${fmtInt(r.volume)}</td>
+                <td class="num">${r.ready_volume==null?'N/A':fmtInt(r.ready_volume)}</td>
+                <td class="num">${fmtInt(r.future_volume)}</td>
+                <td class="num">${r.future_vs_ready_pct==null?'N/A':fmtPct(r.future_vs_ready_pct,false)}</td>
                 <td class="num">${fmtNum(r.high)}</td>
                 <td class="num">${fmtNum(r.low)}</td>
                 <td class="num ${pnlClass(r.difference)}">${r.difference > 0 ? "+" : ""}${fmtNum(r.difference)}</td>

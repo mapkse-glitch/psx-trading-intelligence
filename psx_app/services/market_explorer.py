@@ -45,8 +45,11 @@ class MarketExplorer:
             if not history:
                 return {'status': 'NO_DATA', 'rows': [], 'index_rows': []}
             rows = history[:n]
-            from psx_app.services.new_closing1338 import new_closing_high
+            from psx_app.services.new_closing1338 import new_closing_high, closing_ath_record, is_closing_ath
             rows[0]['new_closing_high'] = new_closing_high(c, symbol, rows[0])
+            ath = closing_ath_record(c, symbol)
+            for row in rows:
+                row['closing_ath'] = is_closing_ath(row, ath)
             first, last = rows[-1]['trade_date'], rows[0]['trade_date']
             prev = history[n] if len(history) > n else None
             anchor = date.fromisoformat(last)

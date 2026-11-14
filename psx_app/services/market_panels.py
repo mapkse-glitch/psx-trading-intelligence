@@ -36,6 +36,9 @@ class MarketPanels:
             if not latest:
                 return {'status':'NO_DATA','symbol':symbol,'rows':[],'latest':None,'latest_index':None}
             latest = dict(latest)
+            from psx_app.services.new_closing1338 import closing_ath_record, is_closing_ath
+            ath = closing_ath_record(c, symbol)
+            latest['closing_ath'] = is_closing_ath(latest, ath)
             cutoff = month_before(latest['trade_date'])
             index = c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC LIMIT 1', (latest['trade_date'],)).fetchone()
             index = dict(index) if index else None
@@ -54,6 +57,8 @@ class MarketPanels:
             dates = [r['trade_date'] for r in rows]
             indices = {r['trade_date']:dict(r) for r in c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date IN ('+','.join('?' for _ in dates)+')', dates)} if dates else {}
         for row in rows:
+            row['closing_ath'] = is_closing_ath(row, ath)
+            row['latest_closing_ath'] = latest['closing_ath']
             old_index = indices.get(row['trade_date'])
             row.update(latest_close=latest['close'], latest_index_close=index['close'] if index else None,
                        close_difference=difference(latest['close'], row['close']),
@@ -87,6 +92,9 @@ class MarketPanels:
             if not latest:
                 return {'status':'NO_DATA','symbol':symbol,'rows':[],'latest':None,'latest_index':None,'total':0,'page':page,'page_size':page_size,'include_recent':include_recent}
             latest = dict(latest)
+            from psx_app.services.new_closing1338 import closing_ath_record, is_closing_ath
+            ath = closing_ath_record(c, symbol)
+            latest['closing_ath'] = is_closing_ath(latest, ath)
             cutoff = month_before(latest['trade_date'])
             idx = c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date<=? ORDER BY trade_date DESC LIMIT 1', (latest['trade_date'],)).fetchone()
             idx = dict(idx) if idx else None
@@ -105,6 +113,8 @@ class MarketPanels:
               ORDER BY ABS(h.close-?),h.trade_date DESC LIMIT ? OFFSET ?''',
               (symbol,latest['trade_date'],date_limit,low,high,latest['close'],page_size,(page-1)*page_size))]
         for row in rows:
+            row['closing_ath'] = is_closing_ath(row, ath)
+            row['latest_closing_ath'] = latest['closing_ath']
             row.update(latest_close=latest['close'],latest_index_close=idx['close'] if idx else None,
                        close_difference=difference(latest['close'],row['close']),
                        index_difference=difference(idx['close'] if idx else None,row['index_close']))

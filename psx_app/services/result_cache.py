@@ -15,8 +15,14 @@ from zoneinfo import ZoneInfo
 
 # Only reports whose response shape changed need a new cache namespace.
 CACHE_VERSION_OVERRIDES = {
-    'psx_app.services.market_explorer.MarketExplorer.symbol': '1.3.38',
-    'psx_app.services.symbol_insights.SymbolInsights.report_v1333': '1.3.38',
+    'psx_app.services.performance_comparison.PerformanceComparison.report': '1.3.39-ath',
+    'psx_app.services.market_panels.MarketPanels.matching': '1.3.39-ath',
+    'psx_app.services.futures_service.FuturesService.get_last_data': '1.3.39',
+    'psx_app.services.futures_service.FuturesService.get_comparison_rows': '1.3.39',
+    'psx_app.services.futures_service.FuturesService.get_future_symbol_summary': '1.3.39',
+    'psx_app.services.futures_service.FuturesService.get_date_summary': '1.3.39',
+    'psx_app.services.market_explorer.MarketExplorer.symbol': '1.3.39-ath',
+    'psx_app.services.symbol_insights.SymbolInsights.report_v1333': '1.3.39-ath',
     'psx_app.services.market_analytics1335.MarketAnalytics1335.sector_monthly': '1.3.38',
 }
 

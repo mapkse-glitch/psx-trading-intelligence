@@ -48,7 +48,18 @@ class PerformanceComparison:
             maps={s:{} for s in symbols}
             for r in rs:maps[r['symbol']][r['trade_date']]=r['close']
             idx={r['trade_date']:r['close'] for r in c.execute('SELECT trade_date,close FROM index_ohlcv WHERE trade_date>=? AND trade_date<=? ORDER BY trade_date',(start,end))}
+            from psx_app.services.new_closing1338 import closing_ath_record
+            ath = {symbol:closing_ath_record(c,symbol) for symbol in set(symbols)}
             days={r[0] for r in c.execute('SELECT DISTINCT trade_date FROM equity_ohlcv WHERE trade_date>=? AND trade_date<=?',(start,end))};days.update(idx)
         dates=sorted(days)
-        return {'start_requested':start,'end_requested':end,'stock_pair':compare(dates,maps[symbols[0]],maps[symbols[1]],symbols[:2]),
-                'index_pair':compare(dates,maps[symbols[2]],idx,[symbols[2],'Imported index'])}
+        stock_pair=compare(dates,maps[symbols[0]],maps[symbols[1]],symbols[:2])
+        index_pair=compare(dates,maps[symbols[2]],idx,[symbols[2],'Imported index'])
+        from psx_app.services.new_closing1338 import is_closing_ath
+        for pair, names in ((stock_pair,symbols[:2]),(index_pair,[symbols[2],None])):
+            if pair['status']!='OK': continue
+            for i,symbol in enumerate(names):
+                record=ath.get(symbol) if symbol else None
+                for label in ('start','latest'):
+                    day=pair['start'] if label=='start' else pair['end']
+                    pair['stats'][i][label+'_closing_ath']=is_closing_ath({'trade_date':day,'close':pair['stats'][i][label]},record)
+        return {'start_requested':start,'end_requested':end,'stock_pair':stock_pair,'index_pair':index_pair}
