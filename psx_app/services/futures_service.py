@@ -1,6 +1,7 @@
 from psx_app.services.result_cache import persisted_result
 from datetime import date, datetime, timedelta
 import calendar
+import math
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -37,6 +38,10 @@ def contract_last_friday(contract_month: str, as_of: str) -> Dict[str, Any]:
             'year_inferred':explicit is None,
             'days_status':'EXPIRED' if remaining<0 else 'RULE_DAY' if remaining==0 else 'OPEN'}
 
+
+def future_vs_ready(future, ready):
+    if not isinstance(future,(int,float)) or not isinstance(ready,(int,float)) or not math.isfinite(future) or not math.isfinite(ready) or future<0 or ready<=0:return None
+    return future/ready*100
 
 class FuturesService:
     """
@@ -80,7 +85,7 @@ class FuturesService:
             pct = diff/spot*100 if valid else None
             days = horizon['days']
             ann = pct*365/days if pct is not None and days is not None and days > 0 else None
-            rows.append({**item,**horizon,'difference':diff,'difference_pct':pct,'annualized_pct':ann})
+            rows.append({**item,**horizon,'future_vs_ready_pct':future_vs_ready(item['future_volume'],item['current_volume']),'difference':diff,'difference_pct':pct,'annualized_pct':ann})
         rows.sort(key=lambda r:(r['symbol'].casefold(),r['rule_date'] or '9999-12-31',r['contract'].casefold(),r['contract_symbol']))
         return {'view':'last_data','latest_date':raw[0]['trade_date'] if raw else None,
                 'rows':rows,'rows_count':len(rows),
@@ -275,6 +280,7 @@ class FuturesService:
                 f.contract_month AS contract,
                 f.contract_symbol,
                 e.close AS current_value,
+                e.volume AS ready_volume,
                 f.close AS future_value,
                 f.volume AS volume,
                 f.high AS high,
@@ -308,6 +314,9 @@ class FuturesService:
                     "current_value": curr if (curr is not None and curr > 0) else "N/A",
                     "future_value": fut if fut is not None else "N/A",
                     "volume": vol if vol is not None else "N/A",
+                    "ready_volume": item["ready_volume"],
+                    "future_volume": vol,
+                    "future_vs_ready_pct": future_vs_ready(vol,item["ready_volume"]),
                     "high": hi if hi is not None else "N/A",
                     "low": lo if lo is not None else "N/A",
                     "difference": "N/A",
@@ -328,6 +337,9 @@ class FuturesService:
                     "current_value": curr,
                     "future_value": fut,
                     "volume": vol if vol is not None else "N/A",
+                    "ready_volume": item["ready_volume"],
+                    "future_volume": vol,
+                    "future_vs_ready_pct": future_vs_ready(vol,item["ready_volume"]),
                     "high": hi if hi is not None else "N/A",
                     "low": lo if lo is not None else "N/A",
                     "difference": diff,
@@ -395,8 +407,9 @@ class FuturesService:
                 dict(r)
                 for r in c.execute(
                     f"""
-                    SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume
-                    FROM futures_ohlcv
+                    SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume, ready_volume
+                    FROM (SELECT f.trade_date,f.contract_symbol,f.pr_close,f.open,f.high,f.low,f.avg_price,f.close,f.volume,e.volume AS ready_volume
+                          FROM futures_ohlcv f LEFT JOIN equity_ohlcv e ON e.trade_date=f.trade_date AND e.symbol=f.base_symbol) joined
                     {where_sql}
                     ORDER BY trade_date ASC, contract_symbol ASC
                     """,
@@ -419,6 +432,8 @@ class FuturesService:
                 "AVG": r["avg_price"] if r["avg_price"] is not None else "N/A",
                 "CLOSE": cl if cl is not None else "N/A",
                 "VOLUME": r["volume"] if r["volume"] is not None else "N/A",
+                "READY_VOLUME": r["ready_volume"],
+                "FUTURE_VS_READY_PCT": future_vs_ready(r["volume"],r["ready_volume"]),
                 "Change": chg,
             })
 
@@ -470,8 +485,9 @@ class FuturesService:
                 dict(r)
                 for r in c.execute(
                     f"""
-                    SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume
-                    FROM futures_ohlcv
+                    SELECT trade_date, contract_symbol, pr_close, open, high, low, avg_price, close, volume, ready_volume
+                    FROM (SELECT f.trade_date,f.contract_symbol,f.pr_close,f.open,f.high,f.low,f.avg_price,f.close,f.volume,e.volume AS ready_volume
+                          FROM futures_ohlcv f LEFT JOIN equity_ohlcv e ON e.trade_date=f.trade_date AND e.symbol=f.base_symbol) joined
                     {where_sql}
                     ORDER BY contract_symbol ASC, trade_date ASC
                     """,
@@ -494,6 +510,8 @@ class FuturesService:
                 "AVG": r["avg_price"] if r["avg_price"] is not None else "N/A",
                 "CLOSE": cl if cl is not None else "N/A",
                 "VOLUME": r["volume"] if r["volume"] is not None else "N/A",
+                "READY_VOLUME": r["ready_volume"],
+                "FUTURE_VS_READY_PCT": future_vs_ready(r["volume"],r["ready_volume"]),
                 "Change": chg,
             })
 

@@ -64,8 +64,13 @@ class SymbolInsights:
                 if row['trade_date']>ANCHOR:add(windows['after_anchor'],row)
                 if row['trade_date']==ANCHOR:anchor=row
             if latest is None:return {'status':'NO_DATA','symbol':symbol,'requested':sessions}
-            from psx_app.services.new_closing1338 import new_closing_high
+            from psx_app.services.new_closing1338 import new_closing_high, closing_ath_record, is_closing_ath
             latest['new_closing_high'] = new_closing_high(c, symbol, latest)
+            ath = closing_ath_record(c, symbol)
+            latest['closing_ath'] = is_closing_ath(latest, ath)
+            for window in windows.values():
+                item = window['metrics']['max_close']
+                item['closing_ath'] = is_closing_ath({'trade_date': item['date'], 'close': item['value']}, ath)
             refs=[dict(r) for r in c.execute('SELECT list_name,company,sector FROM company_reference WHERE symbol=? ORDER BY list_name',(symbol,))]
             def rank(r):
                 n=''.join(ch for ch in r['list_name'].lower() if ch.isalnum())

@@ -23,6 +23,30 @@ def daily_summary(date:str|None=Query(None,max_length=10)):
     try:return DailySummary(DB_PATH).report(date)
     except ValueError as error:raise HTTPException(422,str(error))
 
+@router.get('/market/daily-volume-index')
+def daily_volume_index_route(start:str=Query(...,max_length=10),end:str=Query(...,max_length=10)):
+    from psx_app.services.volume_index1339 import daily_volume_index
+    try:return daily_volume_index(DB_PATH,start,end)
+    except ValueError as error:raise HTTPException(422,str(error))
+
+@router.get('/records/new-highs')
+def new_highs_route(date:str=Query(...,max_length=10)):
+    from psx_app.services.records1339 import new_highs
+    try:return new_highs(DB_PATH,date)
+    except ValueError as error:raise HTTPException(422,str(error))
+
+@router.get('/top-symbol-volumes')
+def top_symbol_volumes_route(date:str=Query(...,max_length=10),symbol:str=Query('',max_length=24)):
+    from psx_app.services.top_volume1339 import top_volumes
+    try:return top_volumes(DB_PATH,date,symbol)
+    except ValueError as error:raise HTTPException(422,str(error))
+
+@router.get('/company-records')
+def company_records_route(letter:str='A',sort:str='company',direction:str='asc',page:int=Query(1,ge=1)):
+    from psx_app.services.company_records1339 import company_records
+    try:return company_records(DB_PATH,letter,sort,direction,page)
+    except ValueError as error:raise HTTPException(422,str(error))
+
 @router.get('/market/symbol/{symbol}')
 def symbol(symbol:str,n:int=Query(50,ge=1,le=6000),end:str|None=None):return MarketExplorer(DB_PATH).symbol(symbol,n,end)
 from psx_app.services.market_panels import MarketPanels
