@@ -1479,3 +1479,50 @@ body{font-size:15px;line-height:1.5}
 
 /* Narrow chart viewports retain a visible horizontal-scroll cue. */
 .chart-scroll-hint1341{display:none}@media(max-width:650px){.chart-scroll-hint1341{display:block;color:var(--text-muted);font-size:12px;margin:8px 0}}
+
+/* Optional neumorphic design. Classic remains the default and all overrides are scoped. */
+:root[data-design="neumorphic"][data-theme="light"] {
+  --bg-dark:#dbe7f1; --bg-sidebar:#e1ebf4; --bg-card:#e6eef6;
+  --bg-card-alt:#d9e5f0; --bg-card-hover:#d0dfec; --bg-input:#e7eff7;
+  --border-color:#c1d0df; --border-highlight:#7398c6;
+  --text-main:#142b4b; --text-muted:#425b7a;
+  --accent-blue:#245aab; --accent-cyan:#245aab; --accent-indigo:#245aab;
+  --separator-color:#c2d2e1;
+  --neo-shadow:6px 6px 14px #bdcddc, -6px -6px 14px #f7fbff;
+  --neo-inset:inset 3px 3px 7px #c0cfdd, inset -3px -3px 7px #f8fcff;
+  --neo-control:3px 3px 7px #c2d0de, -3px -3px 7px #f8fcff;
+}
+:root[data-design="neumorphic"][data-theme="dark"] {
+  --bg-dark:#192738; --bg-sidebar:#1d2d40; --bg-card:#223349;
+  --bg-card-alt:#1a2b3e; --bg-card-hover:#2a4059; --bg-input:#1b2b3e;
+  --border-color:#40546a; --border-highlight:#88b7ef;
+  --text-main:#eef5ff; --text-muted:#bdcde0;
+  --accent-blue:#9bc6ff; --accent-cyan:#9bc6ff; --accent-indigo:#9bc6ff;
+  --separator-color:#40546a;
+  --neo-shadow:6px 6px 14px #111c2a, -6px -6px 14px #293c53;
+  --neo-inset:inset 3px 3px 7px #142132, inset -3px -3px 7px #2b4057;
+  --neo-control:3px 3px 7px #132031, -3px -3px 7px #2b4057;
+}
+:root[data-design="neumorphic"] body {background:var(--bg-dark)}
+:root[data-design="neumorphic"] .sidebar {border-color:var(--border-color)}
+:root[data-design="neumorphic"] .brand-header {background:transparent;border-color:var(--separator-color)}
+:root[data-design="neumorphic"] .brand-logo.brand-mark1333 {background:var(--bg-card);padding:3px;border-radius:12px;box-shadow:var(--neo-control)}
+:root[data-design="neumorphic"] .topbar {background:var(--bg-sidebar);border-color:var(--separator-color)}
+:root[data-design="neumorphic"] :is(.card,.card-hero,.kpi-box),
+:root[data-design="neumorphic"] :is(.card,.card-hero,.kpi-box):hover {background:var(--bg-card);border:1px solid var(--border-color);border-radius:14px;box-shadow:var(--neo-shadow);transform:none;transition:none}
+:root[data-design="neumorphic"] .btn-secondary,
+:root[data-design="neumorphic"] .subtab-btn {background:var(--bg-card);border-color:var(--border-color);border-radius:10px;box-shadow:var(--neo-control)!important;color:var(--text-main)}
+:root[data-design="neumorphic"] .nav-btn.active,
+:root[data-design="neumorphic"] .subtab-btn.active,
+:root[data-design="neumorphic"] [data-design-toggle][aria-pressed="true"] {background:var(--bg-card-alt);color:var(--accent-blue);border-color:var(--border-highlight);box-shadow:var(--neo-inset)!important}
+:root[data-design="neumorphic"] :is(input:not([type="checkbox"]):not([type="file"]),select,textarea) {background-color:var(--bg-input);border-color:var(--border-color);box-shadow:var(--neo-inset);border-radius:9px;color:var(--text-main)}
+:root[data-design="neumorphic"] .table-wrap {border-radius:10px}
+:root[data-design="neumorphic"] .mobile-utilities>div {background:var(--bg-card);box-shadow:var(--neo-shadow)}
+:root[data-design="neumorphic"] :is(.btn,.nav-btn,.subtab-btn):focus-visible {outline:3px solid var(--accent-blue)!important;outline-offset:3px}
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  :root[data-design="neumorphic"] :is(.btn,.subtab-btn):not(:disabled) {transition:transform .14s ease,background-color .14s ease}
+  :root[data-design="neumorphic"] :is(.btn,.subtab-btn):not(:disabled):hover {transform:translateY(-1px)}
+}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-design="neumorphic"] :is(.btn,.nav-btn,.subtab-btn,.sidebar) {transition:none!important;animation:none!important}
+}

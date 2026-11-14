@@ -2838,15 +2838,32 @@ document.addEventListener('keydown', event => {
   }
 });
 function setTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  document.getElementById('themeToggle').textContent = theme==='dark' ? 'Light mode' : 'Dark mode';
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  document.querySelectorAll('[data-mode-toggle]').forEach(button => {
+    button.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  });
 }
 function toggleTheme() {
-  const theme = document.documentElement.dataset.theme==='dark'?'light':'dark';
-  localStorage.setItem('psx_theme',theme); setTheme(theme);
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('psx_theme', theme); } catch (_) {}
+  setTheme(theme);
+}
+function setDesign(design) {
+  const enabled = design === 'neumorphic';
+  document.documentElement.dataset.design = enabled ? 'neumorphic' : 'classic';
+  document.querySelectorAll('[data-design-toggle]').forEach(button => {
+    button.textContent = `Neumorphism: ${enabled ? 'On' : 'Off'}`;
+    button.setAttribute('aria-pressed', String(enabled));
+  });
+}
+function toggleDesign() {
+  const design = document.documentElement.dataset.design === 'neumorphic' ? 'classic' : 'neumorphic';
+  try { localStorage.setItem('psx_design', design); } catch (_) {}
+  setDesign(design);
 }
 async function bootWorkspace() {
-  setTheme(localStorage.getItem('psx_theme') || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  setTheme(document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  setDesign(document.documentElement.dataset.design);
   await verifyWorkspaceFreshness(false);
   await switchView('overview');
   updateSystemStatus();
