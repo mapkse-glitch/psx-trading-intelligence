@@ -1,7 +1,7 @@
 /* v1.3.9: accountable analysis and native market explorer. No external chart/CDN/API. */
 state.technical.subtab='ideas';
 state.market={tab:'volume',date:null,n:10,symbol:'PRL',days:14};
-VIEW_TITLES.market='09 • Market Explorer — Volume & Symbol vs Index';
+VIEW_TITLES.market='08 • Market Explorer — Volume & Symbol vs Index';
 let analystTimer, analystGeneration=0, ideasGeneration=0;
 const h=escapeHtml;
 async function post139(path,data) {

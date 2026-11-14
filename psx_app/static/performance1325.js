@@ -29,6 +29,11 @@ function perfCardinal1340(points){
 }
 function perfCombo1325(combo,kind){
  if(!combo)return '';
+ if(['weekly','monthly','quarterly'].includes(kind)){
+  const label=kind==='quarterly'?'Monthly':'Daily';
+  const graph=volumeIndexGraph1339(combo.buckets,{label:'Index change and sector volume',xLabel:kind==='quarterly'?'Period start':'Trading date'});
+  return `<article class="card performance-combo1325"><header class="performance-chart-head1325"><h3>Index change &amp; sector volume</h3><span>${label} observations</span></header><div class="analytic-legend1335"><span class="pos">■ Index up</span> · <span class="neg">■ Index down</span> · ■ Unchanged or unavailable · <span><span class="index-key1340" aria-hidden="true">━</span> Index change</span></div><p class="chart-scroll-hint1341">Swipe the chart to see more dates and the index axis →</p><div class="analytic-plot1335" tabindex="0" role="region" aria-label="Scrollable index change and sector volume chart">${graph}</div><p class="performance-note1325">Imported cash-market volume by period (left axis); sector breakdown is in the chart data below. Index change is on the right axis. Missing observations are gaps, not zero.</p><details class="performance-data1325" data-chart="combo" ontoggle="perfData1325(this)"><summary>Chart data &amp; source dates</summary><div class="performance-table1325"></div></details></article>`;
+ }
 
  const rows=combo.buckets,W=Math.max(780,rows.length*48+150),H=335,L=82,R=W-88,T=35,B=251;
  const maxV=Math.max(...rows.map(r=>r.volume||0),1)*1.12;

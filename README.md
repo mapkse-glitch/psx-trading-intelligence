@@ -1,4 +1,4 @@
-> **WORK IN PROGRESS — NOT A RELEASE:** See `WORK_IN_PROGRESS_README.txt` and `MASTER_PROJECT_CONTEXT_DOCUMENT.md` for current status, test failures, safety and omissions. Historical release notes below do not describe this working copy.
+> **Source update 1.3.41:** Apply the included `psx_app` folder and README over the existing repository; retain its other deployment, workflow and configuration files. Market Explorer is 08 and Records is 09. Weekly, Monthly and Quarterly Market Performance use the Daily Volume and Index Changes chart style, with sector detail in chart data. Upper/lower lock rates remain estimates, not confirmed exchange limits. PostgreSQL, live data and production performance require separate validation. No deployment or private data is included. Older release notes below are historical.
 
 # PSX Intelligence v1.3.38
 
@@ -1352,7 +1352,7 @@ Run `python tools/refresh_learning.py --help` for the supported research refresh
 | 06 Futures Comparison | Same-date cash/futures basis, days-to-expiry and annualized comparison; worksheet filters retained |
 | 07 Technical Analysis | Trading ideas, plain-language stock analysis, saved predictions/results, data coverage, charts and screener |
 | 08 Data Quality | Coverage, duplicate/revision and reconciliation checks; date repair requires dry-run evidence and confirmation |
-| 09 Market Explorer | Calendar + Top N volume charts; last N stored symbol records versus exact-date imported index records |
+| 08 Market Explorer | Calendar + Top N volume charts; last N stored symbol records versus exact-date imported index records |
 | 10 Settings and Backup | Rule parameters/version history, database diagnostics and independent USB export/restore guidance |
 
 **Every import:** keep originals → stage manageable batches → inspect warnings and

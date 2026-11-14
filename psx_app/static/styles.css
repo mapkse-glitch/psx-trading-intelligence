@@ -1476,3 +1476,6 @@ body{font-size:15px;line-height:1.5}
 :root{--index-line1340:#f7ce45}.index-line-halo1340{fill:none;stroke:#273444;stroke-width:4}.index-key1340{color:#967000}:root[data-theme="dark"] .index-key1340{color:#f7ce45}.volume-index-dot1340{fill:var(--index-line1340)}.performance-line1325{stroke:var(--index-line1340);stroke-width:2}.performance-dot1325{stroke:var(--index-line1340)}.performance-legend1325 .performance-line-key1325{background:var(--index-line1340)}
 /* Record tables retain semantic coloring with sufficient contrast on light cards. */
 :root:not([data-theme="dark"]) .view-container[data-view="records"] table.data-table td.semantic-high1322,:root:not([data-theme="dark"]) .view-container[data-view="records"] table.data-table td.semantic-high1322 *{color:#16703d!important}
+
+/* Narrow chart viewports retain a visible horizontal-scroll cue. */
+.chart-scroll-hint1341{display:none}@media(max-width:650px){.chart-scroll-hint1341{display:block;color:var(--text-muted);font-size:12px;margin:8px 0}}
