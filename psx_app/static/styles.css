@@ -1540,3 +1540,11 @@ body{font-size:15px;line-height:1.5}
 .quick-table1343 th:first-child {width:150px;min-width:150px;max-width:150px;white-space:normal;text-align:left;line-height:1.3}
 .quick-table1343 tbody th:first-child {color:var(--text-main);font-weight:600}
 @media(max-width:650px){.quick-table1343 th:first-child{width:115px;min-width:115px;max-width:115px}}
+
+/* Quick View values and their dates share one compact, readable cell. */
+.quick-table1343 td {min-width:102px;vertical-align:middle}
+.quick-table1343 th:not(:first-child) {white-space:normal;min-width:102px;max-width:128px;line-height:1.3}
+.quick-value1344,.quick-date1344 {display:block;white-space:nowrap}
+.quick-value1344 {font-weight:600}
+.quick-date1344 {margin-top:4px;color:var(--text-muted);font-size:10px}
+.quick-top5-wrap1344 {max-width:370px;margin:0 0 20px}

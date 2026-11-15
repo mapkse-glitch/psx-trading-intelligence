@@ -6,7 +6,7 @@ from psx_app.database.schema import get_connection
 from psx_app.services.market_explorer import delta
 from psx_app.services.result_cache import persisted_result
 from psx_app.services.sector_reference import BUNDLED
-from psx_app.services.technical_service import TechnicalService
+from psx_app.services.technical_service import TechnicalService, wilder_rsi_series
 
 METRICS = [('max_high','high',True),('max_low','low',True),('min_high','high',False),('min_low','low',False),('max_average','avg_price',True),('min_average','avg_price',False),('max_volume','volume',True),('min_volume','volume',False)]
 
@@ -66,11 +66,16 @@ class QuickView:
             refs=_refs([dict(r) for r in c.execute('SELECT list_name,symbol,company,sector FROM company_reference WHERE symbol=?',(symbol,))])
             market_date=c.execute('SELECT MAX(trade_date) FROM equity_ohlcv WHERE volume>0').fetchone()[0]
             top=[dict(r) for r in c.execute('SELECT symbol,volume FROM equity_ohlcv WHERE trade_date=? AND volume>0 ORDER BY volume DESC,symbol ASC LIMIT 10',(market_date or '',))]
+            top5_rows=[dict(r) for r in c.execute('''SELECT trade_date,ticker,rank,rate,volume,trades FROM top5_volume_records WHERE ticker=? AND trade_date=(SELECT MAX(trade_date) FROM top5_volume_records WHERE ticker=?) ORDER BY rank LIMIT 5''',(symbol,symbol))]
             toprefs=_refs([dict(r) for r in c.execute('SELECT list_name,symbol,company,sector FROM company_reference WHERE symbol IN ('+','.join('?' for _ in top)+')',tuple(x['symbol'] for x in top))]) if top else {}
         bundled=_bundled();company=_company(symbol,refs,bundled)
         for i,row in enumerate(top):row.update(rank=i+1,company=_company(row['symbol'],toprefs,bundled))
         recognition=next((r for r in top if r['symbol']==symbol),None)
-        base={'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None}
+        top5_block=None
+        if top5_rows:
+            day=top5_rows[0]['trade_date']
+            top5_block={'ticker':symbol,'trade_date':day,'title':f"{symbol} — Top 5 Volume Trades ({date.fromisoformat(day).strftime('%d-%m-%Y')})",'rows':top5_rows,'max_volume':max((r['volume'] or 0 for r in top5_rows),default=0)}
+        base={'top5_block':top5_block,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
         anchor=date.fromisoformat(bars[-1]['trade_date']);ranges=[]
         for label,start in _windows(anchor):
@@ -98,8 +103,9 @@ class QuickView:
         technical={'rsi':None,'pivots':None}
         if all(_good(b.get('close')) for b in bars):
             try:
-                out=TechnicalService(self.db_path).calculate_series_for_bars(symbol,bars)
-                technical['rsi']=out.get('latest',{}).get('rsi14')
+                technical_service=TechnicalService(self.db_path)
+                period=int(technical_service.repo.get_settings().get('rsi_period',14))
+                technical['rsi']=wilder_rsi_series([float(b['close']) for b in bars],period)[-1]
             except (ValueError,TypeError,OverflowError,ZeroDivisionError):pass
         if all(_good(latest.get(k)) for k in ('high','low','close')) and latest['low']<=latest['close']<=latest['high']:
             technical['pivots']=TechnicalService.compute_classic_fib_camarilla_pivots(latest['high'],latest['low'],latest['close'])['classic']

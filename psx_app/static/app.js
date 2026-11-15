@@ -1084,37 +1084,18 @@ async function renderTop5View(container) {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:14px;">
-        ${TableDisplay.newestFirst(data.date_blocks, b => b.trade_date).slice(0, 60).map((blk) => `
-          <div style="background:var(--bg-card-alt);border:1px solid var(--border-color);border-radius:8px;padding:12px;">
-            <div style="font-weight:700;color:var(--accent-blue);margin-bottom:8px;font-size:13px;">
-              ${blk.title}
-            </div>
-            <table class="data-table">
-              <thead>
-                <tr><th class="num">Rank</th><th class="num">Rate</th><th class="num">Volume</th><th class="num">Trades</th></tr>
-              </thead>
-              <tbody>
-                ${blk.rows.map((r) => {
-                  const pct = blk.max_volume > 0 ? Math.round((r.volume / blk.max_volume) * 92) : 0;
-                  return `
-                    <tr>
-                      <td class="num"><b>${r.rank}</b></td>
-                      <td class="num">${fmtNum(r.rate)}</td>
-                      <td class="num vol-bar-cell">
-                        <div class="vol-bar-fill" style="width:${pct}%"></div>
-                        <span class="vol-bar-text">${fmtInt(r.volume)}</span>
-                      </td>
-                      <td class="num">${fmtInt(r.trades)}</td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-        `).join("")}
+        ${TableDisplay.newestFirst(data.date_blocks, b => b.trade_date).slice(0, 60).map(renderTop5Block1344).join("")}
       </div>
     </div>
   `;
+}
+
+function renderTop5Block1344(blk) {
+  return `<div class="top5-register-block1344" style="background:var(--bg-card-alt);border:1px solid var(--border-color);border-radius:8px;padding:12px;">
+    <div style="font-weight:700;color:var(--accent-blue);margin-bottom:8px;font-size:13px;">${escapeHtml(blk.title)}</div>
+    <table class="data-table"><thead><tr><th class="num">Rank</th><th class="num">Rate</th><th class="num">Volume</th><th class="num">Trades</th></tr></thead><tbody>
+    ${blk.rows.map(r=>{const pct=blk.max_volume>0?Math.max(0,Math.min(92,Math.round((r.volume/blk.max_volume)*92))):0;return `<tr><td class="num"><b>${fmtInt(r.rank)}</b></td><td class="num">${fmtNum(r.rate)}</td><td class="num vol-bar-cell"><div class="vol-bar-fill" style="width:${pct}%"></div><span class="vol-bar-text">${fmtInt(r.volume)}</span></td><td class="num">${fmtInt(r.trades)}</td></tr>`}).join('')}
+    </tbody></table></div>`;
 }
 
 function updateTop5Filter() {

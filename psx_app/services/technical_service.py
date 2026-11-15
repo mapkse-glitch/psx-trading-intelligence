@@ -12,6 +12,33 @@ from psx_app.database.schema import get_connection
 ENGINE_VERSION = "1.3.9"  # Indicator mathematics unchanged; retain compatible caches.
 
 
+def wilder_rsi_series(closes: List[float], rsi_p: int) -> List[Optional[float]]:
+    n_bars = len(closes)
+    # 1. Wilder's RSI(14)
+    rsi_series: List[Optional[float]] = [None] * n_bars
+    if n_bars > rsi_p:
+        gains = []
+        losses = []
+        for i in range(1, n_bars):
+            delta = closes[i] - closes[i - 1]
+            gains.append(max(delta, 0.0))
+            losses.append(max(-delta, 0.0))
+        avg_g = sum(gains[:rsi_p]) / float(rsi_p)
+        avg_l = sum(losses[:rsi_p]) / float(rsi_p)
+        if avg_l == 0:
+            rsi_series[rsi_p] = 100.0 if avg_g > 0 else 50.0
+        else:
+            rsi_series[rsi_p] = 100.0 - (100.0 / (1.0 + (avg_g / avg_l)))
+        for i in range(rsi_p, len(gains)):
+            avg_g = (avg_g * (rsi_p - 1) + gains[i]) / float(rsi_p)
+            avg_l = (avg_l * (rsi_p - 1) + losses[i]) / float(rsi_p)
+            if avg_l == 0:
+                rsi_series[i + 1] = 100.0 if avg_g > 0 else 50.0
+            else:
+                rsi_series[i + 1] = 100.0 - (100.0 / (1.0 + (avg_g / avg_l)))
+    return rsi_series
+
+
 class TechnicalService:
     """
     Module D — Technical Analysis & 36-Ticker (+ 531 Universe) Engine.
@@ -168,28 +195,8 @@ class TechnicalService:
             opens.append(o)
             vols.append(v)
 
-        # 1. Wilder's RSI(14)
-        rsi_series: List[Optional[float]] = [None] * n_bars
-        if n_bars > rsi_p:
-            gains = []
-            losses = []
-            for i in range(1, n_bars):
-                delta = closes[i] - closes[i - 1]
-                gains.append(max(delta, 0.0))
-                losses.append(max(-delta, 0.0))
-            avg_g = sum(gains[:rsi_p]) / float(rsi_p)
-            avg_l = sum(losses[:rsi_p]) / float(rsi_p)
-            if avg_l == 0:
-                rsi_series[rsi_p] = 100.0 if avg_g > 0 else 50.0
-            else:
-                rsi_series[rsi_p] = 100.0 - (100.0 / (1.0 + (avg_g / avg_l)))
-            for i in range(rsi_p, len(gains)):
-                avg_g = (avg_g * (rsi_p - 1) + gains[i]) / float(rsi_p)
-                avg_l = (avg_l * (rsi_p - 1) + losses[i]) / float(rsi_p)
-                if avg_l == 0:
-                    rsi_series[i + 1] = 100.0 if avg_g > 0 else 50.0
-                else:
-                    rsi_series[i + 1] = 100.0 - (100.0 / (1.0 + (avg_g / avg_l)))
+        # 1. Wilder's RSI(14), shared with Quick View.
+        rsi_series = wilder_rsi_series(closes, rsi_p)
 
         # 2. EMA helper
         def calc_ema_list(vals: List[float], period: int) -> List[float]:
