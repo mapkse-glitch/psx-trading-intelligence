@@ -53,6 +53,17 @@ def company_records_route(letter:str='A',sort:str='company',direction:str='asc',
     try:return company_records(DB_PATH,letter,sort,direction,page)
     except ValueError as error:raise HTTPException(422,str(error))
 
+@router.get('/market/quick-view/meta')
+def quick_view_metadata():
+    from psx_app.services.quick_view1343 import QuickView
+    return QuickView(DB_PATH).metadata()
+
+@router.get('/market/quick-view/{symbol}')
+def quick_view_report(symbol:str):
+    from psx_app.services.quick_view1343 import QuickView
+    try:return QuickView(DB_PATH).report(symbol)
+    except ValueError as error:raise HTTPException(422,str(error))
+
 @router.get('/market/symbol/{symbol}')
 def symbol(symbol:str,n:int=Query(50,ge=1,le=6000),end:str|None=None):return MarketExplorer(DB_PATH).symbol(symbol,n,end)
 from psx_app.services.market_panels import MarketPanels

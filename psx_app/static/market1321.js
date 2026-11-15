@@ -1,6 +1,6 @@
 /* v1.3.21: market panels and keyboard-first native dropdowns. No external assets. */
 function marketTabs1321(active){
- return `<div class="subtabs" role="group" aria-label="Market Explorer pages">${[['volume','Market volume'],['dailySummary','Daily Summary'],['dailyVolumeIndex','Daily Volume and Index Changes'],['symbol','Symbol vs Index'],['insights','Symbol Insights'],['symbolChart','Symbol Chart'],['highLow','Symbol High-Low Analysis'],['monthlyPerformance','Monthly Performance'],['sectorIntelligence','Sector Performance Intelligence'],['comparison','Performance Comparison'],['matching','Matching Rate'],['matching1','Matching Rate 1'],['smallcards','Small Cards']].map(([id,label])=>`<button class="subtab-btn ${active===id?'active':''}" aria-pressed="${active===id}" onclick="marketTab1321('${id}')">${label}</button>`).join('')}</div>`;
+ return `<div class="subtabs" role="group" aria-label="Market Explorer pages">${[['volume','Market volume'],['quickView','Quick View'],['dailySummary','Daily Summary'],['dailyVolumeIndex','Daily Volume and Index Changes'],['symbol','Symbol vs Index'],['insights','Symbol Insights'],['symbolChart','Symbol Chart'],['highLow','Symbol High-Low Analysis'],['monthlyPerformance','Monthly Performance'],['sectorIntelligence','Sector Performance Intelligence'],['comparison','Performance Comparison'],['matching','Matching Rate'],['matching1','Matching Rate 1'],['smallcards','Small Cards']].map(([id,label])=>`<button class="subtab-btn ${active===id?'active':''}" aria-pressed="${active===id}" onclick="marketTab1321('${id}')">${label}</button>`).join('')}</div>`;
 }
 function marketTab1321(tab){clearCalendarNotice1311();state.market.tab=tab;marketRefresh139();}
 function rangeBar1321(range){return `<div class="range-endpoints1322"><div><span>High</span><strong class="pos">${number1321(range.high)}</strong></div><div><span>Low</span><strong class="neg">${number1321(range.low)}</strong></div></div><div class="range-window-bar1321 ${range.high==null||range.low==null?'range-window-empty1321':''}" tabindex="0" role="img" aria-label="${h(range.high==null||range.low==null?'Range unavailable':`High ${fmtNum(range.high)} at left to Low ${fmtNum(range.low)} at right`)}"></div>`;}
@@ -18,7 +18,7 @@ function number1321(value,decimals=2){return value==null?'Not available':fmtNum(
 function signed1321(value){return value==null?'Not available':`<span class="${pnlClass(value)}">${fmtNum(value)}</span>`;}
 function pct1321(value){return value==null?'Not available':fmtPct(value,false);}
 function periodMetric1321(label,period){return `<div class="small-metric1321"><span>${h(label)}</span><strong class="${pnlClass(period?.change)}">${number1321(period?.change)}</strong><small class="${pnlClass(period?.pct)}">${pct1321(period?.pct)}</small></div>`;}
-function smallSymbolCard1321(card,report){
+function smallSymbolCard1321(card,report,options={}){
  const tone=pnlClass(card.change);
  let html=`<article class="card small-symbol-card1321" aria-label="${h(card.symbol)} sector card"><header><h3 class="${tone}">${h(card.symbol)}</h3><p>${h(card.company)}</p><small>${card.trade_date?fmtDate(card.trade_date):'No imported prices'}${card.stale?' · Older than latest market date':''}</small></header>`;
  // A reference member without price records still gets exactly one honest card.
@@ -27,7 +27,7 @@ function smallSymbolCard1321(card,report){
  html+=`<div class="small-metric-row1321">${metric1321('Latest high',number1321(card.high),'pos')}${metric1321('Latest low',number1321(card.low),'neg')}</div>`;
  html+=`<div class="small-metric-row1321">${metric1321('Average',number1321(card.avg_price))}${metric1321('Volume',card.volume==null?'Not available':fmtInt(card.volume))}</div>`;
  html+=`<div class="small-metric-row1321">${periodMetric1321('Week to date',card.week)}${periodMetric1321('Month to date',card.month)}</div>`;
- html+=`<section class="small-window1321"><h4>Based on Selected Sessions (${fmtInt(report.requested)})</h4><div class="small-metric-row1321">${metric1321('Session high',number1321(card.session_high),'pos')}${metric1321('Session low',number1321(card.session_low),'neg')}</div><p class="small-coverage1321">${fmtInt(card.session_count)} of ${fmtInt(report.requested)} sessions available · ${fmtDate(card.session_first)} – ${fmtDate(card.trade_date)}</p></section>`;
+ if(!options.hideSelectedSessions)html+=`<section class="small-window1321"><h4>Based on Selected Sessions (${fmtInt(report.requested)})</h4><div class="small-metric-row1321">${metric1321('Session high',number1321(card.session_high),'pos')}${metric1321('Session low',number1321(card.session_low),'neg')}</div><p class="small-coverage1321">${fmtInt(card.session_count)} of ${fmtInt(report.requested)} sessions available · ${fmtDate(card.session_first)} – ${fmtDate(card.trade_date)}</p></section>`;
  return html+'</article>';
 }
 function smallIndexCards1322(report){

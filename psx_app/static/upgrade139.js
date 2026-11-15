@@ -169,6 +169,7 @@ async function renderMarketView(container){
  if(container.dataset.marketTab!==m.tab){container.dataset.marketTab=m.tab;container.innerHTML=marketTabs1321(m.tab)+skeleton139();}
  if(!container.querySelector('.card'))container.innerHTML=skeleton139();else container.classList.add('refreshing139');
  try{
+ if(m.tab==='quickView'){await renderQuickView1343(container,ticket);return;}
  if(m.tab==='dailyVolumeIndex'){await renderDailyVolumeIndex1339(container,ticket);return;}
  if(m.tab==='sectorIntelligence'){await renderSectorIntelligence1336(container,ticket);return;}
  if(m.tab==='highLow'){await renderAnalytics1335(container,'high',ticket);return;}
