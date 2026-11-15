@@ -1,5 +1,7 @@
-"""Symbol quick view over imported cash records; no assumed official limits."""
+"""Symbol quick view over imported cash records and estimated lock touches."""
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import sys
 import json
 import math
 from psx_app.database.schema import get_connection
@@ -16,6 +18,31 @@ def _good(x, price=True):
         return math.isfinite(n) and (n>0 if price else n>=0)
     except (ValueError,TypeError,OverflowError):
         return False
+
+def _estimated_touch_flags(row):
+    """Use the checker's 10%-or-PKR-1 thresholds on intraday highs/lows.
+
+    Imported pr_close is the checker reference; a missing value is not silently
+    replaced with another date. Thresholds are rounded to paisa before comparison.
+    Exchange-specific limits and historical exceptions are not in the database.
+    """
+    previous=row.get('pr_close')
+    if not _good(previous):return (None,None)
+    try:
+        ref=Decimal(str(previous))
+        upper=max(ref*Decimal('1.10'),ref+Decimal('1')).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+        lower=min(ref*Decimal('.90'),ref-Decimal('1')).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+        u,l=float(upper),float(lower)
+        if not math.isfinite(u) or not math.isfinite(l):return (None,None)
+    except (InvalidOperation,ValueError,TypeError,OverflowError):return (None,None)
+    def touch(field,limit,above):
+        value=row.get(field)
+        if not _good(value):return None
+        value=float(value)
+        epsilon=sys.float_info.epsilon*max(1,abs(value),abs(u),abs(l))*8
+        return value>=limit-epsilon if above else value<=limit+epsilon
+    return touch('high',u,True),touch('low',l,False)
+
 
 def _ref_rank(row):
     name=''.join(ch for ch in row['list_name'].lower() if ch.isalnum())
@@ -78,6 +105,7 @@ class QuickView:
         base={'top5_block':top5_block,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
         anchor=date.fromisoformat(bars[-1]['trade_date']);ranges=[]
+        touches={r['trade_date']:_estimated_touch_flags(r) for r in bars}
         for label,start in _windows(anchor):
             eligible=[r for r in bars if start<=r['trade_date']<=anchor.isoformat()]
             metrics={}
@@ -89,7 +117,14 @@ class QuickView:
                     day=max(r['trade_date'] for r in candidates if r[key]==value)
                     metrics[name]={'value':value,'date':day}
                 else:metrics[name]={'value':None,'date':None}
-            ranges.append({'label':label,'start':start,'end':anchor.isoformat(),'metrics':metrics,'upper_lock_count':None,'lower_lock_count':None})
+            flags=[touches[r['trade_date']] for r in eligible]
+            def count_side(index):
+                assessed=[f[index] for f in flags if f[index] is not None]
+                return {'count':sum(assessed) if assessed else None,'checked':len(assessed),'total':len(flags)}
+            upper,lower=count_side(0),count_side(1)
+            ranges.append({'label':label,'start':start,'end':anchor.isoformat(),'metrics':metrics,
+                'upper_lock_count':upper['count'],'lower_lock_count':lower['count'],
+                'upper_lock_coverage':upper,'lower_lock_coverage':lower})
         latest=bars[-1]; market_anchor=date.fromisoformat(market_date) if market_date else anchor
         monday=(market_anchor-timedelta(days=market_anchor.weekday())).isoformat(); month=market_anchor.replace(day=1).isoformat()
         def movement_for(start):

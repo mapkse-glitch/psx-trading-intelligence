@@ -3,6 +3,13 @@ const quickView1343={symbol:''};
 function quickViewSelect1343(value){quickView1343.symbol=value;const c=document.getElementById('viewContainer');c.innerHTML=marketTabs1321('quickView')+skeleton139();marketRefresh139();}
 function quickVal1343(value,volume=false){return value==null?'—':h(volume?fmtInt(value):fmtNum(value));}
 function quickDate1343(value){return value?h(fmtDate(value)):'—';}
+function quickLock1345(coverage){
+ if(!coverage||coverage.count==null)return '<span title="No sessions have sufficient data to assess this estimate">Unavailable</span>';
+ const incomplete=coverage.checked<coverage.total;
+ const text=(incomplete?'≥':'')+fmtInt(coverage.count);
+ const detail=`Estimated intraday touches · ${coverage.checked} of ${coverage.total} imported records assessed${incomplete?' · incomplete':''}`;
+ return `<span tabindex="0" title="${h(detail)}" aria-label="${h(text+' · '+detail)}">${h(text)}</span>`;
+}
 async function renderQuickView1343(container,ticket){
  const current=()=>currentViewRender(container,ticket)&&state.currentView==='market'&&state.market.tab==='quickView';
  const meta=await panelGet1322('/api/v139/market/quick-view/meta');if(!current())return;
@@ -16,8 +23,8 @@ async function renderQuickView1343(container,ticket){
  const metrics=[['max_high','Maximum High'],['max_low','Maximum Low'],['min_high','Minimum High'],['min_low','Minimum Low'],['max_average','Maximum Average'],['min_average','Minimum Average'],['max_volume','Maximum Volume'],['min_volume','Minimum Volume']];
  const headings=metrics.map(([,label])=>`<th scope="col" class="num">${h(label)}</th>`).join('');
  const labels=['7 Days','14 Days','30 Days','90 Days','180 Days','1 Year','All-Time High Since 1 October 2023','All-Time High Since 27 February 2026'];
- const rows=labels.map((label,i)=>{const row=r.ranges[i];const cells=metrics.map(([key])=>{const val=row?.metrics?.[key];return `<td class="num"><span class="quick-value1344">${quickVal1343(val?.value,key.includes('volume'))}</span><small class="quick-date1344">${quickDate1343(val?.date)}</small></td>`}).join('');return `<tr><th scope="row">${h(label)}</th>${cells}<td class="num">${row?.upper_lock_count==null?'Unavailable':quickVal1343(row.upper_lock_count,true)}</td><td class="num">${row?.lower_lock_count==null?'Unavailable':quickVal1343(row.lower_lock_count,true)}</td></tr>`;}).join('');
- html+=`<section class="card"><div class="card-header"><h3>Historical Price and Volume Analysis</h3><span>Through ${quickDate1343(r.last)} · Scroll to see all columns →</span></div><div class="table-wrap quick-table1343" tabindex="0" role="region" aria-label="Scrollable historical price and volume statistics"><table class="data-table"><thead><tr><th scope="col">Historical Range</th>${headings}<th scope="col">Upper Lock Count</th><th scope="col">Lower Lock Count</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+ const rows=labels.map((label,i)=>{const row=r.ranges[i];const cells=metrics.map(([key])=>{const val=row?.metrics?.[key];return `<td class="num"><span class="quick-value1344">${quickVal1343(val?.value,key.includes('volume'))}</span><small class="quick-date1344">${quickDate1343(val?.date)}</small></td>`}).join('');return `<tr><th scope="row">${h(label)}</th>${cells}<td class="num">${quickLock1345(row?.upper_lock_coverage)}</td><td class="num">${quickLock1345(row?.lower_lock_coverage)}</td></tr>`;}).join('');
+ html+=`<section class="card"><div class="card-header"><h3>Historical Price and Volume Analysis</h3><span>Through ${quickDate1343(r.last)} · Scroll to see all columns →</span></div><div class="table-wrap quick-table1343" tabindex="0" role="region" aria-label="Scrollable historical price and volume statistics"><table class="data-table"><thead><tr><th scope="col">Historical Range</th>${headings}<th scope="col" class="num">Upper Lock Count<br><small>Est. touch</small></th><th scope="col" class="num">Lower Lock Count<br><small>Est. touch</small></th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
  html+=`<div class="quick-cards1343">${smallSymbolCard1321(r.card,{}, {hideSelectedSessions:true})}<section class="card"><div class="card-header"><h3>Technical Analysis</h3></div><div class="quick-tech1343">${metric1321('RSI',quickVal1343(r.technical?.rsi))}${['R1','R2','R3','S1','S2','S3'].map(k=>metric1321(k,quickVal1343(r.technical?.pivots?.[k]))).join('')}</div></section></div>`;
  if(r.top10){html+=`<p class="quick-rank1343"><b>${h(r.symbol)}</b> · Top 10 by imported volume · Rank ${h(String(r.top10.rank))} · ${h(fmtInt(r.top10.volume))} shares · ${quickDate1343(r.market_date)}</p>`;}
  if(r.top5_block){html+=`<div class="quick-top5-wrap1344">${renderTop5Block1344(r.top5_block)}</div>`;}
