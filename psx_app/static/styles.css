@@ -1548,3 +1548,11 @@ body{font-size:15px;line-height:1.5}
 .quick-value1344 {font-weight:600}
 .quick-date1344 {margin-top:4px;color:var(--text-muted);font-size:10px}
 .quick-top5-wrap1344 {max-width:370px;margin:0 0 20px}
+
+/* Quick View session controls and compact movement status. */
+.quick-filter1346 {align-items:flex-end;flex-wrap:wrap}
+.quick-filter1346 label {min-width:0}
+.quick-filter1346 .quick-sessions1346 input {width:150px;max-width:100%}
+.quick-session-result1346 {flex-basis:100%;line-height:1.5;color:var(--text-main)}
+.quick-move1346 p {margin:0;line-height:1.5}
+@media(max-width:650px){.quick-filter1346 .quick-sessions1346 input{width:100%}}

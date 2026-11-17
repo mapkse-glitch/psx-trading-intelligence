@@ -10,7 +10,7 @@ from psx_app.services.result_cache import persisted_result
 from psx_app.services.sector_reference import BUNDLED
 from psx_app.services.technical_service import TechnicalService, wilder_rsi_series
 
-METRICS = [('max_high','high',True),('max_low','low',True),('min_high','high',False),('min_low','low',False),('max_average','avg_price',True),('min_average','avg_price',False),('max_volume','volume',True),('min_volume','volume',False)]
+METRICS = [('max_high','high',True),('max_close','close',True),('min_low','low',False),('min_close','close',False),('max_average','avg_price',True),('min_average','avg_price',False),('max_volume','volume',True),('min_volume','volume',False)]
 
 def _good(x, price=True):
     try:
@@ -102,7 +102,8 @@ class QuickView:
         if top5_rows:
             day=top5_rows[0]['trade_date']
             top5_block={'ticker':symbol,'trade_date':day,'title':f"{symbol} — Top 5 Volume Trades ({date.fromisoformat(day).strftime('%d-%m-%Y')})",'rows':top5_rows,'max_volume':max((r['volume'] or 0 for r in top5_rows),default=0)}
-        base={'top5_block':top5_block,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None}
+        base={'top5_block':top5_block,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None,
+              'closes':[[r['trade_date'],float(r['close']) if _good(r.get('close')) else None] for r in bars]}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
         anchor=date.fromisoformat(bars[-1]['trade_date']);ranges=[]
         touches={r['trade_date']:_estimated_touch_flags(r) for r in bars}
