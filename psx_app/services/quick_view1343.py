@@ -73,6 +73,31 @@ def _windows(anchor):
     return [(f'{n} Days',(anchor-timedelta(days=n-1)).isoformat()) for n in (7,14,30,90,180)]+[
         ('1 Year',_year_start(anchor).isoformat()),('All-Time High Since 1 October 2023','2023-10-01'),('All-Time High Since 27 February 2026','2026-02-27')]
 
+def _summarize_ranges(bars,anchor):
+    """Accumulate reverse-chronological ranges once; ties keep latest dates."""
+    windows=_windows(anchor)
+    results=[None]*len(windows)
+    metrics={name:{'value':None,'date':None} for name,_,_ in METRICS}
+    counts=[0,0];checked=[0,0];total=0;idx=len(bars)-1
+    for original,(label,start) in sorted(enumerate(windows),key=lambda x:x[1][1],reverse=True):
+        while idx>=0 and bars[idx]['trade_date']>=start:
+            row=bars[idx];idx-=1;total+=1
+            for name,key,maximum in METRICS:
+                value=row.get(key)
+                if not _good(value,key!='volume'):continue
+                old=metrics[name]['value']
+                if old is None or (value>old if maximum else value<old):
+                    metrics[name]={'value':value,'date':row['trade_date']}
+            for side,flag in enumerate(_estimated_touch_flags(row)):
+                if flag is not None:
+                    checked[side]+=1
+                    if flag:counts[side]+=1
+        coverage=[{'count':counts[i] if checked[i] else None,'checked':checked[i],'total':total} for i in (0,1)]
+        results[original]={'label':label,'start':start,'end':anchor.isoformat(),'metrics':{k:v.copy() for k,v in metrics.items()},
+                           'upper_lock_count':coverage[0]['count'],'lower_lock_count':coverage[1]['count'],
+                           'upper_lock_coverage':coverage[0],'lower_lock_coverage':coverage[1]}
+    return results
+
 class QuickView:
     def __init__(self,db_path=None):self.db_path=db_path
 
@@ -93,39 +118,24 @@ class QuickView:
             refs=_refs([dict(r) for r in c.execute('SELECT list_name,symbol,company,sector FROM company_reference WHERE symbol=?',(symbol,))])
             market_date=c.execute('SELECT MAX(trade_date) FROM equity_ohlcv WHERE volume>0').fetchone()[0]
             top=[dict(r) for r in c.execute('SELECT symbol,volume FROM equity_ohlcv WHERE trade_date=? AND volume>0 ORDER BY volume DESC,symbol ASC LIMIT 10',(market_date or '',))]
-            top5_rows=[dict(r) for r in c.execute('''SELECT trade_date,ticker,rank,rate,volume,trades FROM top5_volume_records WHERE ticker=? AND trade_date=(SELECT MAX(trade_date) FROM top5_volume_records WHERE ticker=?) ORDER BY rank LIMIT 5''',(symbol,symbol))]
+            top5_rows=[dict(r) for r in c.execute('''SELECT trade_date,ticker,rank,rate,volume,trades FROM top5_volume_records WHERE ticker=? AND trade_date IN (SELECT DISTINCT trade_date FROM top5_volume_records WHERE ticker=? ORDER BY trade_date DESC LIMIT 4) ORDER BY trade_date DESC,rank ASC''',(symbol,symbol))]
             toprefs=_refs([dict(r) for r in c.execute('SELECT list_name,symbol,company,sector FROM company_reference WHERE symbol IN ('+','.join('?' for _ in top)+')',tuple(x['symbol'] for x in top))]) if top else {}
         bundled=_bundled();company=_company(symbol,refs,bundled)
         for i,row in enumerate(top):row.update(rank=i+1,company=_company(row['symbol'],toprefs,bundled))
         recognition=next((r for r in top if r['symbol']==symbol),None)
-        top5_block=None
-        if top5_rows:
-            day=top5_rows[0]['trade_date']
-            top5_block={'ticker':symbol,'trade_date':day,'title':f"{symbol} — Top 5 Volume Trades ({date.fromisoformat(day).strftime('%d-%m-%Y')})",'rows':top5_rows,'max_volume':max((r['volume'] or 0 for r in top5_rows),default=0)}
-        base={'top5_block':top5_block,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None,
+        top5_blocks=[]
+        for row in top5_rows:
+            day=row['trade_date']
+            if not top5_blocks or top5_blocks[-1]['trade_date']!=day:
+                top5_blocks.append({'ticker':symbol,'trade_date':day,'title':f"{symbol} — Top 5 Volume Trades ({date.fromisoformat(day).strftime('%d-%m-%Y')})",'rows':[],'max_volume':0})
+            block=top5_blocks[-1]
+            block['rows'].append(row)
+            block['max_volume']=max(block['max_volume'],row['volume'] or 0)
+        base={'top5_block':top5_blocks[0] if top5_blocks else None,'top5_blocks':top5_blocks,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None,
               'closes':[[r['trade_date'],float(r['close']) if _good(r.get('close')) else None] for r in bars]}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
-        anchor=date.fromisoformat(bars[-1]['trade_date']);ranges=[]
-        touches={r['trade_date']:_estimated_touch_flags(r) for r in bars}
-        for label,start in _windows(anchor):
-            eligible=[r for r in bars if start<=r['trade_date']<=anchor.isoformat()]
-            metrics={}
-            for name,key,maximum in METRICS:
-                candidates=[r for r in eligible if _good(r.get(key),key!='volume')]
-                if candidates:
-                    value=(max if maximum else min)(r[key] for r in candidates)
-                    # As in Symbol Insights, choose the latest date when extrema tie.
-                    day=max(r['trade_date'] for r in candidates if r[key]==value)
-                    metrics[name]={'value':value,'date':day}
-                else:metrics[name]={'value':None,'date':None}
-            flags=[touches[r['trade_date']] for r in eligible]
-            def count_side(index):
-                assessed=[f[index] for f in flags if f[index] is not None]
-                return {'count':sum(assessed) if assessed else None,'checked':len(assessed),'total':len(flags)}
-            upper,lower=count_side(0),count_side(1)
-            ranges.append({'label':label,'start':start,'end':anchor.isoformat(),'metrics':metrics,
-                'upper_lock_count':upper['count'],'lower_lock_count':lower['count'],
-                'upper_lock_coverage':upper,'lower_lock_coverage':lower})
+        anchor=date.fromisoformat(bars[-1]['trade_date'])
+        ranges=_summarize_ranges(bars,anchor)
         latest=bars[-1]; market_anchor=date.fromisoformat(market_date) if market_date else anchor
         monday=(market_anchor-timedelta(days=market_anchor.weekday())).isoformat(); month=market_anchor.replace(day=1).isoformat()
         def movement_for(start):

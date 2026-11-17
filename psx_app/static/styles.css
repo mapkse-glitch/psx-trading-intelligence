@@ -1556,3 +1556,18 @@ body{font-size:15px;line-height:1.5}
 .quick-session-result1346 {flex-basis:100%;line-height:1.5;color:var(--text-main)}
 .quick-move1346 p {margin:0;line-height:1.5}
 @media(max-width:650px){.quick-filter1346 .quick-sessions1346 input{width:100%}}
+
+/* Quick View: the two right-hand cards align with the symbol card. */
+.quick-cards1343 {align-items:stretch}
+.quick-side1347 {display:grid;grid-template-rows:auto 1fr;gap:20px;min-width:0}
+.quick-side1347>.card {margin:0;min-width:0}
+.quick-top5-grid1347 {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:14px;margin:0 0 20px;min-width:0}
+.quick-top5-grid1347>* {min-width:0}
+@media(max-width:650px){.quick-side1347 {grid-template-rows:auto auto}}
+/* Brief control feedback only; no continuous effects or animated shadows. */
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+ :is(.btn,.nav-btn,.subtab-btn,.quick-pill):not(:disabled) {transition:transform .14s ease,background-color .14s ease,border-color .14s ease,color .14s ease}
+ :is(.btn,.nav-btn,.subtab-btn,.quick-pill):not(:disabled):hover {transform:translateY(-1px)}
+ :is(.btn,.nav-btn,.subtab-btn,.quick-pill):not(:disabled):active {transform:scale(.985)}
+}
+@media(prefers-reduced-motion:reduce){:is(.btn,.nav-btn,.subtab-btn,.quick-pill){transition:none!important;animation:none!important;transform:none!important}}
