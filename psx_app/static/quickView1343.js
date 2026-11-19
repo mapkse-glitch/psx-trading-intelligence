@@ -33,7 +33,15 @@ function quickMovement1346(closes){
   count++;i--;
  }
  const partial=i===0||!Number.isFinite(closes[i-1][1]);
- return {status:dir>0?'positive':'negative',count,partial};
+ let reversal=null;
+ // Only announce a reversal on its first session. A flat or missing close
+ // terminates the old streak; never bridge a gap.
+ if(count===1 && i>0 && Number.isFinite(closes[i][1]) && Number.isFinite(closes[i-1][1]) && Math.sign(closes[i][1]-closes[i-1][1])===-dir){
+  let previous=0;
+  while(i>0 && Number.isFinite(closes[i][1]) && Number.isFinite(closes[i-1][1]) && Math.sign(closes[i][1]-closes[i-1][1])===-dir){previous++;i--;}
+  reversal={count:previous,status:dir>0?'negative':'positive',partial:i===0||!Number.isFinite(closes[i-1][1])};
+ }
+ return {status:dir>0?'positive':'negative',count,partial,reversal};
 }
 function quickSessionUpdate1346(input){
  quickView1343.sessions=input.value;
@@ -52,7 +60,26 @@ function quickMovementCard1346(r){
   tone=m.status==='positive'?'pos':'neg';
   text=`${m.status==='positive'?'Positive':'Negative'} for ${m.partial?'at least ':''}${fmtInt(m.count)} consecutive trading ${m.count===1?'session':'sessions'}`;
  }
- return `<section class="card quick-move1346"><div class="card-header"><h3>Continuous Movement</h3></div><p class="${tone}"><b>${name}</b> — ${h(text)}</p></section>`;
+ const rev=m.reversal?`<p class="${tone}">After ${m.reversal.partial?'at least ':''}${fmtInt(m.reversal.count)} consecutive ${m.reversal.status} ${m.reversal.count===1?'session':'sessions'}, turned ${m.status} in the latest session.</p>`:'';
+ return `<section class="card quick-move1346"><div class="card-header"><h3>Continuous Movement</h3></div><p class="${tone}"><b>${name}</b> — ${h(text)}</p>${rev}</section>`;
+}
+function quickVolume1348(v){
+ const change=v?.change_pct, tone=change==null?'':change>0?'semantic-high1322':change<0?'semantic-low1322':'';
+ const pct=change==null?'—':`${change>0?'+':''}${h(fmtNum(change))}%`;
+ return `<section class="card quick-volume1348"><div class="card-header"><h3>Volume Change</h3></div><div class="quick-volume-grid1348"><div><span>Latest volume · ${quickDate1343(v?.latest_date)}</span><b>${quickVal1343(v?.latest,true)}</b></div><div><span>Previous volume · ${quickDate1343(v?.previous_date)}</span><b>${quickVal1343(v?.previous,true)}</b></div><div><span>Volume change</span><b class="${tone}">${pct}</b></div></div></section>`;
+}
+function quickBreakouts1348(r){
+ const rows=(r.breakouts||[]).map(row=>{
+  let parts=[];
+  for(const [key,heading,tone] of [['high','High breakout','semantic-high1322'],['low','Low breakdown','semantic-low1322']]){
+   const x=row[key];
+   if(!x){parts.push(`<span>${heading}: unavailable</span>`);continue;}
+   if(x.hit)parts.push(`<span class="${tone}"><b>${h(r.symbol)} · ${heading}</b> · Previous ${quickVal1343(x.previous)} (${quickDate1343(x.previous_date)}) · Current ${quickVal1343(x.current)} (${quickDate1343(x.current_date)}) · ${h(fmtInt(x.elapsed_sessions))} ${x.elapsed_sessions===1?'session':'sessions'} since record</span>`);
+  }
+  if(!parts.length)parts.push('<span>No breakout or breakdown</span>');
+  return `<div class="quick-alert-row1348"><strong>${h(row.range)}</strong><div>${parts.join('')}</div></div>`;
+ }).join('');
+ return `<section class="card quick-alerts1348"><div class="card-header"><h3>Historical Breakout Alerts</h3></div>${rows}</section>`;
 }
 async function renderQuickView1343(container,ticket){
  const current=()=>currentViewRender(container,ticket)&&state.currentView==='market'&&state.market.tab==='quickView';
@@ -66,7 +93,8 @@ async function renderQuickView1343(container,ticket){
  // Preserve edits made to the input during the request.
  quickView1343.report=r;
  html+=`<section class="card quick-title1343"><div class="card-header"><h3>${h(r.symbol)} · ${h(r.company||'Company unavailable')}</h3></div><div class="quick-dates1343"><span>First Available Record Date: <b>${quickDate1343(r.first)}</b></span><span>Last Available Record Date: <b>${quickDate1343(r.last)}</b></span></div></section>`;
- html+=`<div class="quick-cards1343">${smallSymbolCard1321(r.card,{}, {hideSelectedSessions:true})}<div class="quick-side1347"><section class="card"><div class="card-header"><h3>Technical Analysis</h3></div><div class="quick-tech1343">${metric1321('RSI',quickVal1343(r.technical?.rsi))}${['R1','R2','R3','S1','S2','S3'].map(k=>metric1321(k,quickVal1343(r.technical?.pivots?.[k]))).join('')}</div></section>${quickMovementCard1346(r)}</div></div>`;
+ html+=`<div class="quick-cards1343">${smallSymbolCard1321(r.card,{}, {hideSelectedSessions:true})}<div class="quick-side1347"><section class="card"><div class="card-header"><h3>Technical Analysis</h3></div><div class="quick-tech1343">${metric1321('RSI',quickVal1343(r.technical?.rsi))}${['R1','R2','R3','S1','S2','S3'].map(k=>metric1321(k,quickVal1343(r.technical?.pivots?.[k]))).join('')}</div></section>${quickMovementCard1346(r)}${quickVolume1348(r.volume_comparison)}</div></div>`;
+ html+=quickBreakouts1348(r);
  if(r.top10){html+=`<p class="quick-rank1343"><b>${h(r.symbol)}</b> · Top 10 by imported volume · Rank ${h(String(r.top10.rank))} · ${h(fmtInt(r.top10.volume))} shares · ${quickDate1343(r.market_date)}</p>`;}
  if(r.top5_blocks?.length){html+=`<div class="quick-top5-grid1347">${r.top5_blocks.map(renderTop5Block1344).join('')}</div>`;}
  const metrics=[['max_high','Maximum High','pos'],['max_close','Maximum Closing','pos'],['min_low','Minimum Low','neg'],['min_close','Minimum Closing','neg'],['max_average','Maximum Average',''],['min_average','Minimum Average',''],['max_volume','Maximum Volume',''],['min_volume','Minimum Volume','']];

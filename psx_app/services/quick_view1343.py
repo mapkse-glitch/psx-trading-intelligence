@@ -98,6 +98,53 @@ def _summarize_ranges(bars,anchor):
                            'upper_lock_coverage':coverage[0],'lower_lock_coverage':coverage[1]}
     return results
 
+def _breakouts(bars):
+    """Latest session versus preceding imported sessions; no partial extrema."""
+    names=[(f'{n} Sessions',n) for n in (7,14,30,90,180)]+[('1 Year',None)]
+    if not bars:return [{'range':name,'high':None,'low':None} for name,_ in names]
+    last=bars[-1]; prior=bars[:-1]; anchor=date.fromisoformat(last['trade_date'])
+    output=[]
+    for name,n in names:
+        if n is None:
+            start=_year_start(anchor).isoformat()
+            complete=bool(prior) and prior[0]['trade_date']<=start
+            window=[(i,r) for i,r in enumerate(prior) if r['trade_date']>=start]
+        else:
+            complete=len(prior)>=n
+            start_index=max(0,len(prior)-n)
+            window=list(enumerate(prior[start_index:],start_index))
+        sides={}
+        for field,is_high in (('high',True),('low',False)):
+            # An unknown observation can hide a more extreme price. Do not
+            # assert either a breakout or a negative result for that side.
+            def valid_side(row):
+                if not _good(row.get(field)):return False
+                # Reject a contradictory high/low pair instead of treating
+                # a corrupted bar as a historical price record.
+                if _good(row.get('high')) and _good(row.get('low')) and float(row['high'])<float(row['low']):return False
+                return True
+            if not complete or not window or not valid_side(last) or any(not valid_side(r) for _,r in window):
+                sides[field]=None; continue
+            if is_high:
+                idx,record=max(window,key=lambda x:(float(x[1][field]),x[0]))
+                hit=float(last[field])>float(record[field])
+            else:
+                idx,record=min(window,key=lambda x:(float(x[1][field]),-x[0]))
+                hit=float(last[field])<float(record[field])
+            sides[field]={'hit':hit,'previous':record[field],'previous_date':record['trade_date'],
+                          'current':last[field],'current_date':last['trade_date'],'elapsed_sessions':len(bars)-1-idx}
+        output.append({'range':name,**sides})
+    return output
+
+def _volume_comparison(bars):
+    latest=bars[-1] if bars else None
+    previous=bars[-2] if len(bars)>1 else None
+    lv=latest.get('volume') if latest and _good(latest.get('volume'),False) else None
+    pv=previous.get('volume') if previous and _good(previous.get('volume'),False) else None
+    change=(float(lv)-float(pv))*100/float(pv) if lv is not None and pv is not None and float(pv)>0 else None
+    return {'latest':lv,'latest_date':latest['trade_date'] if latest else None,
+            'previous':pv,'previous_date':previous['trade_date'] if previous else None,'change_pct':change}
+
 class QuickView:
     def __init__(self,db_path=None):self.db_path=db_path
 
@@ -132,7 +179,8 @@ class QuickView:
             block['rows'].append(row)
             block['max_volume']=max(block['max_volume'],row['volume'] or 0)
         base={'top5_block':top5_blocks[0] if top5_blocks else None,'top5_blocks':top5_blocks,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None,
-              'closes':[[r['trade_date'],float(r['close']) if _good(r.get('close')) else None] for r in bars]}
+              'closes':[[r['trade_date'],float(r['close']) if _good(r.get('close')) else None] for r in bars],
+              'breakouts':_breakouts(bars),'volume_comparison':_volume_comparison(bars)}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
         anchor=date.fromisoformat(bars[-1]['trade_date'])
         ranges=_summarize_ranges(bars,anchor)
