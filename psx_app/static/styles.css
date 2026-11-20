@@ -1584,3 +1584,15 @@ body{font-size:15px;line-height:1.5}
 .quick-alert-row1348:last-child {border-bottom:0;padding-bottom:0}
 .quick-alert-row1348>div {display:flex;flex-direction:column;gap:6px;min-width:0;overflow-wrap:anywhere}
 @media(max-width:650px){.quick-side1347{grid-template-rows:auto auto auto}.quick-volume-grid1348{grid-template-columns:1fr}.quick-alert-row1348{grid-template-columns:1fr;gap:4px}}
+
+/* Scoped to the Quick View additions. */
+.quick-volume-grid1348 {grid-template-columns:repeat(4,minmax(0,1fr))}
+.quick-structure1349 {margin-bottom:20px}
+.quick-structure1349 p {margin:8px 0;line-height:1.5}
+.quick-structure1349 small,.quick-muted1349 {color:var(--text-muted)}
+.quick-structure-grid1349 {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+.quick-structure-grid1349 div {display:flex;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}
+.quick-structure-grid1349 span {color:var(--text-muted);font-size:.78rem}
+.quick-alert-event1349 {padding:9px 0;line-height:1.5;border-bottom:1px solid var(--border-color);overflow-wrap:anywhere}
+.quick-alerts1348 p {line-height:1.5}
+@media(max-width:650px){.quick-volume-grid1348{grid-template-columns:1fr 1fr}.quick-structure-grid1349{grid-template-columns:1fr 1fr}}

@@ -9,6 +9,7 @@ from psx_app.services.market_explorer import delta
 from psx_app.services.result_cache import persisted_result
 from psx_app.services.sector_reference import BUNDLED
 from psx_app.services.technical_service import TechnicalService, wilder_rsi_series
+from psx_app.services.quick_structure1349 import analyze_structure
 
 METRICS = [('max_high','high',True),('max_close','close',True),('min_low','low',False),('min_close','close',False),('max_average','avg_price',True),('min_average','avg_price',False),('max_volume','volume',True),('min_volume','volume',False)]
 
@@ -123,16 +124,18 @@ def _breakouts(bars):
                 # a corrupted bar as a historical price record.
                 if _good(row.get('high')) and _good(row.get('low')) and float(row['high'])<float(row['low']):return False
                 return True
-            if not complete or not window or not valid_side(last) or any(not valid_side(r) for _,r in window):
+            close=last.get('close')
+            valid_close=_good(close) and not (_good(last.get('high')) and float(close)>float(last['high'])) and not (_good(last.get('low')) and float(close)<float(last['low']))
+            if not complete or not window or not valid_close or not valid_side(last) or any(not valid_side(r) for _,r in window):
                 sides[field]=None; continue
             if is_high:
                 idx,record=max(window,key=lambda x:(float(x[1][field]),x[0]))
-                hit=float(last[field])>float(record[field])
+                hit=float(close)>float(record[field])
             else:
                 idx,record=min(window,key=lambda x:(float(x[1][field]),-x[0]))
-                hit=float(last[field])<float(record[field])
+                hit=float(close)<float(record[field])
             sides[field]={'hit':hit,'previous':record[field],'previous_date':record['trade_date'],
-                          'current':last[field],'current_date':last['trade_date'],'elapsed_sessions':len(bars)-1-idx}
+                          'current':close,'current_date':last['trade_date'],'elapsed_sessions':len(bars)-1-idx}
         output.append({'range':name,**sides})
     return output
 
@@ -143,7 +146,7 @@ def _volume_comparison(bars):
     pv=previous.get('volume') if previous and _good(previous.get('volume'),False) else None
     change=(float(lv)-float(pv))*100/float(pv) if lv is not None and pv is not None and float(pv)>0 else None
     return {'latest':lv,'latest_date':latest['trade_date'] if latest else None,
-            'previous':pv,'previous_date':previous['trade_date'] if previous else None,'change_pct':change}
+            'previous':pv,'previous_date':previous['trade_date'] if previous else None,'difference':(lv-pv) if lv is not None and pv is not None else None,'change_pct':change}
 
 class QuickView:
     def __init__(self,db_path=None):self.db_path=db_path
@@ -180,7 +183,7 @@ class QuickView:
             block['max_volume']=max(block['max_volume'],row['volume'] or 0)
         base={'top5_block':top5_blocks[0] if top5_blocks else None,'top5_blocks':top5_blocks,'symbol':symbol,'company':company,'market_date':market_date,'top5':top[:5],'top10':recognition,'first':bars[0]['trade_date'] if bars else None,'last':bars[-1]['trade_date'] if bars else None,
               'closes':[[r['trade_date'],float(r['close']) if _good(r.get('close')) else None] for r in bars],
-              'breakouts':_breakouts(bars),'volume_comparison':_volume_comparison(bars)}
+              'breakouts':_breakouts(bars),'volume_comparison':_volume_comparison(bars),'structure':analyze_structure(bars)}
         if not bars:return {**base,'status':'NO_DATA','ranges':[],'card':{'symbol':symbol,'company':company or 'Company unavailable','status':'NO_DATA'},'technical':None}
         anchor=date.fromisoformat(bars[-1]['trade_date'])
         ranges=_summarize_ranges(bars,anchor)

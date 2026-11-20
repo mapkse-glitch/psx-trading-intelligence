@@ -64,22 +64,40 @@ function quickMovementCard1346(r){
  return `<section class="card quick-move1346"><div class="card-header"><h3>Continuous Movement</h3></div><p class="${tone}"><b>${name}</b> — ${h(text)}</p>${rev}</section>`;
 }
 function quickVolume1348(v){
- const change=v?.change_pct, tone=change==null?'':change>0?'semantic-high1322':change<0?'semantic-low1322':'';
+ const change=v?.change_pct, diff=v?.difference, tone=diff==null?'':diff>0?'semantic-high1322':diff<0?'semantic-low1322':'';
+ const pctTone=change==null?'':tone;
  const pct=change==null?'—':`${change>0?'+':''}${h(fmtNum(change))}%`;
- return `<section class="card quick-volume1348"><div class="card-header"><h3>Volume Change</h3></div><div class="quick-volume-grid1348"><div><span>Latest volume · ${quickDate1343(v?.latest_date)}</span><b>${quickVal1343(v?.latest,true)}</b></div><div><span>Previous volume · ${quickDate1343(v?.previous_date)}</span><b>${quickVal1343(v?.previous,true)}</b></div><div><span>Volume change</span><b class="${tone}">${pct}</b></div></div></section>`;
+ const amount=diff==null?'—':`${diff>0?'+':''}${h(fmtInt(diff))}`;
+ return `<section class="card quick-volume1348"><div class="card-header"><h3>Volume Change</h3></div><div class="quick-volume-grid1348"><div><span>Latest volume · ${quickDate1343(v?.latest_date)}</span><b>${quickVal1343(v?.latest,true)}</b></div><div><span>Previous volume · ${quickDate1343(v?.previous_date)}</span><b>${quickVal1343(v?.previous,true)}</b></div><div><span>Volume difference</span><b class="${tone}">${amount}</b></div><div><span>Volume change</span><b class="${pctTone}">${pct}</b></div></div></section>`;
 }
 function quickBreakouts1348(r){
- const rows=(r.breakouts||[]).map(row=>{
-  let parts=[];
+ const groups=new Map(), unavailable=[];
+ for(const row of r.breakouts||[]){
   for(const [key,heading,tone] of [['high','High breakout','semantic-high1322'],['low','Low breakdown','semantic-low1322']]){
-   const x=row[key];
-   if(!x){parts.push(`<span>${heading}: unavailable</span>`);continue;}
-   if(x.hit)parts.push(`<span class="${tone}"><b>${h(r.symbol)} · ${heading}</b> · Previous ${quickVal1343(x.previous)} (${quickDate1343(x.previous_date)}) · Current ${quickVal1343(x.current)} (${quickDate1343(x.current_date)}) · ${h(fmtInt(x.elapsed_sessions))} ${x.elapsed_sessions===1?'session':'sessions'} since record</span>`);
+   const x=row[key];if(!x){unavailable.push(`${row.range} ${key}`);continue;}if(!x.hit)continue;
+   const id=JSON.stringify([key,x.previous,x.previous_date,x.current_date]);
+   if(!groups.has(id))groups.set(id,{x,heading,tone,periods:[]});
+   groups.get(id).periods.push(row.range);
   }
-  if(!parts.length)parts.push('<span>No breakout or breakdown</span>');
-  return `<div class="quick-alert-row1348"><strong>${h(row.range)}</strong><div>${parts.join('')}</div></div>`;
- }).join('');
- return `<section class="card quick-alerts1348"><div class="card-header"><h3>Historical Breakout Alerts</h3></div>${rows}</section>`;
+ }
+ const alerts=[...groups.values()].map(g=>`<div class="quick-alert-event1349 ${g.tone}"><b>${h(r.symbol)} · ${h(g.heading)} — ${h(g.periods.join(', '))}</b><br>Previous level ${quickVal1343(g.x.previous)} · ${quickDate1343(g.x.previous_date)}; close ${quickVal1343(g.x.current)} · ${quickDate1343(g.x.current_date)} · ${h(fmtInt(g.x.elapsed_sessions))} ${g.x.elapsed_sessions===1?'session':'sessions'} since the previous level.</div>`).join('');
+ const missing=unavailable.length?`<p class="quick-muted1349">Unavailable: ${h(unavailable.join(', '))}.</p>`:'';
+ return `<section class="card quick-alerts1348"><div class="card-header"><h3>Historical Breakout Alerts</h3></div>${alerts||((r.breakouts||[]).some(row=>row.high||row.low)?'<p>No confirmed breakout or breakdown in available periods.</p>':'<p>Breakout data unavailable.</p>')}${missing}</section>`;
+}
+function quickStructure1349(st){
+ st=st||{};const state=st.state||'unavailable',tone=state==='bullish'?'semantic-high1322':state==='bearish'?'semantic-low1322':'';
+ const desc={bullish:'Higher Highs and Higher Lows indicate a bullish daily structure.',bearish:'Lower Highs and Lower Lows indicate a bearish daily structure.',sideways:'Highs and lows are within 0.5% of the preceding session, indicating a sideways daily structure.',mixed:'Highs and lows do not align in one direction; the daily structure is mixed.',unavailable:'Not enough complete consecutive daily records to determine the structure.'};
+ let duration=st.sessions?`<p>Current ${h(state)} structure: ${st.partial?'at least ':''}${h(fmtInt(st.sessions))} consecutive ${st.sessions===1?'session':'sessions'}.</p>`:'';
+ let prev=st.previous?`<p>The previous ${h(st.previous.state)} structure lasted ${st.previous.partial?'at least ':''}${h(fmtInt(st.previous.sessions))} ${st.previous.sessions===1?'session':'sessions'}.</p>`:'';
+ let strength='';
+ if(st.sessions && (state==='bullish'||state==='bearish'))strength=`<p>Trend strength: ${st.sessions===1?'developing':'sustained'} ${h(state)} alignment over ${st.partial?'at least ':''}${h(fmtInt(st.sessions))} ${st.sessions===1?'session':'sessions'}.</p>`;
+ else if(st.sessions)strength='<p>Trend strength: no clear directional alignment.</p>';
+ const labels={HH:'Higher High',HL:'Higher Low',LH:'Lower High',LL:'Lower Low'};
+ const events=Object.entries(labels).map(([key,label])=>{const e=st.events?.[key];return `<div><span>Latest ${h(label)} (${key})</span><b class="${e?(key==='HH'||key==='HL'?'semantic-high1322':'semantic-low1322'):''}">${e?`${quickVal1343(e.price)} · ${quickDate1343(e.date)}`:'—'}</b></div>`}).join('');
+ const level=(name,x)=>`<div><span>Previous session ${name}</span><b>${x?`${quickVal1343(x.price)} · ${quickDate1343(x.date)}`:'—'}</b></div>`;
+ const sig=st.signal;let signal='<p>No identifiable BOS or CHoCH signal in available complete records.</p>';
+ if(sig){const col=sig.direction==='bullish'?'semantic-high1322':'semantic-low1322';signal=`<p class="${col}"><b>Potential ${h(sig.direction)} ${h(sig.kind)}</b> · Close ${quickVal1343(sig.close)} on ${quickDate1343(sig.date)} crossed the previous ${sig.direction==='bullish'?'high':'low'} ${quickVal1343(sig.level)} from ${quickDate1343(sig.level_date)}.</p>`;}
+ return `<section class="card quick-structure1349"><div class="card-header"><h3>Market Structure Analysis</h3></div><p class="${tone}"><b>${h(desc[state]||desc.unavailable)}</b></p>${duration}${prev}${strength}<div class="quick-structure-grid1349">${events}${level('high',st.relevant?.high)}${level('low',st.relevant?.low)}</div>${signal}<small>Daily comparison with the previous stored session; 0.5% similarity band. Signals are potential, not guaranteed.</small></section>`;
 }
 async function renderQuickView1343(container,ticket){
  const current=()=>currentViewRender(container,ticket)&&state.currentView==='market'&&state.market.tab==='quickView';
@@ -97,6 +115,7 @@ async function renderQuickView1343(container,ticket){
  html+=quickBreakouts1348(r);
  if(r.top10){html+=`<p class="quick-rank1343"><b>${h(r.symbol)}</b> · Top 10 by imported volume · Rank ${h(String(r.top10.rank))} · ${h(fmtInt(r.top10.volume))} shares · ${quickDate1343(r.market_date)}</p>`;}
  if(r.top5_blocks?.length){html+=`<div class="quick-top5-grid1347">${r.top5_blocks.map(renderTop5Block1344).join('')}</div>`;}
+ html+=quickStructure1349(r.structure);
  const metrics=[['max_high','Maximum High','pos'],['max_close','Maximum Closing','pos'],['min_low','Minimum Low','neg'],['min_close','Minimum Closing','neg'],['max_average','Maximum Average',''],['min_average','Minimum Average',''],['max_volume','Maximum Volume',''],['min_volume','Minimum Volume','']];
  const headings=metrics.map(([,label])=>`<th scope="col" class="num">${h(label)}</th>`).join('');
  const labels=['7 Days','14 Days','30 Days','90 Days','180 Days','1 Year','All-Time High Since 1 October 2023','All-Time High Since 27 February 2026'];
