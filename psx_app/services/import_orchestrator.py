@@ -630,6 +630,9 @@ class ImportOrchestrator:
                 # 2. Trade executions
                 if "executions" in payload:
                     for ex_rec in payload["executions"]:
+                        # Staging may have occurred before a commission rule update.
+                        from psx_app.parsers.tradelog_parser import compute_execution_charges
+                        ex_rec = {**ex_rec, **compute_execution_charges(ex_rec["normalized_side"], ex_rec["quantity"], ex_rec["price"], ex_rec["trade_value"], commit_settings)}
                         ex = exec_existing.get((ex_rec["account_id"], ex_rec["unique_trade_key"]))
                         if ex is None:
                             queue_write(

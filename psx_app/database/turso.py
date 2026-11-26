@@ -197,4 +197,6 @@ def ensure_ready():
         with _READY_LOCK:
             if not _READY:
                 initialize()
+                from psx_app.services.commission_repair import repair
+                repair(connection=connect())
                 _READY = True

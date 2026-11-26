@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 # Only reports whose response shape changed need a new cache namespace.
 CACHE_VERSION_OVERRIDES = {
+    'psx_app.services.account_service.AccountService.get_account_report': 'commission-pkr-v1',
     'psx_app.services.quick_view1343.QuickView.report': '1.3.49',
     'psx_app.services.performance_comparison.PerformanceComparison.report': '1.3.39-ath',
     'psx_app.services.market_panels.MarketPanels.matching': '1.3.39-ath',

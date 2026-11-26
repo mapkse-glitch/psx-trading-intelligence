@@ -26,6 +26,9 @@ class Repository:
                     merged[r["key"]] = json.loads(r["value_json"])
                 except Exception:
                     merged[r["key"]] = r["value_json"]
+        # The two accounts use fixed commission rules; do not expose stale overrides.
+        merged.update(commission_slab1_upper=54.0, commission_slab1_paisa_per_share=0.0175,
+                      commission_slab2_start=54.0, commission_slab2_rate=0.000325)
         return merged
 
     def update_settings(

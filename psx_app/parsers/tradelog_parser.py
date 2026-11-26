@@ -18,8 +18,8 @@ def compute_execution_charges(
 ) -> Dict[str, Any]:
     """
     Deterministic PSX sell-side commission & SST calculation at the execution level.
-    Slab 1: Sell price < 54 PKR -> Commission = Sell Quantity * 0.0175 / 100 PKR
-    Slab 2: Sell price >= 54 PKR -> Commission = Sell Value * 0.000325 PKR
+    Slab 1: Sell price <= 54 PKR -> Commission = Sell Quantity * 0.0175 PKR
+    Slab 2: Sell price > 54 PKR -> Commission = Sell Value * 0.000325 PKR
     SST: 13% of Commission
     """
     cfg = settings or DEFAULT_SETTINGS
@@ -31,22 +31,21 @@ def compute_execution_charges(
             "total_charges": 0.0,
         }
 
-    slab2_start = Decimal(str(cfg.get("commission_slab2_start", 54.0)))
-    slab1_paisa = Decimal(str(cfg.get("commission_slab1_paisa_per_share", 0.0175)))
-    paisa_per_pkr = Decimal(str(cfg.get("paisa_per_pkr", 100.0)))
-    slab2_rate = Decimal(str(cfg.get("commission_slab2_rate", 0.000325)))
+    slab2_start = Decimal("54")
+    slab1_pkr = Decimal("0.0175")
+    slab2_rate = Decimal("0.000325")
     sst_rate = Decimal(str(cfg.get("sst_rate", 0.13)))
 
     d_price = Decimal(str(price))
     d_qty = Decimal(str(quantity))
     d_val = Decimal(str(trade_value))
 
-    if d_price >= slab2_start:
+    if d_price > slab2_start:
         comm = d_val * slab2_rate
         slab_label = "0.0325% of sell value"
     else:
-        comm = d_qty * slab1_paisa / paisa_per_pkr
-        slab_label = "0.0175 paisa per share"
+        comm = d_qty * slab1_pkr
+        slab_label = "PKR 0.0175 per share"
 
     sst = comm * sst_rate
     total = comm + sst

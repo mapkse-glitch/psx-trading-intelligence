@@ -61,6 +61,12 @@ class AccountService:
                 sell_qty = sum(r["quantity"] for r in rows if r["normalized_side"] == "SELL")
                 sell_val = float(sum(Decimal(str(r["trade_value"])) for r in rows if r["normalized_side"] == "SELL"))
 
+                legacy = c.execute("SELECT origin_type FROM account_daily_symbol_summary WHERE account_id=? AND trade_date=? AND symbol=?", (account_id, trade_date, sym)).fetchone()
+                if legacy and legacy["origin_type"] == "LEGACY_MIGRATED":
+                    # Newly imported executions use today's SST setting, which does
+                    # not establish the historical rate or other legacy charges.
+                    # Keep the original summary for review rather than overwrite it.
+                    continue
                 avg_buy = (buy_val / buy_qty) if buy_qty > 0 else None
                 avg_sell = (sell_val / sell_qty) if sell_qty > 0 else None
                 price_diff = (avg_sell - avg_buy) if (avg_buy is not None and avg_sell is not None) else None
@@ -81,7 +87,7 @@ class AccountService:
                 elif len(sell_slabs) > 1:
                     slab_label = "Mixed slabs (execution-level)"
                 else:
-                    slab_label = "0.0325% of sell value" if (avg_sell or 0) >= slab2_start else "0.0175 paisa per share"
+                    slab_label = "Unverified slab"
 
                 mkt = rows[0].get("market_type") or ("FUT" if "-" in sym else "Reg")
                 src_fn = rows[-1].get("source_filename") or "TradeLog"
@@ -166,13 +172,20 @@ class AccountService:
         gross = float(Decimal(str(s_val)) - Decimal(str(b_val)))
         comm = float(sum(Decimal(str(r["commission_amount"])) for r in rows))
         sst = float(sum(Decimal(str(r["sst_amount"])) for r in rows))
-        t_chg = float(Decimal(str(comm)) + Decimal(str(sst)))
+        # Preserve other recorded charges. Older/incomplete summaries may have
+        # the default zero total despite having a commission and SST.
+        t_chg = float(sum(
+            (Decimal(str(r["commission_amount"])) + Decimal(str(r["sst_amount"])))
+            if not r.get("total_charges") else Decimal(str(r["total_charges"]))
+            for r in rows
+        ))
         net_p = float(Decimal(str(gross)) - Decimal(str(t_chg)))
         rob = (net_p / b_val) if b_val > 0 else None
 
         slab_label = "—"
-        if s_qty > 0 and avg_s is not None:
-            slab_label = "0.0325% of sell value" if avg_s >= slab2_start else "0.0175 paisa per share"
+        if s_qty > 0:
+            labels = {r.get("commission_slab_label") for r in rows if r.get("sell_qty", 0) > 0}
+            slab_label = next(iter(labels)) if len(labels) == 1 and None not in labels else "Mixed or unverified slabs"
 
         syms_list = sorted({r["symbol"] for r in rows if r.get("symbol")})
         dates_list = sorted({r["trade_date"] for r in rows if r.get("trade_date")})
@@ -249,6 +262,8 @@ class AccountService:
                     (account_id,),
                 ).fetchall()
             ]
+            commission_review_issues = [dict(r) for r in c.execute(
+                "SELECT symbol, trade_date, message FROM import_issues WHERE module='MODULE_B' AND issue_type='COMMISSION_REPAIR_REVIEW' AND account_id=? ORDER BY trade_date,symbol", (account_id,)).fetchall()]
             issues = [
                 dict(r)
                 for r in c.execute(
@@ -416,6 +431,7 @@ class AccountService:
             "total_traded_shares": total_traded_shares,
             "symbols_count": len(by_symbol),
             "trading_days_count": len(available_dates),
+            "has_commission_review": bool(commission_review_issues or any(r.get("origin_type") == "LEGACY_MIGRATED" and r.get("sell_qty", 0) > 0 for r in sym_rows)),
             "best_symbol": best_symbol,
             "worst_symbol": worst_symbol,
         }
@@ -451,13 +467,15 @@ class AccountService:
             "data_checks": {
                 "reconciliation": reconciliation_checks,
                 "issues": issues,
+                "commission_review_issues": commission_review_issues,
+                "commission_unverified": [{"date": r["trade_date"], "symbol": r["symbol"]} for r in sym_rows if r.get("origin_type") == "LEGACY_MIGRATED" and r.get("sell_qty", 0) > 0],
             },
             "settings": {
                 "account_id": account_id,
-                "commission_slab1_upper": settings["commission_slab1_upper"],
-                "commission_slab1_paisa_per_share": settings["commission_slab1_paisa_per_share"],
-                "commission_slab2_start": settings["commission_slab2_start"],
-                "commission_slab2_rate": settings["commission_slab2_rate"],
+                "commission_slab1_upper": 54.0,
+                "commission_slab1_paisa_per_share": 0.0175,
+                "commission_slab2_start": 54.0,
+                "commission_slab2_rate": 0.000325,
                 "sst_rate": settings["sst_rate"],
                 "currency": settings["currency"],
             },

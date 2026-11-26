@@ -437,7 +437,7 @@ class ExportService:
                 col1_name, "Buy Qty", "Buy Value (PKR)", "Avg Buy Price",
                 "Sell Qty", "Sell Value (PKR)", "Avg Sell Price",
                 "Price Diff (Sell−Buy)", "Net Qty", "Gross P&L (PKR)",
-                "Commission Rate (Slab)", "Commission (PKR)", "SST 13% (PKR)",
+                "Commission Rate (Slab)", "Commission (PKR)", "SST (PKR)",
                 "Total Charges (PKR)", "Net P&L (PKR)", "Return on Buy"
             ]
             for c_i, h in enumerate(headers_16, start=1):
@@ -531,7 +531,7 @@ class ExportService:
             "Symbol", "Buy Qty", "Buy Value (PKR)", "Avg Buy Price",
             "Sell Qty", "Sell Value (PKR)", "Avg Sell Price",
             "Price Diff (Sell−Buy)", "Net Qty", "Gross P&L (PKR)",
-            "Commission Rate (Slab)", "Commission (PKR)", "SST 13% (PKR)",
+            "Commission Rate (Slab)", "Commission (PKR)", "SST (PKR)",
             "Total Charges (PKR)", "Net P&L (PKR)", "Return on Buy"
         ]
         for d_iso, blk in rep["all_daily_blocks"].items():
@@ -632,11 +632,12 @@ class ExportService:
             c.fill = NAVY_HEADER_FILL
         st_rows = [
             ("Account Number", account_id, f"Specific account for this workbook ({account_id})"),
-            ("Commission Slab 1 Upper Rate", rep["settings"]["commission_slab1_upper"], "Sell rate < 54.00 PKR -> Slab 1"),
-            ("Commission Slab 1 Rate", rep["settings"]["commission_slab1_paisa_per_share"], "0.0175 paisa per share -> PKR = Sell Qty * 0.0175 / 100"),
-            ("Commission Slab 2 Starting Rate", rep["settings"]["commission_slab2_start"], "Sell rate >= 54.00 PKR -> Slab 2"),
+            ("Commission Slab 1 Upper Rate", rep["settings"]["commission_slab1_upper"], "Sell rate <= 54.00 PKR -> Slab 1"),
+            ("Commission Slab 1 Rate", rep["settings"]["commission_slab1_paisa_per_share"], "PKR 0.0175 per share -> Sell Qty * 0.0175"),
+            ("Commission Slab 2 Starting Rate", rep["settings"]["commission_slab2_start"], "Sell rate > 54.00 PKR -> Slab 2"),
             ("Commission Slab 2 Rate", rep["settings"]["commission_slab2_rate"], "0.0325% of sell value (0.000325)"),
-            ("SST Rate", rep["settings"]["sst_rate"], "13% of commission amount"),
+            ("SST Rate", rep["settings"]["sst_rate"], "Configured SST on commission; historical rates are retained when verified"),
+            ("Commission review", len(rep["data_checks"].get("commission_unverified", [])) + len(rep["data_checks"].get("commission_review_issues", [])), "Unverified historical records retain original charges; totals may include them. See Data Checks & Audit in the dashboard."),
             ("Currency", rep["settings"]["currency"], "Pakistan Rupee (PKR)"),
         ]
         for idx_r, (s_k, s_v, s_n) in enumerate(st_rows, start=5):
@@ -654,7 +655,7 @@ class ExportService:
                 "Trading Date", "Time", "Account", "Symbol", "Market",
                 "Original Type", "Normalized Side", "Order ID", "Execution ID",
                 "Quantity", "Price (PKR)", "Trade Value (PKR)", "Commission Slab",
-                "Commission (PKR)", "SST 13% (PKR)", "Total Charges (PKR)",
+                "Commission (PKR)", "SST (PKR)", "Total Charges (PKR)",
                 "Unique Trade Key", "Source Filename"
             ]
             for c_i, h in enumerate(tl_headers, start=1):

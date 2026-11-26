@@ -66,7 +66,7 @@ TICKER_ALIASES: Dict[str, str] = {
 AUTHORIZED_ACCOUNTS: List[str] = ["91404", "91269"]
 
 DEFAULT_SETTINGS: Dict[str, Any] = {
-    "commission_slab1_upper": 53.99999,
+    "commission_slab1_upper": 54.0,
     "commission_slab1_paisa_per_share": 0.0175,
     "commission_slab2_start": 54.0,
     "commission_slab2_rate": 0.000325,

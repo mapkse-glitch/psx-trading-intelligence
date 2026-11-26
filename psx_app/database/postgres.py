@@ -237,7 +237,11 @@ def ensure_ready():
     global _READY
     if not _READY:
         with _READY_LOCK:
-            if not _READY: initialize();_READY=True
+            if not _READY:
+                initialize()
+                from psx_app.services.commission_repair import repair
+                repair(connection=connect())
+                _READY = True
 
 
 def revision():

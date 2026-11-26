@@ -60,6 +60,8 @@ async def lifespan(app_instance: FastAPI):
     init_db(DB_PATH)
     mig = MigrationService(DB_PATH, DATA_ROOT)
     mig.run_initial_migration(force=False)
+    from psx_app.services.commission_repair import ensure_repaired
+    ensure_repaired(DB_PATH)
     cloud = CloudSyncService(DB_PATH)
     base = cloud.base_state()
     if startup_pull.get("pulled") and base.get("initialized") and not base.get("pending"):
@@ -198,6 +200,14 @@ async def guard_database_availability(request: Request, call_next):
         return await call_next(request)
     try:
         await run_in_threadpool(readiness.check)
+        from psx_app.database.turso import backend_name
+        if backend_name() in ('postgres', 'turso'):
+            from psx_app.services.commission_repair import ensure_repaired
+            try:
+                await run_in_threadpool(ensure_repaired)
+            except Exception as exc:
+                from psx_app.database.availability import safe_failure
+                raise safe_failure(exc, 'commission_repair') from None
         return await call_next(request)
     except DatabaseUnavailable as exc:
         return JSONResponse(exc.payload(), status_code=503, headers={"Retry-After": "10", "Cache-Control": "no-store"})
@@ -879,8 +889,7 @@ def api_get_settings() -> Dict[str, Any]:
 @app.post("/api/settings")
 def api_update_settings(req: UpdateSettingsRequest) -> Dict[str, Any]:
     import math
-    limits = {"commission_slab1_upper": (0, 1000000), "commission_slab1_paisa_per_share": (0, 100),
-              "commission_slab2_start": (0, 1000000), "commission_slab2_rate": (0, 1), "sst_rate": (0, 1),
+    limits = {"sst_rate": (0, 1),
               "futures_default_days": (1, 365), "futures_rolling_retention_months": (1, 24)}
     for key, value in req.updates.items():
         if key not in limits or isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
@@ -890,8 +899,6 @@ def api_update_settings(req: UpdateSettingsRequest) -> Dict[str, Any]:
             raise HTTPException(422, detail=f"{key} must be between {low} and {high}; futures settings must be integers.")
     repo = Repository(DB_PATH)
     combined = {**repo.get_settings(), **req.updates}
-    if combined["commission_slab1_upper"] >= combined["commission_slab2_start"]:
-        raise HTTPException(422, detail="Commission slab 1 upper bound must be below slab 2 start.")
     CloudSyncService(DB_PATH).mark_pending()
     updated = repo.update_settings(req.updates, notes=req.notes)
     invalidate_api_cache()
@@ -933,6 +940,8 @@ def api_restore_backup(req: RestoreBackupRequest) -> Dict[str, Any]:
     try:
         CloudSyncService(DB_PATH).mark_pending()
         res = b_svc.restore_backup(req.zip_filename)
+        from psx_app.services.commission_repair import repair
+        repair(DB_PATH)
         invalidate_api_cache()
         res["cloud_sync"] = CloudSyncService(DB_PATH).push_db_after_update("Backup restored")
         return res

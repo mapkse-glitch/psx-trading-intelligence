@@ -628,7 +628,7 @@ async function renderOverview(container) {
     <div class="trust-strip"><span><b>Source</b> Imported end-of-day data</span><span><b>Cash as of</b> ${fmtDate(source.cash?.latest_date)}</span><span><b>Futures as of</b> ${fmtDate(source.futures?.latest_date)}</span><span><b>Cloud</b> ${escapeHtml(cloud.health)}</span></div>
     <div class="section-heading"><h2>Your accounts</h2><span>YTD within imported coverage · PKR · separate ledgers</span></div>
     <div class="grid-2 account-overview">
-      ${[[a,'91404'],[b,'91269']].map(([acc,id])=>`<section class="card account-card"><div class="account-card-top"><span class="eyebrow">ACCOUNT ${id}</span><button class="text-button" onclick="switchView('acc${id}')">Open account →</button></div><div class="metric-caption">Net P&amp;L</div><div class="account-value ${pnlClass(acc.ytd.net_pnl)}">${fmtNum(acc.ytd.net_pnl)} <small>PKR</small></div><div class="account-footer"><span>Latest trading day <b>${fmtDate(acc.latest_trading_day)}</b></span><span>${fmtInt(acc.trading_days_count)} days · ${fmtInt(acc.symbols_count)} symbols</span></div></section>`).join('')}
+      ${[[a,'91404'],[b,'91269']].map(([acc,id])=>`<section class="card account-card"><div class="account-card-top"><span class="eyebrow">ACCOUNT ${id}</span><button class="text-button" onclick="switchView('acc${id}')">Open account →</button></div><div class="metric-caption">Net P&amp;L</div><div class="account-value ${pnlClass(acc.ytd.net_pnl)}">${fmtNum(acc.ytd.net_pnl)} <small>PKR</small></div><div class="account-footer"><span>Latest trading day <b>${fmtDate(acc.latest_trading_day)}</b></span><span>${fmtInt(acc.trading_days_count)} days · ${fmtInt(acc.symbols_count)} symbols</span></div>${acc.has_commission_review ? `<div role="status">Commission review required; totals may include unverified historical charges.</div>` : ""}</section>`).join('')}
     </div>
     <div class="section-heading"><h2>Continue your analysis</h2><span>Detailed tools, without the clutter</span></div>
     <div class="workflow-grid">
@@ -1218,7 +1218,7 @@ async function renderAccountView(container, accountId) {
               <tr><td><b>Sell Value (PKR)</b></td><td class="num">${fmtNum(d.latest_day?.sell_value)}</td></tr>
               <tr><td><b>Gross P&amp;L (PKR)</b></td><td class="num ${pnlClass(d.latest_day?.gross_pnl)}">${fmtNum(d.latest_day?.gross_pnl)}</td></tr>
               <tr><td><b>Commission (PKR)</b></td><td class="num">${fmtNum(d.latest_day?.commission_amount)}</td></tr>
-              <tr><td><b>SST 13% (PKR)</b></td><td class="num">${fmtNum(d.latest_day?.sst_amount)}</td></tr>
+              <tr><td><b>SST (PKR)</b></td><td class="num">${fmtNum(d.latest_day?.sst_amount)}</td></tr>
               <tr><td><b>Total Charges (PKR)</b></td><td class="num">${fmtNum(d.latest_day?.total_charges)}</td></tr>
               <tr><td><b>Net P&amp;L (PKR)</b></td><td class="num ${pnlClass(d.latest_day?.net_pnl)}">${fmtNum(d.latest_day?.net_pnl)}</td></tr>
               <tr><td><b>Return on Buy</b></td><td class="num ${pnlClass(d.latest_day?.return_on_buy)}">${fmtPct(d.latest_day?.return_on_buy)}</td></tr>
@@ -1263,7 +1263,7 @@ async function renderAccountView(container, accountId) {
                 <th>Date</th><th>Symbols Traded</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Net Qty</th>
                 <th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th>
                 <th class="num">Avg Buy</th><th class="num">Avg Sell</th>
-                <th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST 13%</th>
+                <th class="num">Gross P&amp;L</th><th class="num">Commission</th><th class="num">SST</th>
                 <th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th>
               </tr>
             </thead>
@@ -1319,7 +1319,7 @@ async function renderAccountView(container, accountId) {
         <div class="card-header">
           <div>
             <div class="card-title">Daily Trade Summary — ${fmtDate(det.trade_date)} (Account ${accountId})</div>
-            <div class="card-subtitle">Symbol-by-symbol weighted averages, Slab 1 / Slab 2 commission, 13% SST, and Net P&amp;L</div>
+            <div class="card-subtitle">Symbol-by-symbol weighted averages, Slab 1 / Slab 2 commission, SST, and Net P&amp;L</div>
           </div>
           <div class="filter-group">
             <label>Select Trading Date:</label>
@@ -1333,7 +1333,7 @@ async function renderAccountView(container, accountId) {
                 <th>Symbol</th><th class="num">Buy Qty</th><th class="num">Buy Value</th><th class="num">Avg Buy</th>
                 <th class="num">Sell Qty</th><th class="num">Sell Value</th><th class="num">Avg Sell</th>
                 <th class="num">Price Diff</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th>
-                <th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th>
+                <th>Commission Slab</th><th class="num">Commission</th><th class="num">SST</th>
                 <th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th>
               </tr>
             </thead>
@@ -1407,7 +1407,7 @@ async function renderAccountView(container, accountId) {
               <tr>
                 <th>Date</th><th>Symbols</th><th class="num">Buy Qty</th><th class="num">Sell Qty</th><th class="num">Net Qty</th>
                 <th class="num">Buy Value (PKR)</th><th class="num">Sell Value (PKR)</th>
-                <th class="num">Gross P&amp;L (PKR)</th><th class="num">Commission</th><th class="num">SST 13%</th>
+                <th class="num">Gross P&amp;L (PKR)</th><th class="num">Commission</th><th class="num">SST</th>
                 <th class="num">Total Charges</th><th class="num">Net P&amp;L (PKR)</th><th class="num">Return on Buy</th>
               </tr>
             </thead>
@@ -1462,7 +1462,7 @@ async function renderAccountView(container, accountId) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Week / Calendar range</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Week / Calendar range</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
               ${TableDisplay.newestFirst(rep.weekly_summary.rows, r => r.week_start).map((r) => `
@@ -1510,7 +1510,7 @@ async function renderAccountView(container, accountId) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Month</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Month</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
               ${TableDisplay.newestFirst(rep.monthly_summary.rows, r => r.month).map((r) => `
@@ -1553,7 +1553,7 @@ async function renderAccountView(container, accountId) {
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>Year</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST 13%</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
+              <tr><th>Year</th><th class="num">Days</th><th class="num">Buy Qty</th><th class="num">Buy Value (PKR)</th><th class="num">Avg Buy</th><th class="num">Sell Qty</th><th class="num">Sell Value (PKR)</th><th class="num">Avg Sell</th><th class="num">Price Diff (S−B)</th><th class="num">Net Qty</th><th class="num">Gross P&amp;L</th><th>Commission Slab</th><th class="num">Commission</th><th class="num">SST</th><th class="num">Total Charges</th><th class="num">Net P&amp;L</th><th class="num">Return on Buy</th></tr>
             </thead>
             <tbody>
               ${TableDisplay.newestFirst(rep.yearly_summary.rows, r => r.year).map((r) => `
@@ -1679,7 +1679,10 @@ async function renderAccountView(container, accountId) {
     `;
   } else if (activeTab === "data_checks") {
     const rec = rep.data_checks.reconciliation;
+    const unverified = rep.data_checks.commission_unverified || [];
+    const commissionIssues = rep.data_checks.commission_review_issues || [];
     bodyHtml = `
+      ${(unverified.length || commissionIssues.length) ? `<div class="card"><div class="card-title">Commission records requiring review</div><p>${unverified.length} legacy sell summaries lack verified execution-level charges. Their original values were retained. Additional execution repair issues: ${commissionIssues.length}.</p>${unverified.length ? `<p>${unverified.map(r => `${escapeHtml(r.symbol)} · ${fmtDate(r.date)}`).join(' | ')}</p>` : ''}${commissionIssues.map(r => `<p>${escapeHtml(r.symbol || '')} · ${fmtDate(r.trade_date || '')} · ${escapeHtml(r.message || '')}</p>`).join('')}</div>` : ''}
       <div class="card">
         <div class="card-header"><div class="card-title">Internal Reconciliation &amp; Data Integrity Checks — Account ${accountId}</div></div>
         <div class="grid-4">
@@ -1706,6 +1709,7 @@ async function renderAccountView(container, accountId) {
       </div>
     </div>
     <div class="filter-bar"><span class="badge ${state.accDateManual[accountId] ? 'badge-amber' : 'badge-green'}">${state.accDateManual[accountId] ? 'Pinned: '+fmtDate(rep.selected_date)+' · Latest:' : 'Auto → Latest:'} ${fmtDate(tDates[0])}</span>${state.accDateManual[accountId] ? `<button class="btn btn-secondary" onclick="clearCalendarNotice1311();state.accDateManual['${accountId}']=false;renderAccountView(document.getElementById('viewContainer'),'${accountId}')">Reset to Latest</button>` : ''}</div>
+    ${(rep.data_checks?.commission_unverified?.length || rep.data_checks?.commission_review_issues?.length) ? `<div class="card" role="status"><b>Commission review required.</b> Some historical amounts were preserved because the original executions or tax rate could not be verified. Totals may include these amounts. See Data Checks &amp; Audit.</div>` : ''}
     ${bodyHtml}
   `;
 }
@@ -2564,10 +2568,8 @@ async function renderSettingsView(container) {
         </div>
         <table class="data-table">
           <tbody>
-            <tr><td><label for="set_slab1_upper"><b>Commission Slab 1 Upper Rate (PKR)</b></label></td><td><input type="number" step="0.01" id="set_slab1_upper" value="${s.commission_slab1_upper}" /></td></tr>
-            <tr><td><label for="set_slab1_paisa"><b>Commission Slab 1 Paisa / Share</b></label></td><td><input type="number" step="0.0001" id="set_slab1_paisa" value="${s.commission_slab1_paisa_per_share}" /></td></tr>
-            <tr><td><label for="set_slab2_start"><b>Commission Slab 2 Starting Rate (PKR)</b></label></td><td><input type="number" step="0.01" id="set_slab2_start" value="${s.commission_slab2_start}" /></td></tr>
-            <tr><td><label for="set_slab2_rate"><b>Commission Slab 2 Rate (Decimal, 0.000325 = 0.0325%)</b></label></td><td><input type="number" step="0.000001" id="set_slab2_rate" value="${s.commission_slab2_rate}" /></td></tr>
+            <tr><td><b>Sell commission at or below PKR 54</b></td><td>PKR 0.0175 per share (fixed)</td></tr>
+            <tr><td><b>Sell commission above PKR 54</b></td><td>0.0325% of sell value (fixed)</td></tr>
             <tr><td><label for="set_sst_rate"><b>Sindh Sales Tax (SST) Rate (Decimal, 0.13 = 13%)</b></label></td><td><input type="number" step="0.01" id="set_sst_rate" value="${s.sst_rate}" /></td></tr>
             <tr><td><label for="set_fut_days"><b>Default Futures Days to Expiry</b></label></td><td><input type="number" step="1" id="set_fut_days" value="${s.default_futures_days ?? s.futures_default_days ?? 30}" /></td></tr>
             <tr><td><label for="set_fut_months"><b>Futures Rolling Retention Window (Months)</b></label></td><td><input type="number" step="1" id="set_fut_months" value="${s.futures_rolling_months ?? s.futures_rolling_retention_months ?? 2}" /></td></tr>
@@ -2652,10 +2654,6 @@ async function renderSettingsView(container) {
 
 async function saveSettings() {
   const updates = {
-    commission_slab1_upper: Number(document.getElementById("set_slab1_upper").value),
-    commission_slab1_paisa_per_share: Number(document.getElementById("set_slab1_paisa").value),
-    commission_slab2_start: Number(document.getElementById("set_slab2_start").value),
-    commission_slab2_rate: Number(document.getElementById("set_slab2_rate").value),
     sst_rate: Number(document.getElementById("set_sst_rate").value),
     futures_default_days: Number(document.getElementById("set_fut_days").value),
     futures_rolling_retention_months: Number(document.getElementById("set_fut_months").value),
@@ -2887,7 +2885,7 @@ function enhanceWorkspace() {
   });
   root.querySelectorAll('.table-wrap').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label','Scrollable data table');});
   root.querySelectorAll('table:not(.table-wrap table)').forEach(table=>{
-    if (table.querySelector('#set_slab1_upper')) table.classList.add('settings-table');
+    if (table.querySelector('#set_sst_rate')) table.classList.add('settings-table');
     const wrapper=document.createElement('div');wrapper.className='table-wrap';wrapper.tabIndex=0;wrapper.setAttribute('role','region');wrapper.setAttribute('aria-label','Scrollable data table');table.replaceWith(wrapper);wrapper.append(table);
   });
   root.querySelectorAll('table.data-table thead th').forEach(th=>th.setAttribute('scope','col'));
